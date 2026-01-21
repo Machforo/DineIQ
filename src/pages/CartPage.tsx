@@ -11,47 +11,31 @@ import {
   Trash2,
   ChefHat,
   Receipt,
-  CheckCircle2,
+  CreditCard, // Icon change kiya hai
 } from "lucide-react";
-import { toast } from "sonner";
 
 export default function CartPage() {
   const navigate = useNavigate();
-  const { items, updateQuantity, removeItem, totalPrice, clearCart } = useCart();
-  const { addOrder, roomNumber } = useUser();
+  const { items, updateQuantity, removeItem, totalPrice } = useCart();
+  const { roomNumber } = useUser();
   const [instructions, setInstructions] = useState("");
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
+  // Calculation wahi purani
   const taxes = Math.round(totalPrice * 0.05);
   const deliveryFee = 0;
   const grandTotal = totalPrice + taxes + deliveryFee;
 
-  const handlePlaceOrder = async () => {
-    setIsPlacingOrder(true);
-    
-    // Simulate order placement
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    const newOrder = {
-      id: `ord${Date.now()}`,
-      date: new Date(),
-      items: items.map((item) => ({
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-      })),
-      total: grandTotal,
-      status: "preparing" as const,
-    };
-
-    addOrder(newOrder);
-    clearCart();
-    
-    toast.success("Order placed successfully!", {
-      description: `Your food is being prepared for Room #${roomNumber}`,
+  // ---> YAHAN CHANGE KIYA HAI <---
+  // Ab ye function order place nahi karega, bas Payment page par bhejega
+  const handleProceedToPayment = () => {
+    navigate("/payment", { 
+      state: { 
+        totalAmount: grandTotal,
+        cartItems: items,
+        roomNumber: roomNumber,
+        instructions: instructions // Cooking instructions bhi saath bhej rahe hain
+      } 
     });
-    
-    navigate("/track-order");
   };
 
   if (items.length === 0) {
@@ -221,22 +205,14 @@ export default function CartPage() {
             Delivery to Room #{roomNumber}
           </p>
         </div>
+        
+        {/* ---> BUTTON CHANGE KIYA HAI <--- */}
         <Button
-          onClick={handlePlaceOrder}
-          disabled={isPlacingOrder}
+          onClick={handleProceedToPayment}
           className="w-full h-14 text-lg font-bold rounded-xl gradient-primary text-primary-foreground shadow-lg flex items-center justify-center gap-2"
         >
-          {isPlacingOrder ? (
-            <>
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Placing Order...
-            </>
-          ) : (
-            <>
-              <CheckCircle2 className="w-5 h-5" />
-              Place Order
-            </>
-          )}
+            <CreditCard className="w-5 h-5" />
+            Proceed to Payment
         </Button>
       </div>
     </div>

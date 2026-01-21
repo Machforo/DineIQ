@@ -13,6 +13,7 @@ import OrderHistoryPage from "@/pages/OrderHistoryPage";
 import CartPage from "@/pages/CartPage";
 import TrackOrderPage from "@/pages/TrackOrderPage";
 import NotFound from "@/pages/NotFound";
+import Payment from "@/pages/Payment"; // <--- 1. Ye Line Add Karein (Import)
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,10 @@ const App = () => (
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/orders" element={<OrderHistoryPage />} />
               <Route path="/cart" element={<CartPage />} />
+              
+              {/* <--- 2. Ye Naya Route Add Karein */}
+              <Route path="/payment" element={<Payment />} />
+              
               <Route path="/track-order" element={<TrackOrderPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
