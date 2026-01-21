@@ -38,31 +38,53 @@ CHATS_SHEET             = "Chats"               # Writable from Customer-AI Fron
 CAMPAIGNS_SHEET         = "Campaigns"           # Writable from Dashboard Campaign Form, Partially updated with AI/Automation
 
 # -------------------------------------------------------------------
-# 🔧 SETUP
+# 🔧 SETUP: Google Sheets
+# Created a new project 'DineIQ Project' in Google Cloud Account.
+# Enabled Google Sheets API for this project.
+# Created a service account 'DineIQ Service Account' with Editor role.
+# Created a new JSON key by clicking on the service account email.
+# Key 'dineIQ_service_account.json' is downloaded, move it to project folder.
+# Added [SERVICE_ACCOUNT_FILE = "dineIQ_service_account.json"] in .env file.
 # -------------------------------------------------------------------
-def init_google_sheets():
-    # This approach needs a service account and not just JSON credentials.
-    from googleapiclient.discovery import build
-    import google.auth
+from googleapiclient.discovery import build
+from google.oauth2.service_account import Credentials
+import os
+from dotenv import load_dotenv
 
-    # Automatically picks up Cloud Run service account credentials
-    credentials, _ = google.auth.default()
+load_dotenv()
+
+SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_FILE")
+
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+
+def init_google_sheets():
+    credentials = Credentials.from_service_account_file(
+        SERVICE_ACCOUNT_FILE,
+        scopes=SCOPES
+    )
 
     service = build("sheets", "v4", credentials=credentials)
     return service.spreadsheets()
 
+# -------------------------------------------------------------------
+# 🔧 SETUP: Google Gemini
+# https://aistudio.google.com/api-keys
+# Created a new API key for DineIQ project 'DineIQ_Gemini_API_Key'
+# API key is configured in .env file as GEMINI_API_KEY
+# Model configured in .env file as GEMINI_MODEL
+# -------------------------------------------------------------------
 def init_gemini():
-    api_key = os.getenv("GEMINI_API_KEY")
-    model = os.getenv("GEMINI_MODEL")
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL")
     
-    if not api_key:
+    if not GEMINI_API_KEY:
         raise Exception("GEMINI_API_KEY missing")
 
-    if not model:
+    if not GEMINI_MODEL:
         raise Exception("GEMINI_MODEL missing")
 
-    genai.configure(api_key=api_key)
-    return genai.GenerativeModel(model)
+    genai.configure(api_key=GEMINI_API_KEY)
+    return genai.GenerativeModel(GEMINI_MODEL)
 
 # -------------------------------------------------------------------
 # 🧹 SHEET HELPERS
