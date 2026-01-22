@@ -578,6 +578,179 @@ function doGet(e) {
 // ========================= doGet flow ends =========================
 
 
+// ==================== OTP Logic Starts ====================
+
+// ----- Helper: SHA-256 Hash -----
+function sha256(text) {
+  return Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    text
+  ).map(b => ('0' + (b & 0xFF).toString(16)).slice(-2)).join('');
+}
+
+// ----- Send OTP -----
+function handleSendOtp(email) {
+  const ss = SpreadsheetApp.getActive();
+  const sheet = ss.getSheetByName("Customer_Auth");
+  if (!sheet) throw new Error("Customer_Auth sheet not found");
+
+  const data = sheet.getDataRange().getValues();
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpHash = sha256(otp);
+  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 min
+
+  let rowFound = false;
+
+  for (let i = 1; i < data.length; i++) {
+    // Column C = index 2 (Customer_Email)
+    if (data[i][2] === email) {
+      sheet.getRange(i + 1, 5).setValue(otpHash);      // Column E = OTP_Hash
+      sheet.getRange(i + 1, 6).setValue(expiresAt);    // Column F = OTP_Expires_At
+      sheet.getRange(i + 1, 7).setValue(new Date());   // Column G = Creation_DateTime
+      rowFound = true;
+      break;
+    }
+  }
+
+  if (!rowFound) {
+    sheet.appendRow([
+      "",          // Customer_ID
+      "",          // Customer_Name
+      email,       // Customer_Email
+      "",          // Customer_Phone
+      otpHash,     // OTP_Hash
+      expiresAt,   // OTP_Expires_At
+      new Date(),  // Creation_DateTime
+      ""           // Last_Login_DateTime
+    ]);
+  }
+
+  MailApp.sendEmail({
+    to: email,
+    subject: "Your Login OTP",
+    htmlBody: `<p>Your OTP is <b>${otp}</b>. Valid for 5 minutes.</p>`
+  });
+
+  return { status: "ok" };
+}
+
+// function handleSendOtp(email) {
+//   const ss = SpreadsheetApp.getActive();
+//   const sheet = ss.getSheetByName("Customer_Auth");
+//   if (!sheet) throw new Error("Customer_Auth sheet not found");
+
+//   const data = sheet.getDataRange().getValues();
+//   const otp = Math.floor(100000 + Math.random() * 900000).toString();
+//   const otpHash = sha256(otp);
+//   const expiresAt = Date.now() + 5 * 60 * 1000; // 5 min
+
+//   let rowFound = false;
+
+//   for (let i = 1; i < data.length; i++) {
+//     if (data[i][1] === email) {
+//       sheet.getRange(i + 1, 3).setValue(otpHash);
+//       sheet.getRange(i + 1, 4).setValue(expiresAt);
+//       sheet.getRange(i + 1, 5).setValue(0);
+//       rowFound = true;
+//       break;
+//     }
+//   }
+
+//   if (!rowFound) {
+//     sheet.appendRow([
+//       "",           // Customer_Name (optional)
+//       email,
+//       otpHash,
+//       expiresAt,
+//       0
+//     ]);
+//   }
+
+//   MailApp.sendEmail({
+//     to: email,
+//     subject: "Your Login OTP",
+//     htmlBody: `<p>Your OTP is <b>${otp}</b>. Valid for 5 minutes.</p>`
+//   });
+
+//   return { status: "ok" };
+// }
+
+// ----- Verify OTP -----
+function handleVerifyOtp(email, otp) {
+  const ss = SpreadsheetApp.getActive();
+  const sheet = ss.getSheetByName("Customer_Auth");
+  const data = sheet.getDataRange().getValues();
+
+  const enteredHash = sha256(otp);
+
+  for (let i = 1; i < data.length; i++) {
+    const rowEmail = data[i][2];     // Column C
+    const storedHash = data[i][4];   // Column E
+    const expiresAt = data[i][5];    // Column F
+
+    if (rowEmail === email) {
+      if (!storedHash) {
+        return { status: "error", message: "OTP not generated" };
+      }
+
+      if (Date.now() > expiresAt) {
+        return { status: "error", message: "OTP expired" };
+      }
+
+      if (storedHash === enteredHash) {
+        // Clear OTP after success
+        sheet.getRange(i + 1, 5).clearContent(); // Column E
+        sheet.getRange(i + 1, 6).clearContent(); // Column F
+        sheet.getRange(i + 1, 8).setValue(new Date()); // Column H = Last_Login_DateTime
+
+        return { status: "ok", authenticated: true };
+      }
+
+      return { status: "error", message: "Invalid OTP" };
+    }
+  }
+
+  return { status: "error", message: "Email not found" };
+}
+
+// function handleVerifyOtp(email, otp) {
+//   const ss = SpreadsheetApp.getActive();
+//   const sheet = ss.getSheetByName("Customer_Auth");
+//   const data = sheet.getDataRange().getValues();
+
+//   const enteredHash = sha256(otp);
+
+//   for (let i = 1; i < data.length; i++) {
+//     const rowEmail = data[i][1];
+//     const storedHash = data[i][2];
+//     const expiresAt = data[i][3];
+//     const attempts = data[i][4] || 0;
+
+//     if (rowEmail === email) {
+//       if (Date.now() > expiresAt) {
+//         return { status: "error", message: "OTP expired" };
+//       }
+
+//       if (attempts >= 5) {
+//         return { status: "error", message: "Too many attempts" };
+//       }
+
+//       if (storedHash === enteredHash) {
+//         // Clear OTP after success
+//         sheet.getRange(i + 1, 3, 1, 3).clearContent();
+//         return { status: "ok", authenticated: true };
+//       }
+
+//       sheet.getRange(i + 1, 5).setValue(attempts + 1);
+//       return { status: "error", message: "Invalid OTP" };
+//     }
+//   }
+
+//   return { status: "error", message: "Email not found" };
+// }
+
+// ==================== OTP Logic Ends ====================
+
 
 // ========================= doPost flow starts =========================
 
@@ -629,7 +802,7 @@ function ensureCampaignColumns(count) {
 function doPost(e) {
   try {
     // -----------------------
-    // 1️⃣ Validate POST data
+    // 0️⃣ Validate POST data
     // -----------------------
     if (!e || !e.postData || !e.postData.contents) {
       return jsonResponse({ status: "error", message: "No POST data received" });
@@ -644,6 +817,17 @@ function doPost(e) {
       }
     } catch (err) {
       return jsonResponse({ status: "error", message: "Invalid JSON: " + err.message });
+    }
+
+    // -----------------------
+    // 1️⃣ Handle auth actions
+    // -----------------------
+    if (data.action === "send_otp" && data.email) {
+      return jsonResponse(handleSendOtp(data.email));
+    }
+
+    if (data.action === "verify_otp" && data.email && data.otp) {
+      return jsonResponse(handleVerifyOtp(data.email, data.otp));
     }
 
     // -----------------------
