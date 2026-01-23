@@ -88,6 +88,7 @@ def init_gemini():
 
 # -------------------------------------------------------------------
 # 🧹 SHEET HELPERS
+# Caching can be added to avoid repeated sheet reads
 # -------------------------------------------------------------------
 def read_sheet(service, sheet_name):
     """Read a Google Sheet into a pandas DataFrame (auto-pads rows)."""
@@ -171,55 +172,227 @@ def call_gemini_with_retry(model, prompt, max_retries=3):
 # -------------------------------------------------------------------
 # 🧩 CLIENT ENRICHMENT
 # -------------------------------------------------------------------
-def infer_customer_category(model, chat_text):
-    """
-    Use Gemini to infer Customer Final Category directly from chat text.
-    Returns a short descriptive category or keywords.
-    """
+def resolve_customer_id_from_context(chat_row):
+    customer_id = chat_row.get("Customer_ID")
+    if customer_id and str(customer_id).strip():
+        return customer_id.strip()
+    return None
 
-    if not chat_text or not chat_text.strip():
-        return ""
+def fetch_orders(sheets, customer_id):
+    if not customer_id:
+        return pd.DataFrame()
 
+    df_orders = read_sheet(sheets, ORDERS_SHEET)
+    if df_orders.empty:
+        return df_orders
+
+    return df_orders[df_orders["Customer_ID"] == customer_id].copy()
+
+def fetch_order_items(sheets, customer_id):
+    if not customer_id:
+        return pd.DataFrame()
+
+    df_orders = read_sheet(sheets, ORDERS_SHEET)
+    df_items = read_sheet(sheets, ORDER_ITEMS_SHEET)
+
+    if df_orders.empty or df_items.empty:
+        return pd.DataFrame()
+
+    order_ids = df_orders.loc[
+        df_orders["Customer_ID"] == customer_id, "Order_ID"
+    ]
+
+    return df_items[df_items["Order_ID"].isin(order_ids)].copy()
+
+MENU_DIETARY_MAP = {
+    "paneer": "Vegetarian",
+    "dal": "Vegetarian",
+    "chicken": "Non-Vegetarian",
+    "mutton": "Non-Vegetarian",
+    "egg": "Eggetarian",
+    "vegan": "Vegan"
+}
+
+def infer_dietary_from_items(order_items):
+    if order_items.empty:
+        return None
+
+    counts = {}
+
+    for item in order_items["Item_Name"].astype(str):
+        for key, dietary in MENU_DIETARY_MAP.items():
+            if key in item.lower():
+                counts[dietary] = counts.get(dietary, 0) + 1
+
+    if not counts:
+        return None
+
+    dominant, count = max(counts.items(), key=lambda x: x[1])
+    total = sum(counts.values())
+
+    return dominant if count / total >= 0.6 else dominant
+
+AOV_BUCKETS = [
+    (0, 299, "Low Spender"),
+    (300, 599, "Mid Spender"),
+    (600, 999, "High Spender"),
+    (1000, float("inf"), "Premium Spender")
+]
+
+def infer_aov(orders):
+    if orders.empty:
+        return None
+
+    orders["Order_Price"] = pd.to_numeric(
+        orders["Order_Price"], errors="coerce"
+    )
+
+    avg = orders["Order_Price"].mean()
+
+    for low, high, label in AOV_BUCKETS:
+        if low <= avg <= high:
+            return label
+
+    return None
+
+def infer_frequency(orders):
+    if orders.empty:
+        return None
+
+    orders["Order_Created_DateTime"] = pd.to_datetime(
+        orders["Order_Created_DateTime"], errors="coerce"
+    )
+
+    cutoff = pd.Timestamp.now() - pd.Timedelta(days=30)
+    count = (orders["Order_Created_DateTime"] >= cutoff).sum()
+
+    if count <= 1:
+        return "Occasional"
+    elif count <= 4:
+        return "Regular"
+    elif count <= 8:
+        return "Frequent"
+    else:
+        return "Loyal"
+
+def infer_attitude(orders):
+    if orders.empty:
+        return None
+
+    total = len(orders)
+    cancelled = orders[
+        orders["Order_Status"]
+        .astype(str)
+        .str.lower()
+        .isin(["cancelled", "refunded"])
+    ]
+
+    if total > 0 and len(cancelled) / total >= 0.3:
+        return "Refund-Prone"
+
+    avg = orders["Order_Price"].astype(float).mean()
+    if avg >= 600:
+        return "Quality-Seeker"
+
+    return "Value-Seeker"
+
+def safe_json_parse(text):
+    if not text:
+        return {}
+
+    try:
+        return json.loads(text)
+    except:
+        pass
+
+    match = re.search(r"\{.*\}", text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group())
+        except:
+            pass
+
+    return {}
+
+def infer_from_chat_llm(model, chat_text):
     prompt = f"""
-    You are a restaurant marketing analyst.
+    You are classifying a restaurant customer based ONLY on chat text.
 
-    Based on the following restaurant customer chat conversation, infer the most appropriate
-    Customer Chat Category.
+    Choose values STRICTLY from the allowed categories below.
+    If a category cannot be inferred confidently, return null.
 
-    Chat: {chat_text}
+    -------------------
+    ALLOWED CATEGORIES
+    -------------------
 
-    Guidelines:
-    - Infer dietary preferences (e.g., veg, non-veg, vegan, Jain, eggitarian)
-    - Infer spending behavior (e.g., price-conscious, normal-spending, premium/high-spending)
-    - Infer favorite or frequently mentioned food items (e.g., paneer, pizza, ice-cream, biryani)
-    - Categories should be concise, actionable, and useful for restaurant marketing
-    - Use 1–3 short descriptive keywords only
+    Dietary_Preferences (choose one):
+    - Vegetarian
+    - Non-Vegetarian
+    - Vegan
+    - Eggetarian
+    - Jain
 
-    Respond ONLY with plain text (comma-separated if multiple), for example:
-    Veg, Price-Conscious
-    Non-Veg, Biryani Lover, Normal Spending
-    Vegan, Health-Conscious
-    Premium Dining, Dessert Lover
+    Order_Attitude_Categories (choose one):
+    - Value-Seeker
+    - Quality-Seeker
+    - Coupon-Driven
+    - Refund-Prone
+
+    Favorite_Food_Items:
+    - Extract 1–2 food items explicitly mentioned in chat
+
+    -------------------
+    Chat Text:
+    {chat_text}
+
+    -------------------
+    Output STRICT JSON only:
+    {{
+      "dietary": null | "<one of allowed values>",
+      "attitude": null | "<one of allowed values>",
+      "favorite_food_items": []
+    }}
     """
 
     response = call_gemini_with_retry(model, prompt)
-    if not response:
+    return safe_json_parse(response)
+
+def infer_customer_category(model, chat_row, sheets):
+    chat_text = str(chat_row.get("Chat_Session_Text", "")).strip()
+    if not chat_text:
         return ""
 
-    clean = response.strip()
-    if clean.startswith("```"):
-        clean = clean.strip("`").replace("json", "", 1).strip()
+    customer_id = resolve_customer_id_from_context(chat_row)
 
-    return clean
+    orders = fetch_orders(sheets, customer_id)
+    order_items = fetch_order_items(sheets, customer_id)
+
+    order_insights = {
+        "dietary": infer_dietary_from_items(order_items),
+        "aov": infer_aov(orders),
+        "frequency": infer_frequency(orders),
+        "attitude": infer_attitude(orders)
+    }
+
+    chat_insights = infer_from_chat_llm(model, chat_text)
+
+    final = [
+        order_insights["dietary"] or chat_insights.get("dietary"),
+        order_insights["aov"],
+        order_insights["frequency"],
+        order_insights["attitude"] or chat_insights.get("attitude")
+    ]
+
+    return ", ".join(v for v in final if v)
 
 # -------------------------------------------------------------------
 # 🎯 CAMPAIGN LOGIC
 # -------------------------------------------------------------------
 def generate_campaign_id(existing_ids):
-    pattern = re.compile(r"CMP-(\d+)")
+    pattern = re.compile(r"Cmp_(\d+)")
     nums = [int(pattern.search(cid).group(1)) for cid in existing_ids if pattern.search(cid)]
     next_id = max(nums) + 1 if nums else 1
-    return f"CMP-{next_id:04d}"
+    return f"Cmp_{next_id:04d}"
 
 # -------------------------------------------------------------------
 # 🚀 MAIN PROCESS
@@ -269,11 +442,12 @@ def process_customers_and_campaigns():
 
             print(f"🔍 Analyzing chat {chat_id} ...")
 
-            # === Infer customer chat category ===
+            # === Infer customer category ===
             category = infer_customer_category(
-                gemini_customer_categorizer,
-                chat_text
-                )
+            gemini_customer_categorizer,
+            row,
+            sheets
+            )
 
             df_chats.at[idx, "Customer_Chat_Category"] = category
             print(f"🏷️ Chat {chat_id} categorized as '{category}'")
