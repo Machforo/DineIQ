@@ -47,7 +47,7 @@ export default function LoginScreen() {
         // Note: Google Apps Script ko data JSON stringify karke bhej rahe hain
         const response = await fetch(SCRIPT_URL, {
           method: "POST",
-          body: JSON.stringify({ action: "send_otp", email: email }),
+          body: JSON.stringify({ action: "send_otp", name: name, mobile: mobile, email: email }),
         });
 
         // Apps Script se response read karne ki koshish
