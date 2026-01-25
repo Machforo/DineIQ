@@ -512,7 +512,7 @@ function sha256(text) {
 }
 
 // ----- Send OTP -----
-function handleSendOtp(email) {
+function handleSendOtp(name, mobile, email) {
   const ss = SpreadsheetApp.getActive();
   const sheet = ss.getSheetByName("Customer_Auth");
   if (!sheet) throw new Error("Customer_Auth sheet not found");
@@ -538,9 +538,9 @@ function handleSendOtp(email) {
   if (!rowFound) {
     sheet.appendRow([
       "",          // Customer_ID
-      "",          // Customer_Name
+      name,        // Customer_Name
       email,       // Customer_Email
-      "",          // Customer_Phone
+      mobile,      // Customer_Phone
       otpHash,     // OTP_Hash
       expiresAt,   // OTP_Expires_At
       new Date(),  // Creation_DateTime
@@ -808,7 +808,7 @@ function doPost(e) {
     // 1️⃣ Handle auth actions
     // -----------------------
     if (data.action === "send_otp" && data.email) {
-      return jsonResponse(handleSendOtp(data.email));
+      return jsonResponse(handleSendOtp(data.name, data.mobile, data.email));
     }
 
     if (data.action === "verify_otp" && data.email && data.otp) {
