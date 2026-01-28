@@ -6,6 +6,8 @@
 import os
 import time
 import google.generativeai as genai
+from openai import OpenAI
+import anthropic
 
 # ---------------------------------------------------------
 # Load environment variables from .env file
@@ -14,9 +16,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ---------------------------------------------------------
-# Class definition for Google Sheets interactions
+# Class definition for Gemini LLM interactions
 # ---------------------------------------------------------
-class LLMClient:
+class GeminiClient:
 
     # -------------------------------------------------------------------
     # 🔧 SETUP: Google Gemini
@@ -46,14 +48,14 @@ class LLMClient:
         self._model = self.init_gemini()
 
     # -------------------------------------------------------------------
-    # 🔧 Init
+    # 🔧 Gemini LLM Init
     # -------------------------------------------------------------------
     def init_gemini(self):
         genai.configure(api_key=self.api_key)
         return genai.GenerativeModel(self.model_name)
 
     # -------------------------------------------------------------------
-    # 🧠 LLM Call with retry
+    # 🧠 Gemini LLM Call with retry
     # -------------------------------------------------------------------
     def call_gemini_with_retry(
         self,
@@ -90,7 +92,7 @@ class LLMClient:
         return None
 
     # -------------------------------------------------------------------
-    # 🧠 LLM Call with no retry
+    # 🧠 Gemini LLM Call with no retry
     # -------------------------------------------------------------------
     def call_gemini(
         self,
@@ -112,3 +114,129 @@ class LLMClient:
             print(f"⚠️ Gemini call failed: {e}")
 
         return None
+
+
+# ---------------------------------------------------------
+# Class definition for Grok LLM interactions
+# ---------------------------------------------------------
+class GrokClient:
+    # -------------------------------------------------------------------
+    # 🔧 SETUP: Grok (xAI)
+    # https://console.x.ai/
+    # -------------------------------------------------------------------
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model_name: str | None = None,
+    ):
+        """
+        :param api_key: Grok API key (defaults to GROK_API_KEY env var)
+        :param model_name: Grok model (defaults to GROK_MODEL env var)
+        """
+        self.api_key = api_key or os.getenv("GROK_API_KEY")
+        self.model_name = model_name or os.getenv("GROK_MODEL", "grok-beta")
+
+        if not self.api_key:
+            raise ValueError("GROK_API_KEY missing")
+        
+        if not self.model_name:
+            raise ValueError("GROK_MODEL missing")
+
+        self._client = self.init_grok()
+
+    # -------------------------------------------------------------------
+    # 🔧 Grok Init
+    # -------------------------------------------------------------------
+    def init_grok(self):
+        return OpenAI(
+            api_key=self.api_key,
+            base_url="https://api.x.ai/v1",
+        )
+
+    # -------------------------------------------------------------------
+    # 🧠 Grok LLM Call (no retry)
+    # -------------------------------------------------------------------
+    def call_grok(self, prompt: str) -> str | None:
+        """
+        Call Grok once without retry logic.
+        """
+        try:
+            response = self._client.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt}],
+            )
+
+            return response.choices[0].message.content
+
+        except Exception as e:
+            print(f"⚠️ Grok call failed: {e}")
+            return None
+
+# ---------------------------------------------------------
+# Class definition for Claude LLM interactions
+# ---------------------------------------------------------
+class ClaudeClient:
+    # -------------------------------------------------------------------
+    # 🔧 SETUP: Claude (Anthropic)
+    # https://console.anthropic.com/
+    # -------------------------------------------------------------------
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model_name: str | None = None,
+    ):
+        """
+        :param api_key: Claude API key (defaults to CLAUDE_API_KEY env var)
+        :param model_name: Claude model (defaults to CLAUDE_MODEL env var)
+        """
+        self.api_key = api_key or os.getenv("CLAUDE_API_KEY")
+        self.model_name = model_name or os.getenv(
+            "CLAUDE_MODEL", "claude-3-haiku-20240307"
+        )
+
+        if not self.api_key:
+            raise ValueError("CLAUDE_API_KEY missing")
+        
+        if not self.model_name:
+            raise ValueError("CLAUDE_MODEL missing")
+
+        self._client = self.init_claude()
+
+    # -------------------------------------------------------------------
+    # 🔧 Claude Init
+    # -------------------------------------------------------------------
+    def init_claude(self):
+        return anthropic.Anthropic(api_key=self.api_key)
+
+    # -------------------------------------------------------------------
+    # 🧠 Claude LLM Call (no retry)
+    # -------------------------------------------------------------------
+    def call_claude(self, prompt: str, max_tokens: int = 1024) -> str | None:
+        """
+        Call Claude once without retry logic.
+        """
+        try:
+            response = self._client.messages.create(
+                model=self.model_name,
+                max_tokens=max_tokens,
+                messages=[{"role": "user", "content": prompt}],
+            )
+
+            return response.content[0].text
+
+        except Exception as e:
+            print(f"⚠️ Claude call failed: {e}")
+            return None
+
+# Example usage
+# from llm import GeminiClient, GrokClient, ClaudeClient
+
+# gemini = GeminiClient()
+# print(gemini.call_gemini(prompt="Summarize customer sentiment from these reviews..."))
+
+# grok = GrokClient()
+# print(grok.call_grok("Explain transformers in one paragraph"))
+
+# claude = ClaudeClient()
+# print(claude.call_claude("Summarize this review data"))
+
