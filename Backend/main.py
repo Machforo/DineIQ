@@ -8,33 +8,33 @@ from typing import List, Optional
 
 # Agents
 # import agent classes
-from services.auth_service          import AuthService
-from services.profile_service       import ProfileService
-from services.cart_service          import CartService
-from agents.order_service           import OrderService
+# from services.auth_service          import AuthService
+# from services.profile_service       import ProfileService
+# from services.cart_service          import CartService
+# from services.order_service         import OrderService
 
-from agents.menu_agent              import MenuAgent
-from agents.recommendation_agent    import RecommendationAgent
-from agents.monitoring_agent        import MonitoringAgent
-from agents.pricing_agent           import PricingAgent
-from agents.chat_agent              import ChatAgent
-from agents.campaign_service        import CampaignService
+from agents.menu                    import MenuAgent
+# from agents.pricing                 import PricingAgent
+# from agents.recommendation          import RecommendationAgent
+# from agents.monitoring              import MonitoringAgent
+# from agents.chat                    import ChatAgent
+# from agents.campaign                import CampaignService
 
 # Initialize FastAPI app
 app = FastAPI(title="In-Room Dining Agentic AI API")
 
 # Initialize agents
-auth_service            = AuthService()
-profile_service         = ProfileService()
-cart_service            = CartService()
-order_service           = OrderService()
+# auth_service            = AuthService()
+# profile_service         = ProfileService()
+# cart_service            = CartService()
+# order_service           = OrderService()
 
 menu_agent              = MenuAgent()
-recommendation_agent    = RecommendationAgent()
-pricing_agent           = PricingAgent()
-monitoring_agent        = MonitoringAgent()
-chat_agent              = ChatAgent()
-campaign_service        = CampaignService()
+# pricing_agent           = PricingAgent()
+# recommendation_agent    = RecommendationAgent()
+# monitoring_agent        = MonitoringAgent()
+# chat_agent              = ChatAgent()
+# campaign_service        = CampaignService()
 
 # -----------------------------
 # Request / Response Models
@@ -118,10 +118,11 @@ class Campaign(BaseModel):
 # ---------------------------------------------------------------------------------------
 @app.post("/login")
 def login(request: LoginRequest):
-    user = auth_service.authenticate(request.email, request.password)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    return {"message": "Login successful", "user": user}
+    # user = auth_service.authenticate(request.email, request.password)
+    # if not user:
+    #     raise HTTPException(status_code=401, detail="Invalid credentials")
+    # return {"message": "Login successful", "user": user}
+    return
 
 # ---------------------------------------------------------------------------------------
 # get endpoint: home
@@ -140,17 +141,23 @@ def login(request: LoginRequest):
 def home(customer_id: str):
     """
     Returns:
-    - Smart Combos
-    - Personalized Recommendations
+    - Category filters (future)
+    - Smart Combos (future)
+    - Personalized Recommendations (future)
     - All Dishes
     """
-    smart_combos = menu_agent.get_smart_combos(customer_id)
-    recommendations = recommendation_agent.get_recommendations(customer_id)
-    all_dishes = menu_agent.get_all_dishes()
+    
+    # place holders
+    customer_id = customer_id
+    
+    # smart_combos = menu_agent.get_smart_combos(customer_id)
+    # recommendations = recommendation_agent.get_recommendations(customer_id)
+    all_dishes = menu_agent.get_menu()
 
     return {
-        "smart_combos": smart_combos,
-        "recommendations": recommendations,
+        # "category_filters": [],          # placeholder
+        # "smart_combos": [],              # placeholder
+        # "recommendations": [],           # placeholder
         "all_dishes": all_dishes
     }
 
@@ -172,8 +179,12 @@ def home(customer_id: str):
 # ---------------------------------------------------------------------------------------
 @app.post("/update-cart")
 def update_cart(customer_id: str, items: List[CartItem]):
-    updated_cart = cart_service.update_cart(customer_id, items)
-    return {"message": "Cart updated", "cart": updated_cart}
+    # place holders
+    customer_id = customer_id
+    items = items
+    # updated_cart = cart_service.update_cart(customer_id, items)
+    # return {"message": "Cart updated", "cart": updated_cart}
+    return
 
 # ---------------------------------------------------------------------------------------
 # get endpoint: get-cart
@@ -187,8 +198,9 @@ def update_cart(customer_id: str, items: List[CartItem]):
 # ---------------------------------------------------------------------------------------
 @app.get("/get-cart")
 def get_cart(customer_id: str):
-    cart = cart_service.get_cart(customer_id)
-    return {"cart": cart}
+    # cart = cart_service.get_cart(customer_id)
+    # return {"cart": cart}
+    return
 
 # ---------------------------------------------------------------------------------------
 # post endpoint: update-profile
@@ -202,8 +214,12 @@ def get_cart(customer_id: str):
 # ---------------------------------------------------------------------------------------
 @app.post("/update-profile")
 def update_profile(customer_id: str, profile: Profile):
-    updated_profile = profile_service.update_profile(customer_id, profile)
-    return {"message": "Profile updated successfully", "profile": updated_profile}
+    # place holders
+    customer_id = customer_id
+    profile = profile
+    # updated_profile = profile_service.update_profile(customer_id, profile)
+    # return {"message": "Profile updated successfully", "profile": updated_profile}
+    return
 
 # ---------------------------------------------------------------------------------------
 # get endpoint: get-profile
@@ -216,8 +232,9 @@ def update_profile(customer_id: str, profile: Profile):
 # ---------------------------------------------------------------------------------------
 @app.get("/get-profile")
 def get_profile(customer_id: str):
-    profile_data = profile_service.get_profile(customer_id)
-    return {"profile": profile_data}
+    # profile_data = profile_service.get_profile(customer_id)
+    # return {"profile": profile_data}
+    return
 
 # ---------------------------------------------------------------------------------------
 # get endpoint: orders
@@ -232,8 +249,9 @@ def get_profile(customer_id: str):
 # ---------------------------------------------------------------------------------------
 @app.get("/orders")
 def orders(customer_id: str):
-    order_history = order_service.get_order_history(customer_id)
-    return {"orders": order_history}
+    # order_history = order_service.get_order_history(customer_id)
+    # return {"orders": order_history}
+    return
 
 # ---------------------------------------------------------------------------------------
 # get endpoint: track-order
@@ -248,10 +266,11 @@ def orders(customer_id: str):
 # ---------------------------------------------------------------------------------------
 @app.get("/track-order")
 def track_order(order_id: str):
-    status = order_service.track_order(order_id)
-    if not status:
-        raise HTTPException(status_code=404, detail="Order not found")
-    return {"order_id": order_id, "status": status}
+    # status = order_service.track_order(order_id)
+    # if not status:
+    #     raise HTTPException(status_code=404, detail="Order not found")
+    # return {"order_id": order_id, "status": status}
+    return
 
 # ---------------------------------------------------------------------------------------
 # post endpoint: payment
@@ -263,7 +282,11 @@ def track_order(order_id: str):
 def update_payment_inputs(customer_id: str, total_amount: int, cash_payment: bool, online_payment: bool):
     # place holders
     customer_id = customer_id
-    return {"message": "Payment details updated successfully"}
+    total_amount = total_amount
+    cash_payment = cash_payment
+    online_payment = online_payment
+    # return {"message": "Payment details updated successfully"}
+    return
 
 # ---------------------------------------------------------------------------------------
 # get endpoint: payment
@@ -275,7 +298,8 @@ def update_payment_inputs(customer_id: str, total_amount: int, cash_payment: boo
 def get_payment_inputs(customer_id: str):
     # place holders
     customer_id = customer_id
-    return {"total_amount": None, "cash_payment": False, "online_payment": False}
+    # return {"total_amount": None, "cash_payment": False, "online_payment": False}
+    return
 
 # ---------------------------------------------------------------------------------------
 # post endpoint: order-success
@@ -287,7 +311,8 @@ def get_payment_inputs(customer_id: str):
 def update_order_success(customer_id: str):
     # place holders
     customer_id = customer_id
-    return {"message": "Order completed successfully"}
+    # return {"message": "Order completed successfully"}
+    return
 
 # -----------------------------
 # Health Check (Optional)
@@ -328,7 +353,8 @@ async def llm_chat(req: ChatRequest):
 def end_chat(end_chat: bool):
     # place holders
     end_chat = end_chat
-    return {"message": "Chat session ended and data saved successfully"}
+    # return {"message": "Chat session ended and data saved successfully"}
+    return
 
 # ---------------------------------------------------------------------------------------
 # post endpoint: campaign
@@ -345,5 +371,6 @@ def end_chat(end_chat: bool):
 def add_campaign(campaign: Campaign):
     # place holders
     campaign = campaign
-    return {"message": "Campaign data updated successfully"}
+    # return {"message": "Campaign data updated successfully"}
+    return
 
