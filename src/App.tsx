@@ -14,6 +14,8 @@ import CartPage from "@/pages/CartPage";
 import TrackOrderPage from "@/pages/TrackOrderPage";
 import NotFound from "@/pages/NotFound";
 import Payment from "@/pages/Payment"; // <--- 1. Ye Line Add Karein (Import)
+import PreferenceScreen from "@/pages/PreferenceScreen";
+
 
 const queryClient = new QueryClient();
 
@@ -28,6 +30,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<SplashScreen />} />
               <Route path="/login" element={<LoginScreen />} />
+              <Route path="/preferences" element={<PreferenceScreen />} />
               <Route path="/home" element={<HomeScreen />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/orders" element={<OrderHistoryPage />} />
