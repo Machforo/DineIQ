@@ -598,6 +598,52 @@ function handleVerifyOtp(email, otp) {
 // ==================== OTP Logic Ends ====================
 
 // -----------------------------------------------------------
+// Helper: Save customer insights data to "Customer_Insights" sheet
+// -----------------------------------------------------------
+function saveCustomerInsights(customers) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Customer_Insights");
+  if (!sheet) throw new Error("Customer_Insights sheet not found");
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+  const colIndex = {};
+  headers.forEach((h, i) => {
+    if (typeof h === "string") colIndex[h.trim()] = i;
+  });
+
+  const rows = customers.map(c => {
+    const row = new Array(headers.length).fill("");
+
+    if (colIndex["Customer_Name"] !== undefined)
+      row[colIndex["Customer_Name"]] = c.name || "";
+
+    if (colIndex["Dietary_Preferences"] !== undefined)
+      row[colIndex["Dietary_Preferences"]] = c.dietary || "";
+
+    if (colIndex["Average_Order_Value"] !== undefined)
+      row[colIndex["Average_Order_Value"]] = c.aov || "";
+
+    if (colIndex["Visit_Frequency_Categories"] !== undefined)
+      row[colIndex["Visit_Frequency_Categories"]] = c.frequency || "";
+
+    if (colIndex["Order_Attitude_Categories"] !== undefined)
+      row[colIndex["Order_Attitude_Categories"]] = c.attitude || "";
+
+    return row;
+  });
+
+  sheet.getRange(
+    sheet.getLastRow() + 1,
+    1,
+    rows.length,
+    headers.length
+  ).setValues(rows);
+
+  return rows.length;
+}
+
+// -----------------------------------------------------------
 // Helper: Checks if Message Template/Timing columns exist in Campaigns sheet
 // -----------------------------------------------------------
 function ensureCampaignColumns(count) {
@@ -786,9 +832,9 @@ function doGet(e) {
  */
 function doPost(e) {
   try {
-    // -----------------------
-    // 0️⃣ Validate POST data
-    // -----------------------
+    // ----------------------------------------------
+    // [0] Validate POST data
+    // ----------------------------------------------
     if (!e || !e.postData || !e.postData.contents) {
       return jsonResponse({ status: "error", message: "No POST data received" });
     }
@@ -804,9 +850,9 @@ function doPost(e) {
       return jsonResponse({ status: "error", message: "Invalid JSON: " + err.message });
     }
 
-    // -----------------------
-    // 1️⃣ Handle auth actions
-    // -----------------------
+    // ----------------------------------------------
+    // [1] Handle auth actions
+    // ----------------------------------------------
     if (data.action === "send_otp" && data.email) {
       return jsonResponse(handleSendOtp(data.name, data.mobile, data.email));
     }
@@ -815,24 +861,165 @@ function doPost(e) {
       return jsonResponse(handleVerifyOtp(data.email, data.otp));
     }
 
-    // -----------------------
-    // 2️⃣ Handle chat sessions
-    // -----------------------
+    // ----------------------------------------------
+    // [2] Preference Screen after Signup
+    // ----------------------------------------------
+    // doPost ke andar jahan check_user ya verify_otp khatam ho raha hai:
+    if (data.action === "save_preferences") {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var prefSheet = ss.getSheetByName("Customer_Preferences") || ss.insertSheet("Customer_Preferences");
+  
+      // Agar sheet nayi hai toh headers add karein
+      if (prefSheet.getLastRow() === 0) {
+        prefSheet.appendRow(["Email", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", "Timestamp"]);
+      }
+
+      // User ke answers array banayein
+      var rowData = [
+        data.email,            // Column A
+        data.preferences[1],   // Column B (Meal Type)
+        data.preferences[2],   // Column C (Beverages)
+        data.preferences[3],   // Column D (Dessert)
+        data.preferences[4],   // Column E (Comfort Food)
+        data.preferences[5],   // Column F (Late-night)
+        data.preferences[6],   // Column G (Diet Plan)
+        data.preferences[7],   // Column H (Recommendations)
+        data.preferences[8],   // Column I (Roti)
+        data.preferences[9],   // Column J (Spice Level)
+        data.preferences[10],  // Column K (Delivery)
+        new Date()             // Column L (Timestamp)
+      ];
+
+      prefSheet.appendRow(rowData);
+      return jsonResponse({ "status": "ok" });
+    }
+
+    // ----------------------------------------------
+    // [3] Handle user existence check (Login Logic)
+    // ----------------------------------------------
+    if (data.action === "check_user") {
+      var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Customer_Auth");
+      var rows = sheet.getDataRange().getValues();
+      
+      var searchVal = data.value; // Frontend value (email ya phone)
+      var method = data.method;   // 'email' ya 'phone'
+      var foundUser = null;
+
+      for (var i = 1; i < rows.length; i++) {
+        // Col Index: Index 2 = Email (Col C), Index 3 = Phone (Col D)
+        var colToMatch = (method === "email") ? 2 : 3;
+
+        if (rows[i][colToMatch] == searchVal) {
+          foundUser = {
+            name: rows[i][1],   // Col B
+            email: rows[i][2],  // Col C
+            mobile: rows[i][3]  // Col D
+          };
+          break;
+        }
+      }
+
+      if (foundUser) {
+        // AGAR EMAIL HAI: To OTP bhejien aur "exists" return karein
+        if (method === "email") {
+          handleSendOtp(foundUser.name, foundUser.mobile, foundUser.email);
+          return jsonResponse({
+            "status": "exists",
+            "name": foundUser.name,
+            "mobile": foundUser.mobile,
+            "message": "OTP sent to email"
+          });
+        } 
+        // AGAR PHONE HAI: To direct "exists" return karein (No OTP)
+        else {
+          return jsonResponse({
+            "status": "exists",
+            "name": foundUser.name,
+            "mobile": foundUser.mobile
+          });
+        }
+      }
+
+      // User nahi mila
+      return jsonResponse({ "status": "not_found" });
+    }
+
+    // ----------------------------------------------
+    // [4] Customer Activity Logging
+    // ----------------------------------------------
+    // doPost function ke andar check_user ya save_preferences ke baad ise add karein
+    if (data.action === "save_app_log") {
+      try {
+        var ss = SpreadsheetApp.getActiveSpreadsheet();
+        // Sheet ko dhoondna ya nayi banana agar exist nahi karti
+        var logSheet = ss.getSheetByName("App_Logs") || ss.insertSheet("App_Logs");
+      
+        // Headers set karna agar sheet ekdum nayi hai
+        if (logSheet.getLastRow() === 0) {
+          logSheet.appendRow(["Timestamp", "User_Email", "Action", "Details"]);
+        }
+
+        // Row append karna: [Waqt, User, Kaam, Details]
+        logSheet.appendRow([
+          new Date(),       // Column A
+          data.email,      // Column B
+          data.activity,   // Column C
+          data.details     // Column D
+        ]);
+      
+        return jsonResponse({ "status": "ok", "message": "Log saved" });
+      } catch (err) {
+        return jsonResponse({ "status": "error", "message": err.toString() });
+      }
+    }
+
+    // ----------------------------------------------
+    // [5] Handle chat sessions
+    // ----------------------------------------------
     if (data.clientId && data.chatId && data.transcriptText) {
       saveChatToSheet(data);
       return jsonResponse({ status: "ok", message: "Chat session saved" });
     }
 
-    // -----------------------
-    // 3️⃣ Handle campaigns
-    // -----------------------
+    // ----------------------------------------------
+    // [6] Handle Python customer insights
+    // ----------------------------------------------
+    if (data.source === "python_inference" &&
+      Array.isArray(data.customers)) {
+      const expectedKey =
+        PropertiesService.getScriptProperties().getProperty("APPS_SCRIPT_API_KEY");
+
+      if (data.api_key !== expectedKey) {
+        return jsonResponse({
+          status: "error",
+          message: "Invalid API key"
+        });
+      }
+
+      const written = saveCustomerInsights(
+        data.customers.map(c => ({
+          ...c,
+          generated_at: data.generated_at,
+          source: data.source
+        }))
+      );
+
+      return jsonResponse({
+        status: "ok",
+        written
+      });
+    }
+    
+    // ----------------------------------------------
+    // [7] Handle campaigns
+    // ----------------------------------------------
     saveCampaignToSheet(data);
     return jsonResponse({ status: "success", message: "Campaign saved" });
 
   } catch (err) {
-    // -----------------------
+    // ----------------------------------------------
     // 4️⃣ Global catch — always JSON
-    // -----------------------
+    // ----------------------------------------------
     return jsonResponse({ status: "error", message: err.message });
   }
 }
