@@ -1,40 +1,45 @@
-# ----------------------------------------------------------------------------
-# This is the main python file which talks to rest of the elements or agents.
-# ----------------------------------------------------------------------------
+# DineIQ\Backend\main.py
 
-from fastapi import FastAPI, HTTPException, Depends
+# -------------------------------------------------------------------------------------------------
+# This is the main python file which acts as interface between frontend webapp and agents/services
+# -------------------------------------------------------------------------------------------------
+
+# ---------------------------------------------------------
+# Library and Packages Import
+# ---------------------------------------------------------
+from fastapi import FastAPI, Query #, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
 
-# Agents
-# import agent classes
+# import agents and services classes
 # from services.auth_service          import AuthService
 # from services.profile_service       import ProfileService
 # from services.cart_service          import CartService
 # from services.order_service         import OrderService
-
 from agents.menu                    import MenuAgent
 # from agents.pricing                 import PricingAgent
 # from agents.recommendation          import RecommendationAgent
-# from agents.monitoring              import MonitoringAgent
+from agents.monitoring              import MonitoringAgent
 # from agents.chat                    import ChatAgent
 # from agents.campaign                import CampaignService
 
-# Initialize FastAPI app
-app = FastAPI(title="In-Room Dining Agentic AI API")
 
 # Initialize agents
 # auth_service            = AuthService()
 # profile_service         = ProfileService()
 # cart_service            = CartService()
 # order_service           = OrderService()
-
 menu_agent              = MenuAgent()
 # pricing_agent           = PricingAgent()
 # recommendation_agent    = RecommendationAgent()
-# monitoring_agent        = MonitoringAgent()
+monitoring_agent        = MonitoringAgent()
 # chat_agent              = ChatAgent()
 # campaign_service        = CampaignService()
+
+# ---------------------------------------------------------
+# Initialize FastAPI app
+# ---------------------------------------------------------
+app = FastAPI(title="In-Room Dining Agentic AI API")
 
 # -----------------------------
 # Request / Response Models
@@ -138,7 +143,7 @@ def login(request: LoginRequest):
 # - No updates to DB
 # ---------------------------------------------------------------------------------------
 @app.get("/home")
-def home(customer_id: str):
+def home(customer_id: str = Query(..., description="Customer ID")): #"test_user"):
     """
     Returns:
     - Category filters (future)
@@ -154,11 +159,14 @@ def home(customer_id: str):
     # recommendations = recommendation_agent.get_recommendations(customer_id)
     all_dishes = menu_agent.get_menu()
 
+    # Log "View Menu" activity for specific customer monitoring
+    monitoring_agent.view_menu(customer_id)
+
     return {
         # "category_filters": [],          # placeholder
         # "smart_combos": [],              # placeholder
         # "recommendations": [],           # placeholder
-        "all_dishes": all_dishes
+        "menu": all_dishes
     }
 
 # ---------------------------------------------------------------------------------------
@@ -319,7 +327,7 @@ def update_order_success(customer_id: str):
 # -----------------------------
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"DineIQ Backend Deployment": "ok"}
 
 # ---------------------------------------------------------------------------------------
 # post endpoint: llm-chat
