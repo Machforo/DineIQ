@@ -1,16 +1,43 @@
-# db - folder under project directory
-# sheets_client - python file in db folder
-# SheetClient - class in sheets_client.py
-# get_recommendations - class method in SheetClient class
-from db.sheets_client import SheetsClient
+# DineIQ\Backend\agents\recommendation.py
 
-# RecommendationAgent - class in recommendation_agent.py
-# get_recommendations - class method in RecommendationAgent class
+# ---------------------------------------------------------
+# Library and Packages Import
+# ---------------------------------------------------------
+import os
+from dotenv import load_dotenv
+
+from services.sheets import SheetsClient
+
+# ---------------------------------------------------------
+# Load environment variables
+# ---------------------------------------------------------
+load_dotenv()
+
+# ---------------------------------------------------------
+# Class definition for Recommendation related interactions
+# ---------------------------------------------------------
 class RecommendationAgent:
-    def _init_(self):
-        self.sheets = SheetsClient()
+    def __init__(self):
+        self.spreadsheet_id = os.getenv("SPREADSHEET_ID")
+        self.recommendation_sheet_name = "Recommendations"      # <-- sheet name can be adapted here
 
-    def get_recommendations(self, customer_id: str):
-        """Return personalized recommendations"""
-        # TODO: Implement logic
+        if not self.spreadsheet_id:
+            raise ValueError("SPREADSHEET_ID is not set in environment variables")
+
+        self.sheets_client = SheetsClient(
+            spreadsheet_id=self.spreadsheet_id
+        )
+
+    # -------------------------------------------------------------------
+    # ⭐ Public API
+    # -------------------------------------------------------------------
+    def get_recommendations(self, customer_id: str | None = None) -> list[dict]:
+        """
+        Fetch recommendations.
+        Can later be personalized using customer_id.
+        """
+
+        # Placeholder for future logic
+        # For now, just return an empty list
+
         return []
