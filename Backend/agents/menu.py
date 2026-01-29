@@ -1,16 +1,16 @@
-# DineIQ\Backend\agents\menu_agent.py
+# DineIQ\Backend\agents\menu.py
 
 # ---------------------------------------------------------
 # Library and Packages Import
 # ---------------------------------------------------------
 import os
-from dotenv import load_dotenv
 
 from services.sheets import SheetsClient
 
 # ---------------------------------------------------------
 # Load environment variables
 # ---------------------------------------------------------
+from dotenv import load_dotenv
 load_dotenv()
 
 # ---------------------------------------------------------

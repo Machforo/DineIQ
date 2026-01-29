@@ -101,7 +101,7 @@ class SheetsClient:
         if columns_to_update is None:
             columns_to_update = df.columns.tolist()
 
-        print(f"📝 Updating columns individually: {', '.join(columns_to_update)}")
+        print(f"\n📝 Updating columns individually: {', '.join(columns_to_update)}")
 
         for col in columns_to_update:
             if col not in df.columns:
