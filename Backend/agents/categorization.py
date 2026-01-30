@@ -352,8 +352,10 @@ def categorize_customers():
 
     for idx, cust in df_customers.iterrows():
         
-        # Fetch individual customer ID
+        # Fetch individual customer ID and name
         customer_id = str(cust.get("Customer_ID", "")).strip()
+        customer_name = str(cust.get("Customer_Name", "")).strip()
+
         # No ID found for a customer
         if not customer_id:
             print("[X] Customer ID not found")
@@ -395,6 +397,7 @@ def categorize_customers():
         # Club all insights, primary from orders data, secondary from chats
         final_insights = {
             "Customer_ID": customer_id,
+            "Customer_Name": customer_name,
             "Dietary": order_insights["Dietary"] or chat_insights["dietary"],
             "Favorites": ", ".join(chat_insights["favorites"]),
             "AOV": order_insights["AOV"],
@@ -409,10 +412,15 @@ def categorize_customers():
 
         # Update customer insights accordingly
         if len(existing_idx):
-            # df_insights.loc[existing_idx[0]] = final_insights
             i = existing_idx[0]
-            for col in ["Dietary", "AOV", "Frequency", "Attitude"]:
-                df_insights.at[i, col] = final_insights[col]
+            
+            # Always keep ID + Name in sync
+            df_insights.at[i, "Customer_ID"] = customer_id
+            df_insights.at[i, "Customer_Name"] = customer_name
+
+            for col in ["Dietary", "Favorites", "AOV", "Frequency", "Attitude"]:
+                if final_insights.get(col) is not None:
+                    df_insights.at[i, col] = final_insights[col]
         else:
             # df_insights = pd.concat(
             #     [df_insights, pd.DataFrame([final_insights])],
@@ -420,7 +428,9 @@ def categorize_customers():
             # )
             new_row = {
                 "Customer_ID": customer_id,
+                "Customer_Name": customer_name,
                 "Dietary": final_insights["Dietary"],
+                "Favorites": final_insights["Favorites"],
                 "AOV": final_insights["AOV"],
                 "Frequency": final_insights["Frequency"],
                 "Attitude": final_insights["Attitude"],
@@ -440,7 +450,7 @@ def categorize_customers():
         time.sleep(REQUEST_DELAY)
 
     # Treat NaN values in customer insights before writing to google sheets
-    for col in ["Dietary", "Favorites", "AOV", "Frequency", "Attitude"]:
+    for col in ["Customer_ID", "Customer_Name", "Dietary", "Favorites", "AOV", "Frequency", "Attitude"]:
         df_insights[col] = df_insights[col].fillna("")
     
     # Update Customer Insights in Customer_Insights sheet
@@ -448,7 +458,7 @@ def categorize_customers():
     sheets_client.update_sheet(
         CUSTOMER_INSIGHTS_SHEET,
         df_insights,
-        columns_to_update=["Dietary", "Favorites", "AOV", "Frequency", "Attitude"]
+        columns_to_update=["Customer_ID", "Customer_Name", "Dietary", "Favorites", "AOV", "Frequency", "Attitude"]
     )
     print("✅ Customer Insights updated")
 
