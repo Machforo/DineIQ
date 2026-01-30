@@ -27,20 +27,26 @@ gemini_client = GeminiClient()
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "").strip()
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 
+GEMINI_CHAT_LLM_INFERENCE_ENABLED = (os.getenv("GEMINI_CHAT_LLM_INFERENCE_ENABLED", "false").lower() == "true")
+GEMINI_DIETARY_LLM_INFERENCE_ENABLED = (os.getenv("GEMINI_DIETARY_LLM_INFERENCE_ENABLED", "false").lower() == "true")
+
 CUSTOMER_AUTH_SHEET     = "Customer_Auth"       # Read-Write from Customer Frontend Web/App
+CUSTOMER_INSIGHTS_SHEET = "Customer_Insights"   # Multiple customer sub-categories derived and recorded here
 ORDERS_SHEET            = "Orders"              # Writable from Customer Frontend Web/App, Partially Updated with AI/Automation
 ORDER_ITEMS_SHEET       = "Order_Items"         # Writable from Customer Frontend Web/App
 CHATS_SHEET             = "Chats"               # Writable from Customer-AI Frontend Chatbot
 
 # -------------------------------------------------------------------
-# 🧩 CLIENT ENRICHMENT
-# -------------------------------------------------------------------
-
-# -------------------------------------------------------------------
 # 🧩 Infer Customer category based on dietary preferences
 # Vegetarian | Non-Vegetarian | Vegan | Jain | Eggetarian
 # -------------------------------------------------------------------
-def infer_dietary(model, order_items):
+def infer_dietary(order_items):
+    """
+    TEMP: LLM disabled due to quota limits
+    """
+    if not GEMINI_DIETARY_LLM_INFERENCE_ENABLED:
+        return None
+    
     # if no order items, return None
     if order_items.empty:
         print("dietary: orders empty")
@@ -48,14 +54,6 @@ def infer_dietary(model, order_items):
 
     items = order_items["Item_Name"].astype(str).tolist()
 
-    # Check GEMINI_API_KEY and GEMINI_MODEL
-    # if not GEMINI_API_KEY or not GEMINI_MODEL:
-    #     return None
-    
-    # Fetch gemini api key
-    # import google.generativeai as genai
-    # genai.configure(api_key=GEMINI_API_KEY)
-    
     dietary_prompt = f"""
     You are classifying a customer's dietary preference.
 
@@ -78,31 +76,14 @@ def infer_dietary(model, order_items):
     
     # fetch gemini model and generate response
     try:
-        response = model.generate_content(dietary_prompt)
-        result = response.text.strip().lower()
+        response = gemini_client.call_gemini_with_retry(dietary_prompt)
+        result = response.strip().lower()
     except Exception as e:
         print("dietary: exception -> ", repr(e))
         return None
-        # msg = str(e).lower()
-
-        # if "quota" in msg or "resourceexhausted" in msg:
-        #     print("⏳ Quota hit — sleeping for 35 seconds...")
-        #     time.sleep(35)
-
-        #     # retry ONCE
-        #     try:
-        #         response = model.generate_content(dietary_prompt)
-        #         result = response.text.strip().lower()
-        #     except Exception as e2:
-        #         print("❌ Retry failed:", e2)
-        #         return None
-        # else:
-        #     print("❌ dietary error:", e)
-        #     return None
-
     
     # normalize and map to canonical allowed dietary category
-    NORMALIZED = {
+    mapping = {
         "vegetarian": "Vegetarian",
         "eggetarian": "Eggetarian",
         "non-vegetarian": "Non-Vegetarian",
@@ -113,12 +94,12 @@ def infer_dietary(model, order_items):
     }
 
     # Validate result with allowed dietary categories
-    for key in NORMALIZED:
-        if key in result:
-            print("dietary: ", result)
-            return NORMALIZED[key]
+    for key, value in mapping.items():
+        if key == result:
+            print("dietary: ", value)
+            return value
     # If not found in NORMALISED, return None
-    print("dietary: not in NORMALISED")
+    print("dietary: not in mapping")
     return None
 
 # -------------------------------------------------------------------
@@ -128,13 +109,6 @@ def infer_dietary(model, order_items):
 # High Spender      : Average order value from 600 to 999
 # Premium Spender   : Average order value equal to or above 1000
 # -------------------------------------------------------------------
-AOV_BUCKETS = [
-    (0, 299, "Low Spender"),
-    (300, 599, "Mid Spender"),
-    (600, 999, "High Spender"),
-    (1000, float("inf"), "Premium Spender")
-]
-
 def infer_aov(orders):
     if orders.empty:
         print("aov: orders empty")
@@ -149,13 +123,14 @@ def infer_aov(orders):
         return None
     
     # Fine the right aov range
-    for low, high, label in AOV_BUCKETS:
-        if low <= avg <= high:
-            print("aov: ", avg)
-            return label
-
-    print("aov: not in AOV_BUCKETS")
-    return None
+    if avg < 300:
+        return "Low Spender"
+    elif avg < 600:
+        return "Mid Spender"
+    elif avg < 1000:
+        return "High Spender"
+    else:
+        return "Premium Spender"
 
 # -------------------------------------------------------------------
 # 🧩 Infer Customer avg order value based on visits in last 30 days
@@ -247,19 +222,33 @@ def infer_attitude(orders):
 ALLOWED_DIETARY = {"Vegetarian", "Non-Vegetarian", "Vegan", "Eggetarian", "Jain"}
 ALLOWED_ATTITUDE = {"Value-Seeker", "Quality-Seeker", "Coupon-Driven", "Refund-Prone"}
 
-def infer_from_chat_llm(model, chat_text):
+def infer_from_chat(chat_text):
+    """
+    TEMP: LLM disabled due to quota limits
+    """
+    if not GEMINI_CHAT_LLM_INFERENCE_ENABLED:
+        return {
+                "dietary": None,
+                "attitude": None,
+                "favorites": []
+            }
+
+    if not chat_text.strip():
+        return {
+            "dietary": None,
+            "attitude": None,
+            "favorites": []
+        }
+    
     chat_prompt = f"""
 You are classifying a restaurant customer based ONLY on chat text.
 
 Choose values STRICTLY from the allowed categories below.
 If a category cannot be inferred confidently, return null.
 
-Dietary_Preferences (choose one): {list(ALLOWED_DIETARY)}
-Order_Attitude_Categories (choose one): {list(ALLOWED_ATTITUDE)}
-Favorite_Food_Items: Extract 1–2 food items explicitly mentioned in chat.
-
-Chat Text:
-{chat_text}
+Dietary (choose one): {list(ALLOWED_DIETARY)}
+Attitude (choose one): {list(ALLOWED_ATTITUDE)}
+Favorites: Extract 1–2 food items explicitly mentioned in chat.
 
 Output STRICT JSON only:
 {{
@@ -267,189 +256,210 @@ Output STRICT JSON only:
   "attitude": null | "<one of allowed values>",
   "favorite_food_items": []
 }}
+
+Chat Text:
+{chat_text}
+
 """
     
     # fetch gemini model and generate response
     try:
-        response = model.generate_content(chat_prompt)
-        result_text = response.text.strip()
-        result_json = json.loads(result_text)
+        response = gemini_client.call_gemini_with_retry(chat_prompt)
+        result = json.loads(response)
     except Exception as e:
         print("chat: exception -> ", repr(e))
-        return {"dietary": None, "attitude": None, "favorite_food_items": []}
-        # msg = str(e).lower()
-
-        # if "quota" in msg or "resourceexhausted" in msg:
-        #     print("⏳ Chat quota hit — sleeping for 35 seconds...")
-        #     time.sleep(35)
-
-        #     try:
-        #         response = model.generate_content(chat_prompt)
-        #         result_text = response.text.strip()
-        #         result_json = json.loads(result_text)
-        #     except Exception as e2:
-        #         print("❌ Chat retry failed:", e2)
-        #         return {"dietary": None, "attitude": None, "favorite_food_items": []}
-        # else:
-        #     print("❌ Chat error:", e)
-        #     return {"dietary": None, "attitude": None, "favorite_food_items": []}
-
+        return {"dietary": None, "attitude": None, "favorites": []}
 
     # Validate and normalize
-    dietary = result_json.get("dietary")
-    attitude = result_json.get("attitude")
-    items = result_json.get("favorite_food_items", [])
+    dietary = result.get("dietary")
+    attitude = result.get("attitude")
+    favorites = result.get("favorites", [])
 
     dietary = dietary if dietary in ALLOWED_DIETARY else None
     attitude = attitude if attitude in ALLOWED_ATTITUDE else None
-    if not isinstance(items, list):
-        items = []
+    if not isinstance(favorites, list):
+        favorites = []
 
     # return with all categories
     print (
         "chat: ",
         "dietary: ", dietary,
         "attitude: ", attitude,
-        "favorite_food_items: ", items
+        "favorites: ", favorites
     )
     return {
         "dietary": dietary,
         "attitude": attitude,
-        "favorite_food_items": items
+        "favorites": favorites
     }
 
-def infer_customer_category(model, chat_row, orders, order_items):
-    chat_text = str(chat_row.get("Chat_Session_Text", "")).strip()
-    if not chat_text:
-        print("customer: no chat")
-        return ""
-
-    # Fetch clean Customer_ID from Chat Row (without spaces etc)
-    customer_id = str(chat_row.get("Customer_ID", "")).strip()
-    if not customer_id:
-        print("customer: no id")
-        return ""
-
-    # Fetch orders for the customer
-    orders = orders[orders["Customer_ID"] == customer_id].copy()
-    if orders.empty:
-        order_items = order_items.iloc[0:0]  # empty df
-    else:
-        # Fetch order IDs for the customer
-        order_ids = orders["Order_ID"]
-        # Fetch order items for those order IDs
-        order_items = order_items[order_items["Order_ID"].isin(order_ids)].copy()
-
-    # Compute order-based insights
-    order_insights = {
-        "dietary": infer_dietary(model, order_items),
-        "aov": infer_aov(orders),
-        "frequency": infer_frequency(orders),
-        "attitude": infer_attitude(orders)
-    }
-
-    time.sleep(30)
-
-    # Compute chat-based insights
-    chat_insights = infer_from_chat_llm(model, chat_text)
-
-    # merge all insights (orders > chat)
-    final = [
-        order_insights["dietary"] or chat_insights.get("dietary"),
-        order_insights["aov"],
-        order_insights["frequency"],
-        order_insights["attitude"] or chat_insights.get("attitude")
-        # chat_insights.get("favorite_food_items", [])
+# -------------------------------------------------------------------
+# 🧩 Build comma-separated Customer Category
+# -------------------------------------------------------------------
+def build_customer_category(insights):
+    fields = [
+        insights.get("Dietary"),
+        insights.get("AOV"),
+        insights.get("Frequency"),
+        insights.get("Attitude")
     ]
-
-    return ", ".join(v for v in final if v)
-
+    return ", ".join(v for v in fields if v)
 
 # -------------------------------------------------------------------
 # 🚀 MAIN PROCESS
 # -------------------------------------------------------------------
 def categorize_customers():
-    """
-    Processes customer chat data and campaign details using Gemini LLM.
-    Adds:
-    1. Smart change detection (writes only if new/changed data)
-    2. Skips reprocessing already analyzed customers
-    """
 
     print("#" * 100)
     print("📢 Customers Processing started ...")
 
     # Initialize LLM instance
-    gemini_llm = gemini_client.init_gemini()
-    print("\n✅ Initialized Gemini instances: ", gemini_llm)
+    sheets_client.init_service()
+    gemini_client.init_gemini()
+    print("\n✅ Initialized Sheets and Gemini")
 
-    # === STEP 1: Read Customers & Chats sheets ===
-    # df_customers = read_sheet(sheets, CUSTOMER_AUTH_SHEET)
-    df_chats = sheets_client.read_sheet(CHATS_SHEET)
-    df_orders = sheets_client.read_sheet(ORDERS_SHEET)
-    df_order_items = sheets_client.read_sheet(ORDER_ITEMS_SHEET)
+    # === STEP 1: Read Customer_Auth, Customer_Insights, Orders, Order_Items & Chats sheets ===
+    df_customers = sheets_client.read_sheet(CUSTOMER_AUTH_SHEET)
+    df_insights  = sheets_client.read_sheet(CUSTOMER_INSIGHTS_SHEET)
+    df_orders    = sheets_client.read_sheet(ORDERS_SHEET)
+    df_items     = sheets_client.read_sheet(ORDER_ITEMS_SHEET)
+    df_chats     = sheets_client.read_sheet(CHATS_SHEET)
 
-    # Ensure required column exists in Chats sheet
-    if "Customer_Chat_Category" not in df_chats.columns:
-        df_chats["Customer_Chat_Category"] = ""
+    # list of columns in Customer_Insights sheet
+    EXPECTED_INSIGHTS_COLUMNS=["Customer_ID", "Customer_Name", "Dietary", "Favorites", "AOV", "Frequency", "Attitude", "Customer_Score"]
 
-    total_chats = len(df_chats)
-    print(f"\n🧾 Found {total_chats} chat records in '{CHATS_SHEET}'.")
+    # Ensure schema alignment with Google Sheet
+    if df_insights.empty:
+        df_insights = pd.DataFrame(columns=EXPECTED_INSIGHTS_COLUMNS)
+    else:
+        for col in EXPECTED_INSIGHTS_COLUMNS:
+            if col not in df_insights.columns:
+                df_insights[col] = ""
 
-    # === STEP 2: Analyze chats & categorize customers ===
-    for start in range(0, total_chats, BATCH_SIZE):
-        batch = df_chats.iloc[start:start + BATCH_SIZE]
-        print(f"\n🔹 Processing batch {start // BATCH_SIZE + 1} ({len(batch)} chats)...")
+        # Enforce correct column order
+        df_insights = df_insights[EXPECTED_INSIGHTS_COLUMNS]
 
-        for idx, row in batch.iterrows():
-            chat_id = row.get("Chat_ID", f"CHAT{idx+1}")
-            chat_text = str(row.get("Chat_Session_Text", "")).strip()
+    # Add needed columns in insights df
+    # if df_insights.empty:
+    #     df_insights = pd.DataFrame(columns=[
+    #         "Customer_ID", "Customer_Name", "Dietary", "Favorites", "AOV", "Frequency", "Attitude", "Customer_Score"
+    #     ])
 
-            if not chat_text:
-                continue
+    # Display number of records from important sheets: customers, orders, chats
+    print(f"\n🧾 Found {len(df_customers)} customer records in '{CUSTOMER_AUTH_SHEET}'.")
+    print(f"\n🧾 Found {len(df_orders)} customer records in '{ORDERS_SHEET}'.")
+    print(f"\n🧾 Found {len(df_chats)} chat records in '{CHATS_SHEET}'.")
 
-            # Skip if already categorized
-            if row.get("Customer_Chat_Category", "").strip():
-                continue
+    for idx, cust in df_customers.iterrows():
+        
+        # Fetch individual customer ID
+        customer_id = str(cust.get("Customer_ID", "")).strip()
+        # No ID found for a customer
+        if not customer_id:
+            print("[X] Customer ID not found")
+            continue
+        
+        print(f"\n Inferring for Customer ID: {customer_id} ................... \n")
 
-            print(f"\n🔍 Analyzing chat {chat_id} ...")
 
-            # === Infer customer category ===
-            category = infer_customer_category(
-            gemini_llm,
-            row,
-            df_orders,
-            df_order_items
-            )
+        # Fetch orders specific to a customer
+        cust_orders = df_orders[df_orders["Customer_ID"] == customer_id]
+        # Fetch items specific to an order for the customer
+        cust_items = df_items[
+            df_items["Order_ID"].isin(cust_orders["Order_ID"])
+        ]
 
-            # need to move this in Customer_Auth instead of presently in Chats
-            df_chats.at[idx, "Customer_Chat_Category"] = category
-            print(f"🏷️ Chat {chat_id} categorized as '{category}'")
+        # Infer order history based insights for the customer
+        order_insights = {
+            "Dietary": infer_dietary(cust_items),
+            "AOV": infer_aov(cust_orders),
+            "Frequency": infer_frequency(cust_orders),
+            "Attitude": infer_attitude(cust_orders)
+        }
+        print("✅ Customer Orders based Category(ies) inferred")
 
-            # time.sleep(REQUEST_DELAY)
-            time.sleep(30)
+        # Fetch chats specific to a customer
+        cust_chats = df_chats[df_chats["Customer_ID"] == customer_id]
+        # Collect all chats from the customer
+        chat_text = "\n".join(
+            cust_chats["Chat_Session_Text"]
+            .dropna()
+            .astype(str)
+            .tolist()
+        )
 
-        # === Smart update detection for Chats sheet ===
-        print("\n🔍 Checking for updates in Chats sheet...")
-        existing_chats = sheets_client.read_sheet(CHATS_SHEET)
+        # Infer chats based insights for the customer
+        chat_insights = infer_from_chat(chat_text)
+        print("✅ Customer Chats based Category(ies) inferred")
 
-        has_changes = False
-        if not existing_chats.empty and "Customer_Chat_Category" in existing_chats.columns:
-            old_vals = existing_chats["Customer_Chat_Category"].astype(str).fillna("").tolist()
-            new_vals = df_chats["Customer_Chat_Category"].astype(str).fillna("").tolist()
-            has_changes = old_vals != new_vals
+        # Club all insights, primary from orders data, secondary from chats
+        final_insights = {
+            "Customer_ID": customer_id,
+            "Dietary": order_insights["Dietary"] or chat_insights["dietary"],
+            "Favorites": ", ".join(chat_insights["favorites"]),
+            "AOV": order_insights["AOV"],
+            "Frequency": order_insights["Frequency"],
+            "Attitude": order_insights["Attitude"] or chat_insights["attitude"]
+        }
 
-        if has_changes:
-            print("💾 Changes found — updating Chats sheet...")
-            sheets_client.update_sheet(
-                CHATS_SHEET,
-                df_chats,
-                columns_to_update=["Customer_Chat_Category"]
-            )
-            print("\n✅ Chats sheet updated successfully.")
+        # Find out existing customers/indices in insights data
+        existing_idx = df_insights[
+            df_insights["Customer_ID"] == customer_id
+        ].index
+
+        # Update customer insights accordingly
+        if len(existing_idx):
+            # df_insights.loc[existing_idx[0]] = final_insights
+            i = existing_idx[0]
+            for col in ["Dietary", "AOV", "Frequency", "Attitude"]:
+                df_insights.at[i, col] = final_insights[col]
         else:
-            print("\n✅ No new chat updates — skipping Chats sheet write.")
+            # df_insights = pd.concat(
+            #     [df_insights, pd.DataFrame([final_insights])],
+            #     ignore_index=True
+            # )
+            new_row = {
+                "Customer_ID": customer_id,
+                "Dietary": final_insights["Dietary"],
+                "AOV": final_insights["AOV"],
+                "Frequency": final_insights["Frequency"],
+                "Attitude": final_insights["Attitude"],
+            }
+            df_insights = pd.concat(
+                [df_insights, pd.DataFrame([new_row])],
+                ignore_index=True
+            )
+        print("✅ Customer Insights updated")
 
+        # Build final customer category from insights
+        df_customers.at[idx, "Customer_Category"] = build_customer_category(final_insights)
+        print("✅ Final Customer Category(ies) built")
+
+        # Introduce a wait period for LLM calls handling
+        print(f"waiting for: {REQUEST_DELAY} seconds")
+        time.sleep(REQUEST_DELAY)
+
+    # Treat NaN values in customer insights before writing to google sheets
+    for col in ["Dietary", "Favorites", "AOV", "Frequency", "Attitude"]:
+        df_insights[col] = df_insights[col].fillna("")
+    
+    # Update Customer Insights in Customer_Insights sheet
+    print("🧪 Insights DF columns:", list(df_insights.columns))
+    sheets_client.update_sheet(
+        CUSTOMER_INSIGHTS_SHEET,
+        df_insights,
+        columns_to_update=["Dietary", "Favorites", "AOV", "Frequency", "Attitude"]
+    )
+    print("✅ Customer Insights updated")
+
+    # Update Customer Category(ies) in Customer_Auth sheet
+    sheets_client.update_sheet(
+        CUSTOMER_AUTH_SHEET,
+        df_customers,
+        columns_to_update=["Customer_Category"]
+    )
+    print("✅ Customer Categories updated")
+    
     print("#" * 100)
     
 # -------------------------------------------------------------------
