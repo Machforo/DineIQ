@@ -511,8 +511,40 @@ function sha256(text) {
   ).map(b => ('0' + (b & 0xFF).toString(16)).slice(-2)).join('');
 }
 
+// ----- Helper: Get next customer id -----
+function getNextCustomerId(sheet) {
+  // console.log("🔥 getNextCustomerId STARTED");
+  // const ss = SpreadsheetApp.getActive();
+  // const sheet = ss.getSheetByName("Customer_Auth");
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    // console.log("Only header found. Returning Cust_0001");
+    return "Cust_0001";
+  }
+
+  const ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat();
+
+  let maxNum = 0;
+  ids.forEach(id => {
+    if (id && typeof id === "string" && id.startsWith("Cust_")) {
+      const num = parseInt(id.replace("Cust_", ""), 10);
+      if (!isNaN(num)) maxNum = Math.max(maxNum, num);
+    }
+  });
+
+  const nextId = `Cust_${String(maxNum + 1).padStart(4, "0")}`;
+  // console.log("Next Customer ID =", nextId);
+
+  return nextId;
+}
+
 // ----- Send OTP -----
 function handleSendOtp(name, mobile, email) {
+  // name="Umang";
+  // mobile="9876543210";
+  // email="Umang.Malhotra@webisdom.com"
+  
   const ss = SpreadsheetApp.getActive();
   const sheet = ss.getSheetByName("Customer_Auth");
   if (!sheet) throw new Error("Customer_Auth sheet not found");
@@ -526,18 +558,27 @@ function handleSendOtp(name, mobile, email) {
 
   for (let i = 1; i < data.length; i++) {
     // Column C = index 2 (Customer_Email)
+    // customer email found in the sheet
     if (data[i][2] === email) {
+      // fill otp, hash and expiry values
       sheet.getRange(i + 1, 5).setValue(otpHash);      // Column E = OTP_Hash
       sheet.getRange(i + 1, 6).setValue(expiresAt);    // Column F = OTP_Expires_At
       sheet.getRange(i + 1, 7).setValue(new Date());   // Column G = Creation_DateTime
       rowFound = true;
+      console.log("email matched in the sheet");
       break;
     }
   }
 
+  // no existing customer with this email id
   if (!rowFound) {
+    // generate next customer id
+    const customerId = getNextCustomerId(sheet);
+    // Logger.log("Generated Customer ID: %s", customerId);
+    // console.log("Next Customer ID =", customerId);
+    // SpreadsheetApp.getUi().alert("Customer ID ->" + customerId + "<-" + "email ->" + email + "<-");
     sheet.appendRow([
-      "",          // Customer_ID
+      customerId,  // Customer_ID
       name,        // Customer_Name
       email,       // Customer_Email
       mobile,      // Customer_Phone
@@ -546,6 +587,9 @@ function handleSendOtp(name, mobile, email) {
       new Date(),  // Creation_DateTime
       ""           // Last_Login_DateTime
     ]);
+
+    // const lastRow = sheet.getLastRow();
+    // sheet.getRange(lastRow, 1).setValue(customerId);
   }
 
   MailApp.sendEmail({
@@ -982,33 +1026,33 @@ function doPost(e) {
     }
 
     // ----------------------------------------------
-    // [6] Handle Python customer insights
+    // [6] Handle Python customer insights --> presently done in pythion directly
     // ----------------------------------------------
-    if (data.source === "python_inference" &&
-      Array.isArray(data.customers)) {
-      const expectedKey =
-        PropertiesService.getScriptProperties().getProperty("APPS_SCRIPT_API_KEY");
+    // if (data.source === "python_inference" &&
+    //   Array.isArray(data.customers)) {
+    //   const expectedKey =
+    //     PropertiesService.getScriptProperties().getProperty("APPS_SCRIPT_API_KEY");
 
-      if (data.api_key !== expectedKey) {
-        return jsonResponse({
-          status: "error",
-          message: "Invalid API key"
-        });
-      }
+    //   if (data.api_key !== expectedKey) {
+    //     return jsonResponse({
+    //       status: "error",
+    //       message: "Invalid API key"
+    //     });
+    //   }
 
-      const written = saveCustomerInsights(
-        data.customers.map(c => ({
-          ...c,
-          generated_at: data.generated_at,
-          source: data.source
-        }))
-      );
+    //   const written = saveCustomerInsights(
+    //     data.customers.map(c => ({
+    //       ...c,
+    //       generated_at: data.generated_at,
+    //       source: data.source
+    //     }))
+    //   );
 
-      return jsonResponse({
-        status: "ok",
-        written
-      });
-    }
+    //   return jsonResponse({
+    //     status: "ok",
+    //     written
+    //   });
+    // }
     
     // ----------------------------------------------
     // [7] Handle campaigns
