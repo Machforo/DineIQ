@@ -24,17 +24,7 @@ sheets_client = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
 from services.llm import GeminiClient
 gemini_client = GeminiClient()
 
-ACTIVE_AGENTS_SHEET     = "Active_Agents"       # Read-only, Writable from Dashboard
-ADMINS_SHEET            = "Admins"              # Writable from Dashboard
-CUSTOMER_AUTH_SHEET     = "Customer_Auth"       # Read-Write from Customer Frontend Web/App
-CUSTOMER_INSIGHTS_SHEET = "Customer_Insights"   # Updated with AI/Automation
-MENU_SHEET              = "Menu"                # Writable from Dashboard
-INVENTORY_SHEET         = "Inventory"           # Writable from Dashboard
-ORDERS_SHEET            = "Orders"              # Writable from Customer Frontend Web/App, Partially Updated with AI/Automation
-ORDER_ITEMS_SHEET       = "Order_Items"         # Writable from Customer Frontend Web/App
-AGENT_ACTIONS_SHEET     = "Agent_Actions"       # Updated with AI/Automation
-CHATS_SHEET             = "Chats"               # Writable from Customer-AI Frontend Chatbot
-CAMPAIGNS_SHEET         = "Campaigns"           # Writable from Dashboard Campaign Form, Partially updated with AI/Automation
+CAMPAIGNS_SHEET = "Campaigns"   # Writable from Dashboard Campaign Form, Partially updated with Automation
 
 # -------------------------------------------------------------------
 # 🎯 CAMPAIGN LOGIC
