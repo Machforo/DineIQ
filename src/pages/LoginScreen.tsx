@@ -9,7 +9,7 @@ import { toast } from "sonner";
 export default function LoginScreen() {
   const navigate = useNavigate();
   const { login } = useUser();
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhIW3phb5rNFgYWJ6OAe4TVrTDCbY09H1j9olaS-o259vrdNI82NMRRhbNUlQjRUy2tw/exec";
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbziwt_310-tDnkzPTpgbgW89M6jxjDXQVbRIn7k-JzBiezCzoDcjhPjDDbZDjVrLf4N5w/exec";
 
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
   const [loginMethod, setLoginMethod] = useState<"email" | "phone">("phone");

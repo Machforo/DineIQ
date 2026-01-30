@@ -21,7 +21,7 @@ export default function PreferenceScreen() {
   const navigate = useNavigate();
   const location = useLocation();
   const userEmail = location.state?.email || ""; 
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhIW3phb5rNFgYWJ6OAe4TVrTDCbY09H1j9olaS-o259vrdNI82NMRRhbNUlQjRUy2tw/exec";
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbziwt_310-tDnkzPTpgbgW89M6jxjDXQVbRIn7k-JzBiezCzoDcjhPjDDbZDjVrLf4N5w/exec";
 
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState({});

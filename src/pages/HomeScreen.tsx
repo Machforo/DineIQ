@@ -8,18 +8,37 @@ import MenuSection from "@/components/MenuSection";
 import CartBar from "@/components/CartBar";
 import AIButton from "@/components/AIButton";
 import { combos, chefSpecials, menuItems } from "@/lib/data";
+import { saveLog } from "@/utils/logger";
+
+// export default function HomeScreen() {
+//   const navigate = useNavigate();
+//   const { isLoggedIn, user } = useUser();
+
+//   useEffect(() => {
+//     if (!isLoggedIn) {
+//       navigate("/login");
+//     }
+//   }, [isLoggedIn, navigate]);
+
+//   if (!isLoggedIn) return null;
 
 export default function HomeScreen() {
   const navigate = useNavigate();
-  const { isLoggedIn } = useUser();
+  // 'user' ko nikaalein taaki email mil sake
+  const { isLoggedIn, user } = useUser(); 
 
   useEffect(() => {
     if (!isLoggedIn) {
       navigate("/login");
+    } else {
+      // JAISE HI USER LOGIN HOKAR HOME PE AAYE, LOG SAVE KARO
+      const userEmail = user?.email || "unknown_user";
+      saveLog(userEmail, "PAGE_VIEW", "User landed on Home Screen");
     }
-  }, [isLoggedIn, navigate]);
+  }, [isLoggedIn, navigate, user]);
 
   if (!isLoggedIn) return null;
+  
 
   return (
     // Background updated to Light Gray (#F4F5F7) for contrast
@@ -71,7 +90,10 @@ export default function HomeScreen() {
         </div>
       </main>
 
-      <AIButton />
+      {/* <AIButton /> */}
+      <div onClick={() => saveLog(user?.email || "Guest", "CLICK_AI_BUTTON", "User opened AI Assistant")}>
+         <AIButton />
+      </div>
       <CartBar />
     </div>
   );

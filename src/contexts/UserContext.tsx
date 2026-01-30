@@ -24,6 +24,7 @@ interface UserContextType {
   isLoggedIn: boolean;
   isVegMode: boolean;
   profile: UserProfile;
+  user: UserProfile;
   orders: Order[];
   login: (roomNumber: string, guestCount: number, guestName?: string, phone?: string) => void;
   logout: () => void;
@@ -87,7 +88,20 @@ export function UserProvider({ children }: { children: ReactNode }) {
   });
   const [orders, setOrders] = useState<Order[]>(mockOrders);
 
-  const login = (room: string, count: number, name?: string, phone?: string) => {
+  // const login = (room: string, count: number, name?: string, phone?: string, email: string = "") => {
+  //   setRoomNumber(room);
+  //   setGuestCount(count);
+  //   setGuestName(name || "Guest");
+  //   setPhoneNumber(phone || "");
+  //   setProfile((prev) => ({
+  //     ...prev,
+  //     name: name || prev.name,
+  //     phone: phone || prev.phone,
+  //   }));
+  //   setIsLoggedIn(true);
+  // };
+
+  const login = (room: string, count: number, name?: string, phone?: string, email: string = "") => {
     setRoomNumber(room);
     setGuestCount(count);
     setGuestName(name || "Guest");
@@ -96,9 +110,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
       ...prev,
       name: name || prev.name,
       phone: phone || prev.phone,
+      email: email || prev.email, // Email ko yaha set kiya
     }));
     setIsLoggedIn(true);
   };
+
+
+
 
   const logout = () => {
     setRoomNumber("");
@@ -140,6 +158,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         isLoggedIn,
         isVegMode,
         profile,
+        user: profile,
         orders,
         login,
         logout,
