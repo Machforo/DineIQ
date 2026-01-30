@@ -83,54 +83,19 @@ function getDataFromSheet(sheetName) {
 /* ============================================================
    CUSTOMER DATA FETCHING
 ============================================================ */
-
 /**
- * Fetches chat-derived customer categories.
+ * Fetches customers from Customer_Auth with centralized categories
  */
-function getCustomerChatsData() {
-  return getDataFromSheet('Chats')
+function getCustomersFromAuth() {
+  return getDataFromSheet('Customer_Auth')
     .map(r => ({
       id: r['Customer_ID'],
       name: r['Customer_Name'],
       email: r['Customer_Email'],
       phone: r['Customer_Phone'],
-      category: r['Customer_Chat_Category']
+      category: r['Customer_Category'] || ''
     }))
     .filter(c => c.id && c.category);
-}
-
-/**
- * Fetches inferred customer insights (orders-based).
- */
-function getCustomerInsightsData() {
-  return getDataFromSheet('Customer_Insights')
-    .map(r => ({
-      id: r['Customer_ID'],
-      dietary: r['Dietary_Preferences'],
-      aov: r['Average_Order_Value'],
-      frequency: r['Visit_Frequency_Categories'],
-      attitude: r['Order_Attitude_Categories']
-    }))
-    .filter(c => c.id);
-}
-
-/**
- * Merges chat and insight dimensions into a single customer profile.
- */
-function buildCustomerProfiles(chats, insights) {
-  const map = {};
-  insights.forEach(i => (map[i.id] = i));
-
-  return chats.map(c => {
-    const i = map[c.id] || {};
-    return {
-      ...c,
-      dietary: i.dietary || '',
-      aov: i.aov || '',
-      frequency: i.frequency || '',
-      attitude: i.attitude || ''
-    };
-  });
 }
 
 /* ============================================================
@@ -347,18 +312,18 @@ function main_campaign_runner() {
   const nowInTZ = Utilities.formatDate(now, ss.getSpreadsheetTimeZone(), 'HH:mm:ss');
   Logger.log('Script execution time (Spreadsheet TZ): %s', nowInTZ);
 
-  // --- 2. Process Campaigns ---
+  // --- 2. Load Campaigns and Customers ---
   const campaigns = getCampaignsData();
-  const chats = getCustomerChatsData();
-  const insights = getCustomerInsightsData();
-  const customers = buildCustomerProfiles(chats, insights);
+  const customers = getCustomersFromAuth();
 
   let msgsTriggered = 0;
   let quotaHit = { email: false, sms: false, whatsapp: false };
 
-  Logger.log(`Loaded ${campaigns.length} campaigns and ${chats.length} chats`);
-  // campaigns.forEach(c => Logger.log(`Campaign: ${c.id}, Status=${c.status}, Category=${c.category}, Time1=${c.time1}`));
-  // clients.forEach(cl => Logger.log(`Client: ${cl.name}, Category=${cl.category}, Email=${cl.email}`));
+  Logger.log(
+    'Loaded %d campaigns and %d customers from Customer_Auth',
+    campaigns.length,
+    customers.length
+  );
 
   // Use a try/catch block around the entire processing loop to catch the QUOTA_EXCEEDED flag
   try {
@@ -369,6 +334,13 @@ function main_campaign_runner() {
         return;
       }
 
+      // Campaign target categories (comma-separated)
+      const requiredCategories = campaign.category
+        .toLowerCase()
+        .split(',')
+        .map(x => x.trim())
+        .filter(Boolean);
+
       // Define the templates and timings to check based *strictly* on Campaign Message Count dynamically (1–10)
       for (let i = 1; i <= campaign.count; i++) {
         const template = campaign[`temp${i}`];
@@ -378,7 +350,12 @@ function main_campaign_runner() {
 
         // CRITICAL STEP 1: Check if the time is ready (current time >= scheduled time)
         if (!isTimeReadyForSend(timing, now)) {
-          Logger.log(`SKIP: Campaign ${campaign.id} Msg#${i} not yet time (${timing})`);
+          Logger.log(
+            'SKIP: Campaign %s Msg#%s not yet time (%s)',
+            campaign.id,
+            i,
+            timing
+          );
           continue;
         }
 
@@ -386,44 +363,54 @@ function main_campaign_runner() {
         // It considers all mediums SMS, WhatsApp and Email
         // It considers as SENT even if partial medium were successfull in sending msg.
         if (wasSentToday(campaign.id, i)) {
-          Logger.log('SKIP: Campaign %s Msg#%s already sent today.', campaign.id, i);
+          Logger.log(
+            'SKIP: Campaign %s Msg#%s already sent today',
+            campaign.id,
+            i
+          );
           continue;
         }
 
         // Time is ready AND not sent today, trigger sms/whatsapp/email
-        Logger.log('SENDING: Campaign %s Msg#%s (%s)', campaign.id, i, timing);
+        Logger.log(
+          'SENDING: Campaign %s Msg#%s (%s)',
+          campaign.id,
+          i,
+          timing
+        );
 
-        // Campaign Target Category can be a single category or combination of categories separated by ','
-        const required = campaign.category
-        .toLowerCase()
-        .split(',')
-        .map(x => x.trim());
-
-        // --- Match customers by category ---
+        // --- Match customers by Customer_Auth.Customer_Category ---
         // Campaign category must be found in one of the comma-separated words in customer's category
-        const matched = customers.filter(c => {
-          const tags = [
-            c.category,
-            c.dietary,
-            c.aov,
-            c.frequency,
-            c.attitude
-          ]
-            .join(',')
+        const matched = customers.filter(cust => {
+          const customerCategories = cust.category
             .toLowerCase()
             .split(',')
-            .map(x => x.trim());
+            .map(x => x.trim())
+            .filter(Boolean);
 
-          return required.every(r => tags.includes(r));
+          // OR logic: ANY campaign category matches ANY customer category
+          return requiredCategories.some(rc =>
+            customerCategories.includes(rc)
+          );
         });
 
         if (!matched.length) {
-        Logger.log('⚠ No customers for campaign %s', campaign.id);
+        Logger.log(
+            '⚠ No customers matched for Campaign %s | Target: %s',
+            campaign.id,
+            campaign.category
+          );
         continue;
         }
         
-        Logger.log('Matched %d customers for "%s"', matched.length, campaign.category);
+        Logger.log(
+          'Matched %d customers for Campaign %s | Target: %s',
+          matched.length,
+          campaign.id,
+          campaign.category
+        );
 
+        // --- Send messages ---
         matched.forEach(cust => {
           
           if (quotaHit.email && quotaHit.sms && quotaHit.whatsapp) return; // stop all if all limits hit
@@ -513,6 +500,7 @@ function sha256(text) {
 
 // ----- Helper: Get next customer id -----
 function getNextCustomerId(sheet) {
+  // Plz dont delete this test code ---
   // console.log("🔥 getNextCustomerId STARTED");
   // const ss = SpreadsheetApp.getActive();
   // const sheet = ss.getSheetByName("Customer_Auth");
@@ -541,6 +529,7 @@ function getNextCustomerId(sheet) {
 
 // ----- Send OTP -----
 function handleSendOtp(name, mobile, email) {
+  // Plz dont delete this test code ---
   // name="Umang";
   // mobile="9876543210";
   // email="Umang.Malhotra@webisdom.com"
@@ -558,14 +547,13 @@ function handleSendOtp(name, mobile, email) {
 
   for (let i = 1; i < data.length; i++) {
     // Column C = index 2 (Customer_Email)
-    // customer email found in the sheet
     if (data[i][2] === email) {
       // fill otp, hash and expiry values
       sheet.getRange(i + 1, 5).setValue(otpHash);      // Column E = OTP_Hash
       sheet.getRange(i + 1, 6).setValue(expiresAt);    // Column F = OTP_Expires_At
       sheet.getRange(i + 1, 7).setValue(new Date());   // Column G = Creation_DateTime
       rowFound = true;
-      console.log("email matched in the sheet");
+      // console.log("email matched in the sheet");
       break;
     }
   }
@@ -574,7 +562,6 @@ function handleSendOtp(name, mobile, email) {
   if (!rowFound) {
     // generate next customer id
     const customerId = getNextCustomerId(sheet);
-    // Logger.log("Generated Customer ID: %s", customerId);
     // console.log("Next Customer ID =", customerId);
     // SpreadsheetApp.getUi().alert("Customer ID ->" + customerId + "<-" + "email ->" + email + "<-");
     sheet.appendRow([
@@ -588,15 +575,24 @@ function handleSendOtp(name, mobile, email) {
       ""           // Last_Login_DateTime
     ]);
 
-    // const lastRow = sheet.getLastRow();
-    // sheet.getRange(lastRow, 1).setValue(customerId);
   }
 
-  MailApp.sendEmail({
-    to: email,
-    subject: "Your Login OTP",
-    htmlBody: `<p>Your OTP is <b>${otp}</b>. Valid for 5 minutes.</p>`
-  });
+  // prepare data for email
+  msg_from  = EMAIL_MSG_FROM;
+  msg_to    = email;
+  msg_sub   = "Your Login OTP";
+  msg_text  = "Your OTP is "+{otp}+". Valid for 5 minutes.";
+  
+  // send OTP email to customer
+  trigger_email(msg_from, msg_to, msg_sub, msg_text);
+  
+  // Plz dont delete this test code ---
+  // MailApp.sendEmail({
+  //   from: EMAIL_MSG_FROM,
+  //   to: email,
+  //   subject: "Your Login OTP",
+  //   htmlBody: `<p>Your OTP is <b>${otp}</b>. Valid for 5 minutes.</p>`
+  // });
 
   return { status: "ok" };
 }
@@ -733,7 +729,9 @@ function ensureCampaignColumns(count) {
 function saveChatToSheet(session) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName("Chats") || ss.insertSheet("Chats");
-// Chat_ID	Customer_ID	Customer_Name	Customer_Phone	Customer_Email	Chat_Date_Time	Chat_Session_Text	Customer_Chat_Category
+  
+  // Chat_ID	Customer_ID	Customer_Name	Customer_Phone	Customer_Email	Chat_Date_Time	Chat_Session_Text
+  
   // Add headers if empty
   if (sheet.getLastRow() === 0) {
     sheet.appendRow([
@@ -743,8 +741,7 @@ function saveChatToSheet(session) {
       'Customer_Phone',
       'Customer_Email',
       'Chat_Date_Time',
-      'Chat_Session_Text',
-      'Customer_Chat_Category'
+      'Chat_Session_Text'
     ]);
   }
 
@@ -755,8 +752,7 @@ function saveChatToSheet(session) {
     session.clientPhone || '',
     session.clientEmail || '',
     session.date || new Date(),
-    session.transcriptText || '',
-    ''
+    session.transcriptText || ''
   ]);
 }
 
