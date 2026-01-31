@@ -382,3 +382,18 @@ def add_campaign(campaign: Campaign):
     # return {"message": "Campaign data updated successfully"}
     return
 
+# test hook
+if __name__ == "__main__":
+    print("🧪 Backend local test mode")
+
+    menu_agent = MenuAgent()
+
+    menu = menu_agent.get_menu()
+    for item in menu:
+        print(item)
+
+    personalized_menu = menu_agent.get_customized_menu("Cust_0004")
+    print(f"➡️ Items returned: {len(personalized_menu)}\n")
+    for item in personalized_menu:
+        print(item)
+
