@@ -581,8 +581,8 @@ function handleSendOtp(name, mobile, email) {
   msg_from  = EMAIL_MSG_FROM;
   msg_to    = email;
   msg_sub   = "Your Login OTP";
-  msg_text  = "Your OTP is "+{otp}+". Valid for 5 minutes.";
-  
+  msg_text  = `"Your OTP is ${otp}. Valid for 5 minutes.`;
+
   // send OTP email to customer
   trigger_email(msg_from, msg_to, msg_sub, msg_text);
   
@@ -938,50 +938,74 @@ function doPost(e) {
     // [3] Handle user existence check (Login Logic)
     // ----------------------------------------------
     if (data.action === "check_user") {
-      var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Customer_Auth");
-      var rows = sheet.getDataRange().getValues();
-      
-      var searchVal = data.value; // Frontend value (email ya phone)
-      var method = data.method;   // 'email' ya 'phone'
-      var foundUser = null;
 
-      for (var i = 1; i < rows.length; i++) {
-        // Col Index: Index 2 = Email (Col C), Index 3 = Phone (Col D)
-        var colToMatch = (method === "email") ? 2 : 3;
+      const sheet = SpreadsheetApp
+        .getActiveSpreadsheet()
+        .getSheetByName("Customer_Auth");
 
-        if (rows[i][colToMatch] == searchVal) {
+      const rows = sheet.getDataRange().getValues();
+
+      const value  = data.value;   // email OR phone
+      const method = data.method;  // 'email' OR 'phone'
+
+      let foundUser = null;
+
+      for (let i = 1; i < rows.length; i++) {
+
+        const name   = rows[i][1]; // Col B
+        const email  = rows[i][2]; // Col C
+        const phone  = rows[i][3]?.toString().trim(); // Col D
+        const input  = value.toString().trim();
+
+        // 🔹 Email login → check ONLY email
+        if (method === "email" && email === input) {
           foundUser = {
-            name: rows[i][1],   // Col B
-            email: rows[i][2],  // Col C
-            mobile: rows[i][3]  // Col D
+            name: name,
+            email: email,
+            mobile: phone
+          };
+          break;
+        }
+
+        // 🔹 Phone login → check ONLY phone
+        if (method === "phone" && phone === input) {
+          foundUser = {
+            name: name,
+            email: email,
+            mobile: phone
           };
           break;
         }
       }
 
-      if (foundUser) {
-        // AGAR EMAIL HAI: To OTP bhejien aur "exists" return karein
-        if (method === "email") {
-          handleSendOtp(foundUser.name, foundUser.mobile, foundUser.email);
-          return jsonResponse({
-            "status": "exists",
-            "name": foundUser.name,
-            "mobile": foundUser.mobile,
-            "message": "OTP sent to email"
-          });
-        } 
-        // AGAR PHONE HAI: To direct "exists" return karein (No OTP)
-        else {
-          return jsonResponse({
-            "status": "exists",
-            "name": foundUser.name,
-            "mobile": foundUser.mobile
-          });
-        }
+      // ❌ User not found
+      if (!foundUser) {
+        return jsonResponse({ status: "not_found" });
       }
 
-      // User nahi mila
-      return jsonResponse({ "status": "not_found" });
+      // ✅ EMAIL LOGIN → SEND OTP
+      if (method === "email") {
+        handleSendOtp(
+          foundUser.name,
+          foundUser.mobile,
+          foundUser.email
+        );
+
+        return jsonResponse({
+          "status": "exists",
+          "name": foundUser.name,
+          "mobile": foundUser.mobile,
+          "message": "OTP sent to email"
+        });
+      }
+
+      // ✅ PHONE LOGIN → NO OTP
+      return jsonResponse({
+        "status": "exists",
+        "name": foundUser.name,
+        "mobile": foundUser.mobile,
+        "message": "OTP not sent to mobile"
+      });
     }
 
     // ----------------------------------------------
@@ -1021,35 +1045,6 @@ function doPost(e) {
       return jsonResponse({ status: "ok", message: "Chat session saved" });
     }
 
-    // ----------------------------------------------
-    // [6] Handle Python customer insights --> presently done in pythion directly
-    // ----------------------------------------------
-    // if (data.source === "python_inference" &&
-    //   Array.isArray(data.customers)) {
-    //   const expectedKey =
-    //     PropertiesService.getScriptProperties().getProperty("APPS_SCRIPT_API_KEY");
-
-    //   if (data.api_key !== expectedKey) {
-    //     return jsonResponse({
-    //       status: "error",
-    //       message: "Invalid API key"
-    //     });
-    //   }
-
-    //   const written = saveCustomerInsights(
-    //     data.customers.map(c => ({
-    //       ...c,
-    //       generated_at: data.generated_at,
-    //       source: data.source
-    //     }))
-    //   );
-
-    //   return jsonResponse({
-    //     status: "ok",
-    //     written
-    //   });
-    // }
-    
     // ----------------------------------------------
     // [7] Handle campaigns
     // ----------------------------------------------
