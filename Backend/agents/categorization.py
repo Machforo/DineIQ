@@ -21,11 +21,9 @@ load_dotenv()
 from services.sheets import SheetsClient
 sheets_client = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
 
-from services.llm import GeminiClient
+from services.llm import GeminiClient, GeminiClient_2
 gemini_client = GeminiClient()
-
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "").strip()
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
+gemini_client_2 = GeminiClient_2()
 
 GEMINI_CHAT_LLM_INFERENCE_ENABLED = (os.getenv("GEMINI_CHAT_LLM_INFERENCE_ENABLED", "false").lower() == "true")
 GEMINI_DIETARY_LLM_INFERENCE_ENABLED = (os.getenv("GEMINI_DIETARY_LLM_INFERENCE_ENABLED", "false").lower() == "true")
@@ -264,8 +262,13 @@ Chat Text:
     
     # fetch gemini model and generate response
     try:
-        response = gemini_client.call_gemini_with_retry(chat_prompt)
-        result = json.loads(response)
+        response = gemini_client_2.call_gemini_with_retry(chat_prompt)
+        # print("\nRaw response:", repr(response), "\n")
+        result = json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", response.strip(), flags=re.DOTALL))
+        # result = json.loads(response)
+        # if result is None:
+        #     result = {"dietary": None, "attitude": None, "favorites": []}
+        print("\nResult:", result, "\n")
     except Exception as e:
         print("chat: exception -> ", repr(e))
         return {"dietary": None, "attitude": None, "favorites": []}
@@ -316,6 +319,7 @@ def categorize_customers():
     # Initialize LLM instance
     sheets_client.init_service()
     gemini_client.init_gemini()
+    gemini_client_2.init_gemini()
     print("\n✅ Initialized Sheets and Gemini")
 
     # === STEP 1: Read Customer_Auth, Customer_Insights, Orders, Order_Items & Chats sheets ===
