@@ -54,7 +54,7 @@ export default function LoginScreen() {
         } else {
           // Mobile number hone par direct login
           toast.success(`Welcome back, ${data.name}!`);
-          login(data.name, +mobile);
+          login(data.name, data.mobile);
           navigate("/home");
         }
       } else {
@@ -79,7 +79,7 @@ export default function LoginScreen() {
       const data = await response.json();
       if (data.status === "ok") {
         toast.success("Login Successful!");
-        login(email, +mobile); 
+        login(data.name, data.mobile, email);
         navigate("/home");
       } else {
         toast.error("Invalid OTP");
@@ -109,7 +109,7 @@ export default function LoginScreen() {
         const data = await response.json();
         if (data.status === "ok") {
           toast.success("Registration Successful!");
-          login(name, +mobile);
+          login(name, data.mobile, email);
           // Email ko state mein pass karein taki Preference page use save kar sake
           navigate("/preferences", { state: { email: email } });
         } else {
