@@ -11,6 +11,8 @@ env/
 # Secrets
 .env
 dineIQ_service_account.json
+dineIQ_gmail_OAuth_Credentials.json
+token.json
 
 # OS
 .DS_Store
