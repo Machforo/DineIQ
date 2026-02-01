@@ -1,9 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
-/* ---------------------------------------------------------
- * Types
- * --------------------------------------------------------- */
-
 export interface Order {
   id: string;
   date: Date;
@@ -21,20 +17,16 @@ interface UserProfile {
 }
 
 interface UserContextType {
-  /* Auth state */
-  isLoggedIn: boolean;
+  tableNumber: string;
+  guestCount: number;
   guestName: string;
   phoneNumber: string;
-
-  /* Preferences */
+  isLoggedIn: boolean;
   isVegMode: boolean;
-
-  /* Profile + Orders */
   profile: UserProfile;
+  user: UserProfile;
   orders: Order[];
-
-  /* Actions */
-  login: (guestName: string, phone?: string) => void;
+  login: (tableNumber: string, guestCount: number, guestName?: string, phone?: string) => void;
   logout: () => void;
   toggleVegMode: () => void;
   updateProfile: (profile: Partial<UserProfile>) => void;
@@ -42,16 +34,9 @@ interface UserContextType {
   rateOrder: (orderId: string, rating: number) => void;
 }
 
-/* ---------------------------------------------------------
- * Context Init
- * --------------------------------------------------------- */
-
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-/* ---------------------------------------------------------
- * Mock Order History (unchanged)
- * --------------------------------------------------------- */
-
+// Mock order history for demo
 const mockOrders: Order[] = [
   {
     id: "ord1",
@@ -65,58 +50,81 @@ const mockOrders: Order[] = [
     status: "delivered",
     rating: 4,
   },
+  {
+    id: "ord2",
+    date: new Date(2025, 0, 16, 13, 15),
+    items: [
+      { name: "Chicken Biryani Box", quantity: 2, price: 349 },
+      { name: "Gulab Jamun", quantity: 2, price: 99 },
+    ],
+    total: 896,
+    status: "delivered",
+  },
+  {
+    id: "ord3",
+    date: new Date(2025, 0, 15, 19, 45),
+    items: [
+      { name: "Pizza Party Deal", quantity: 1, price: 499 },
+      { name: "Paneer Tikka", quantity: 1, price: 299 },
+    ],
+    total: 798,
+    status: "delivered",
+    rating: 5,
+  },
 ];
 
-/* ---------------------------------------------------------
- * Provider
- * --------------------------------------------------------- */
-
 export function UserProvider({ children }: { children: ReactNode }) {
-  /* Auth */
+  const [tableNumber, setTableNumber] = useState("");
+  const [guestCount, setGuestCount] = useState(1);
   const [guestName, setGuestName] = useState("Guest");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  /* Preferences */
   const [isVegMode, setIsVegMode] = useState(false);
-
-  /* Profile */
   const [profile, setProfile] = useState<UserProfile>({
     name: "",
     phone: "",
     email: "",
     dateOfBirth: "",
   });
-
-  /* Orders */
   const [orders, setOrders] = useState<Order[]>(mockOrders);
 
-  /* ---------------------------------------------------------
-   * Auth Actions
-   * --------------------------------------------------------- */
+  // const login = (table: string, count: number, name?: string, phone?: string, email: string = "") => {
+  //   setTableNumber(table);
+  //   setGuestCount(count);
+  //   setGuestName(name || "Guest");
+  //   setPhoneNumber(phone || "");
+  //   setProfile((prev) => ({
+  //     ...prev,
+  //     name: name || prev.name,
+  //     phone: phone || prev.phone,
+  //   }));
+  //   setIsLoggedIn(true);
+  // };
 
-  const login = (name: string, phone?: string) => {
+  const login = (table: string, count: number, name?: string, phone?: string, email: string = "") => {
+    setTableNumber(table);
+    setGuestCount(count);
     setGuestName(name || "Guest");
     setPhoneNumber(phone || "");
-
     setProfile((prev) => ({
       ...prev,
       name: name || prev.name,
       phone: phone || prev.phone,
+      email: email || prev.email, // Email ko yaha set kiya
     }));
-
     setIsLoggedIn(true);
   };
 
+
+
+
   const logout = () => {
+    setTableNumber("");
+    setGuestCount(1);
     setGuestName("Guest");
     setPhoneNumber("");
     setIsLoggedIn(false);
   };
-
-  /* ---------------------------------------------------------
-   * Other Actions
-   * --------------------------------------------------------- */
 
   const toggleVegMode = () => {
     setIsVegMode((prev) => !prev);
@@ -124,7 +132,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = (updates: Partial<UserProfile>) => {
     setProfile((prev) => ({ ...prev, ...updates }));
-
     if (updates.name) setGuestName(updates.name);
     if (updates.phone) setPhoneNumber(updates.phone);
   };
@@ -141,18 +148,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  /* ---------------------------------------------------------
-   * Context Provider
-   * --------------------------------------------------------- */
-
   return (
     <UserContext.Provider
       value={{
-        isLoggedIn,
+        tableNumber,
+        guestCount,
         guestName,
         phoneNumber,
+        isLoggedIn,
         isVegMode,
         profile,
+        user: profile,
         orders,
         login,
         logout,
@@ -166,10 +172,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
     </UserContext.Provider>
   );
 }
-
-/* ---------------------------------------------------------
- * Hook
- * --------------------------------------------------------- */
 
 export function useUser() {
   const context = useContext(UserContext);

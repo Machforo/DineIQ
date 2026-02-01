@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 
 export default function TrackOrderPage() {
   const navigate = useNavigate();
-  const { orders, roomNumber } = useUser();
+  const { orders, tableNumber } = useUser();
 
   const activeOrder = orders.find(
     (order) => order.status === "preparing" || order.status === "on_the_way"
@@ -68,7 +68,7 @@ export default function TrackOrderPage() {
           <div className="bg-card rounded-2xl p-4 shadow-sm mb-6">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-muted-foreground">Order #{activeOrder.id.slice(-6)}</span>
-              <span className="badge-gold px-3 py-1 text-sm">Room #{roomNumber}</span>
+              <span className="badge-gold px-3 py-1 text-sm">Table #{tableNumber}</span>
             </div>
             <p className="text-foreground font-medium">
               {activeOrder.items.map((item) => `${item.quantity}x ${item.name}`).join(", ")}

@@ -17,7 +17,7 @@ import {
 export default function CartPage() {
   const navigate = useNavigate();
   const { items, updateQuantity, removeItem, totalPrice } = useCart();
-  const { roomNumber } = useUser();
+  const { tableNumber } = useUser();
   const [instructions, setInstructions] = useState("");
 
   // Calculation wahi purani
@@ -32,7 +32,7 @@ export default function CartPage() {
       state: { 
         totalAmount: grandTotal,
         cartItems: items,
-        roomNumber: roomNumber,
+        tableNumber: tableNumber,
         instructions: instructions // Cooking instructions bhi saath bhej rahe hain
       } 
     });
@@ -202,7 +202,7 @@ export default function CartPage() {
             <p className="text-2xl font-bold text-foreground">₹{grandTotal}</p>
           </div>
           <p className="text-xs text-muted-foreground text-right">
-            Delivery to Room #{roomNumber}
+            Delivery to Table #{tableNumber}
           </p>
         </div>
         

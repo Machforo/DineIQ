@@ -54,7 +54,12 @@ export default function LoginScreen() {
         } else {
           // Mobile number hone par direct login
           toast.success(`Welcome back, ${data.name}!`);
-          login(data.name, mobile);
+          login(
+            "1",         // tableNumber (not known yet)
+            1,           // guestCount (default)
+            data.name,   // guestName (from backend)
+            data.mobile  // phoneNumber (from backend)
+          );
           navigate("/home");
         }
       } else {
@@ -81,7 +86,12 @@ export default function LoginScreen() {
       const data = await response.json();
       if (data.status === "ok") {
         toast.success("Login Successful!");
-        login(data.name, data.mobile);
+        login(
+          "1",         // tableNumber (not known yet)
+          1,           // guestCount (default)
+          data.name,   // guestName (from backend)
+          data.mobile  // phoneNumber (from backend)
+        ); 
         navigate("/home");
 
       } else {
@@ -120,9 +130,14 @@ export default function LoginScreen() {
         const data = await response.json();
         if (data.status === "ok") {
           toast.success("Registration Successful!");
-          login(name, mobile);
+          login(
+          "1",         // tableNumber (not known yet)
+          1,           // guestCount (default)
+          name,        // guestName
+          mobile       // phoneNumber
+        );
           // Email ko state mein pass karein taki Preference page use save kar sake
-          navigate("/preferences", { state: { email: email } });
+          navigate("/home");
         } else {
           toast.error("Invalid OTP");
         }

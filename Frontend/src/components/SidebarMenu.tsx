@@ -25,7 +25,7 @@ interface SidebarMenuProps {
 
 export default function SidebarMenu({ children }: SidebarMenuProps) {
   const navigate = useNavigate();
-  const { guestName, phoneNumber, roomNumber, logout } = useUser();
+  const { guestName, phoneNumber, tableNumber, logout } = useUser();
   const [open, setOpen] = useState(false);
 
   const menuItems = [
@@ -91,7 +91,7 @@ export default function SidebarMenu({ children }: SidebarMenuProps) {
                 <Crown className="w-5 h-5 text-gold" />
                 <span className="text-white font-medium text-sm">Gold Member</span>
               </div>
-              <span className="text-gold text-sm font-bold">Room #{roomNumber}</span>
+              <span className="text-gold text-sm font-bold">Table #{tableNumber}</span>
             </div>
           </div>
         </SheetHeader>
