@@ -5,7 +5,7 @@
 # ---------------------------------------------------------
 from fastapi import APIRouter, HTTPException
 import random, hashlib, time
-import os
+import os, re
 
 # -------------------------------------------------------------------
 # 🔧 SETUP KEYS and URLs
@@ -79,6 +79,9 @@ def check_user(payload: dict):
         if not user:
             return {"status": "not_found"}
 
+        # Update last login information
+        update_last_login_by_phone(value)
+
         return {
             "status": "exists",
             "name": user["name"],
@@ -147,7 +150,6 @@ def find_user_by_email(email: str):
         "mobile": row.get("Customer_Phone"),
     }
 
-
 def find_user_by_phone(phone: str):
     print(">>> Finding user by phone:", phone)
 
@@ -163,6 +165,32 @@ def find_user_by_phone(phone: str):
         "mobile": row.get("Customer_Phone"),
     }
 
+def update_last_login_by_phone(phone: str):
+    rows = sheets_client.read_sheet(CUSTOMER_AUTH_SHEET)
+
+    row = rows[rows["Customer_Phone"].astype(str) == str(phone)]
+    if row.empty:
+        return
+
+    row_num = row.index[0] + 2
+    sheets_client.update_cell(
+        CUSTOMER_AUTH_SHEET,
+        f"I{row_num}",  # Last_Login_DateTime
+        time.strftime("%d/%m/%Y %H:%M:%S"),
+    )
+
+def generate_next_customer_id(rows: list[dict]) -> str:
+    max_num = 0
+    pattern = re.compile(r"Cust_(\d+)")
+
+    for r in rows:
+        cid = r.get("Customer_ID", "")
+        match = pattern.fullmatch(str(cid))
+        if match:
+            num = int(match.group(1))
+            max_num = max(max_num, num)
+
+    return f"Cust_{max_num + 1:04d}"
 
 def save_otp_for_email(email, otp, name=None, mobile=None):
     print(">>> Saving OTP for:", email)
@@ -187,19 +215,22 @@ def save_otp_for_email(email, otp, name=None, mobile=None):
     # ---- New signup ----
     print(">>> New signup, appending row")
 
+    customer_id = generate_next_customer_id(rows)
+    print(">>> Generated Customer_ID:", customer_id)
+
     sheets_client.append_row(
         CUSTOMER_AUTH_SHEET,
         [
-            "",                         # Customer_ID
-            name or "",
-            email,
-            mobile or "",
-            "",                         # Date_of_Birth
+            customer_id,                # Customer_ID (A)           <-- Customer ID is created for a new signup
+            name or "",                 # Customer_Name (B)
+            email,                      # Customer_Email (C)
+            mobile or "",               # Customer_Phone (D)
+            "",                         # Date_of_Birth (E)         <-- comes from profile update
             otp_hash,                   # OTP_Hash (F)
             expiry,                     # OTP_Expires_At (G)
-            time.strftime("%Y-%m-%d %H:%M:%S"),  # Creation_DateTime
-            "",                         # Last_Login_DateTime
-            "",                         # Customer_Category
+            time.strftime("%d/%m/%Y %H:%M:%S"),  # Creation_DateTime (H)
+            "",                         # Last_Login_DateTime (I)   <-- filled when logged in
+            "",                         # Customer_Category (J)     <-- comes from categorization
         ]
     )
 
@@ -229,7 +260,7 @@ def verify_otp_for_email(email, otp):
     sheets_client.update_cell(
         CUSTOMER_AUTH_SHEET,
         f"I{row_num}",  # Last_Login_DateTime
-        time.strftime("%Y-%m-%d %H:%M:%S"),
+        time.strftime("%d/%m/%Y %H:%M:%S"),
     )
 
     return {
