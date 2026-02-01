@@ -84,7 +84,28 @@ class SheetsClient:
         return pd.DataFrame(clean_rows, columns=headers)
 
     # -------------------------------------------------------------------
-    # ✍️ Update
+    # 📖 Read - Lightweight Reader (non-pandas)
+    # -------------------------------------------------------------------
+    def read_sheet_rows(self, sheet_name: str) -> list[dict]:
+        result = self._service.values().get(
+            spreadsheetId=self.spreadsheet_id,
+            range=f"{sheet_name}!A:Z",
+        ).execute()
+
+        values = result.get("values", [])
+        if not values:
+            return []
+
+        headers = values[0]
+        rows = values[1:]
+
+        return [
+            dict(zip(headers, r + [""] * (len(headers) - len(r))))
+            for r in rows
+        ]
+
+    # -------------------------------------------------------------------
+    # ✍️ Update columns in sheet
     # -------------------------------------------------------------------
     def update_sheet(
         self,
@@ -123,6 +144,36 @@ class SheetsClient:
             print(f"✅ Column '{col}' updated ({col_letter})")
 
         print(f"✅ Partial update completed for sheet '{sheet_name}'.")
+
+    # -------------------------------------------------------------------
+    # ✍️ Append a single row at the end of the sheet.
+    # -------------------------------------------------------------------
+    def append_row(self, sheet_name: str, row: list):
+        """
+        Append a single row at the end of the sheet.
+        """
+        self._service.values().append(
+            spreadsheetId=self.spreadsheet_id,
+            range=f"{sheet_name}!A:Z",
+            valueInputOption="RAW",
+            insertDataOption="INSERT_ROWS",
+            body={"values": [row]},
+        ).execute()
+    
+    # -------------------------------------------------------------------
+    # ✍️ Update a cell in sheet
+    # -------------------------------------------------------------------
+    def update_cell(self, sheet_name: str, cell: str, value):
+        """
+        Update a single cell in a Google Sheet.
+        Example: update_cell("Customer_Auth", "H2", "2026-01-01 10:30:00")
+        """
+        self._service.values().update(
+            spreadsheetId=self.spreadsheet_id,
+            range=f"{sheet_name}!{cell}",
+            valueInputOption="RAW",
+            body={"values": [[value]]},
+        ).execute()
 
     # -------------------------------------------------------------------
     # 🔠 Utilities
