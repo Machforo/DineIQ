@@ -136,12 +136,12 @@ class GmailClient:
 
 
 # test hook
-if __name__ == "__main__":
-    self = GmailClient()
+# if __name__ == "__main__":
+#     self = GmailClient()
     
-    self.init_service()
+#     self.init_service()
 
-    self.send_otp_email(to_email="UmangHere@gmail.com", otp='123456')
+#     self.send_otp_email(to_email="UmangHere@gmail.com", otp='123456')
 
     
 
