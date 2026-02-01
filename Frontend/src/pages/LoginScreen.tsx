@@ -9,7 +9,8 @@ import { toast } from "sonner";
 export default function LoginScreen() {
   const navigate = useNavigate();
   const { login } = useUser();
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbziwt_310-tDnkzPTpgbgW89M6jxjDXQVbRIn7k-JzBiezCzoDcjhPjDDbZDjVrLf4N5w/exec";
+  // const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbziwt_310-tDnkzPTpgbgW89M6jxjDXQVbRIn7k-JzBiezCzoDcjhPjDDbZDjVrLf4N5w/exec";
+  const API_BASE_URL = "http://localhost:8000";
 
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
   const [loginMethod, setLoginMethod] = useState<"email" | "phone">("phone");
@@ -34,11 +35,10 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(SCRIPT_URL, {
+      const response = await fetch(`${API_BASE_URL}/auth/check-user`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          // Backend pe check_user_login action hona chahiye
-          action: "check_user", 
           method: loginMethod,
           value: loginMethod === "email" ? email : mobile,
         }),
@@ -54,7 +54,7 @@ export default function LoginScreen() {
         } else {
           // Mobile number hone par direct login
           toast.success(`Welcome back, ${data.name}!`);
-          login(data.name, data.mobile);
+          login(data.name, mobile);
           navigate("/home");
         }
       } else {
@@ -72,15 +72,18 @@ export default function LoginScreen() {
   const handleLoginOTPVerify = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(SCRIPT_URL, {
+      const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
         method: "POST",
-        body: JSON.stringify({ action: "verify_otp", email, otp }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp }),
       });
+
       const data = await response.json();
       if (data.status === "ok") {
         toast.success("Login Successful!");
-        login(data.name, data.mobile, email);
+        login(data.name, data.mobile);
         navigate("/home");
+
       } else {
         toast.error("Invalid OTP");
       }
@@ -95,21 +98,29 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       if (step === 1) {
-        const response = await fetch(SCRIPT_URL, {
+        const response = await fetch(`${API_BASE_URL}/auth/signup`, {
           method: "POST",
-          body: JSON.stringify({ action: "send_otp", name, mobile, email }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, mobile }),
         });
-        toast.success(`OTP sent to ${email}`);
-        setStep(2);
+        const data = await response.json();
+
+        if (data.status === "otp_sent") {
+          toast.success(`OTP sent to ${email}`);
+          setStep(2);
+        } else {
+          toast.error(data.message || "Unable to send OTP");
+        }
       } else {
-        const response = await fetch(SCRIPT_URL, {
+        const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
           method: "POST",
-          body: JSON.stringify({ action: "verify_otp", email, otp }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, otp }),
         });
         const data = await response.json();
         if (data.status === "ok") {
           toast.success("Registration Successful!");
-          login(name, data.mobile, email);
+          login(name, mobile);
           // Email ko state mein pass karein taki Preference page use save kar sake
           navigate("/preferences", { state: { email: email } });
         } else {
