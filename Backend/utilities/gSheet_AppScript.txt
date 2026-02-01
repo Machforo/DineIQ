@@ -893,13 +893,13 @@ function doPost(e) {
     // ----------------------------------------------
     // [1] Handle auth actions
     // ----------------------------------------------
-    if (data.action === "send_otp" && data.email) {
-      return jsonResponse(handleSendOtp(data.name, data.mobile, data.email));
-    }
+    // if (data.action === "send_otp" && data.email) {
+    //   return jsonResponse(handleSendOtp(data.name, data.mobile, data.email));
+    // }
 
-    if (data.action === "verify_otp" && data.email && data.otp) {
-      return jsonResponse(handleVerifyOtp(data.email, data.otp));
-    }
+    // if (data.action === "verify_otp" && data.email && data.otp) {
+    //   return jsonResponse(handleVerifyOtp(data.email, data.otp));
+    // }
 
     // ----------------------------------------------
     // [2] Preference Screen after Signup
@@ -937,76 +937,76 @@ function doPost(e) {
     // ----------------------------------------------
     // [3] Handle user existence check (Login Logic)
     // ----------------------------------------------
-    if (data.action === "check_user") {
+    // if (data.action === "check_user") {
 
-      const sheet = SpreadsheetApp
-        .getActiveSpreadsheet()
-        .getSheetByName("Customer_Auth");
+    //   const sheet = SpreadsheetApp
+    //     .getActiveSpreadsheet()
+    //     .getSheetByName("Customer_Auth");
 
-      const rows = sheet.getDataRange().getValues();
+    //   const rows = sheet.getDataRange().getValues();
 
-      const value  = data.value;   // email OR phone
-      const method = data.method;  // 'email' OR 'phone'
+    //   const value  = data.value;   // email OR phone
+    //   const method = data.method;  // 'email' OR 'phone'
 
-      let foundUser = null;
+    //   let foundUser = null;
 
-      for (let i = 1; i < rows.length; i++) {
+    //   for (let i = 1; i < rows.length; i++) {
 
-        const name   = rows[i][1]; // Col B
-        const email  = rows[i][2]; // Col C
-        const phone  = rows[i][3]?.toString().trim(); // Col D
-        const input  = value.toString().trim();
+    //     const name   = rows[i][1]; // Col B
+    //     const email  = rows[i][2]; // Col C
+    //     const phone  = rows[i][3]?.toString().trim(); // Col D
+    //     const input  = value.toString().trim();
 
-        // 🔹 Email login → check ONLY email
-        if (method === "email" && email === input) {
-          foundUser = {
-            name: name,
-            email: email,
-            mobile: phone
-          };
-          break;
-        }
+    //     // 🔹 Email login → check ONLY email
+    //     if (method === "email" && email === input) {
+    //       foundUser = {
+    //         name: name,
+    //         email: email,
+    //         mobile: phone
+    //       };
+    //       break;
+    //     }
 
-        // 🔹 Phone login → check ONLY phone
-        if (method === "phone" && phone === input) {
-          foundUser = {
-            name: name,
-            email: email,
-            mobile: phone
-          };
-          break;
-        }
-      }
+    //     // 🔹 Phone login → check ONLY phone
+    //     if (method === "phone" && phone === input) {
+    //       foundUser = {
+    //         name: name,
+    //         email: email,
+    //         mobile: phone
+    //       };
+    //       break;
+    //     }
+    //   }
 
-      // ❌ User not found
-      if (!foundUser) {
-        return jsonResponse({ status: "not_found" });
-      }
+    //   // ❌ User not found
+    //   if (!foundUser) {
+    //     return jsonResponse({ status: "not_found" });
+    //   }
 
-      // ✅ EMAIL LOGIN → SEND OTP
-      if (method === "email") {
-        handleSendOtp(
-          foundUser.name,
-          foundUser.mobile,
-          foundUser.email
-        );
+    //   // ✅ EMAIL LOGIN → SEND OTP
+    //   if (method === "email") {
+    //     handleSendOtp(
+    //       foundUser.name,
+    //       foundUser.mobile,
+    //       foundUser.email
+    //     );
 
-        return jsonResponse({
-          "status": "exists",
-          "name": foundUser.name,
-          "mobile": foundUser.mobile,
-          "message": "OTP sent to email"
-        });
-      }
+    //     return jsonResponse({
+    //       "status": "exists",
+    //       "name": foundUser.name,
+    //       "mobile": foundUser.mobile,
+    //       "message": "OTP sent to email"
+    //     });
+    //   }
 
-      // ✅ PHONE LOGIN → NO OTP
-      return jsonResponse({
-        "status": "exists",
-        "name": foundUser.name,
-        "mobile": foundUser.mobile,
-        "message": "OTP not sent to mobile"
-      });
-    }
+    //   // ✅ PHONE LOGIN → NO OTP
+    //   return jsonResponse({
+    //     "status": "exists",
+    //     "name": foundUser.name,
+    //     "mobile": foundUser.mobile,
+    //     "message": "OTP not sent to mobile"
+    //   });
+    // }
 
     // ----------------------------------------------
     // [4] Customer Activity Logging
