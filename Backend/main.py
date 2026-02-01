@@ -7,9 +7,13 @@
 # ---------------------------------------------------------
 # Library and Packages Import
 # ---------------------------------------------------------
-from fastapi import FastAPI, Query #, HTTPException, Depends
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Optional
+from routes.auth import auth_router
+
 
 # import agents and services classes
 # from services.auth_service          import AuthService
@@ -39,7 +43,18 @@ monitoring_agent        = MonitoringAgent()
 # ---------------------------------------------------------
 # Initialize FastAPI app
 # ---------------------------------------------------------
-app = FastAPI(title="In-Room Dining Agentic AI API")
+app = FastAPI(title="DineIQ Backend API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # tighten later
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# register routes
+app.include_router(auth_router, prefix="/auth")
 
 # -----------------------------
 # Request / Response Models
@@ -325,9 +340,9 @@ def update_order_success(customer_id: str):
 # -----------------------------
 # Health Check (Optional)
 # -----------------------------
-@app.get("/health")
+@app.get("/")
 def health():
-    return {"DineIQ Backend Deployment": "ok"}
+    return {"DineIQ Backend API Deployment": "ok"}
 
 # ---------------------------------------------------------------------------------------
 # post endpoint: llm-chat
