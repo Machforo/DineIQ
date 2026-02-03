@@ -13,9 +13,9 @@ import OrderHistoryPage from "@/pages/OrderHistoryPage";
 import CartPage from "@/pages/CartPage";
 import TrackOrderPage from "@/pages/TrackOrderPage";
 import NotFound from "@/pages/NotFound";
-import Payment from "@/pages/Payment"; // <--- 1. Ye Line Add Karein (Import)
-import PreferenceScreen from "@/pages/PreferenceScreen";
-
+import Payment from "@/pages/Payment";
+import ChatbotPage from "@/pages/ChatbotPage";
+import AIButton from "@/components/AIButton"; // <-- Added AIButton
 
 const queryClient = new QueryClient();
 
@@ -27,22 +27,23 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            {/* Floating AI Button (accessible on all pages) */}
+            <AIButton />
+
             <Routes>
               <Route path="/" element={<SplashScreen />} />
               <Route path="/login" element={<LoginScreen />} />
-              <Route path="/preferences" element={<PreferenceScreen />} />
               <Route path="/home" element={<HomeScreen />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/orders" element={<OrderHistoryPage />} />
               <Route path="/cart" element={<CartPage />} />
-              
-              {/* <--- 2. Ye Naya Route Add Karein */}
               <Route path="/payment" element={<Payment />} />
-              
               <Route path="/track-order" element={<TrackOrderPage />} />
+              <Route path="/chatbot" element={<ChatbotPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
+
         </CartProvider>
       </UserProvider>
     </TooltipProvider>
