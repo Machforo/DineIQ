@@ -7,8 +7,10 @@ import os
 import google.generativeai as genai
 import httpx  # async HTTP client
 import json
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
+# from fastapi import FastAPI
+from fastapi import APIRouter
+from fastapi import Request
+# from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # -------------------------------------------------------------------
@@ -25,32 +27,38 @@ APPS_SCRIPT_URL = os.environ.get("APPS_SCRIPT_URL", "").strip()
 # ---------------------------------------------------------
 # Initialize FastAPI app
 # ---------------------------------------------------------
-app = FastAPI()
+# app = FastAPI()
+chatbot_router = APIRouter()
 
-origins = [
-    "http://localhost:8080", # Vite dev
-    "http://127.0.0.1:8080",
-    "http://localhost:8081",
-    "http://127.0.0.1:8081",
-    "http://localhost:5173", # Vite alt port
-    "http://127.0.0.1:5173",
-]
+# origins = [
+#     "http://localhost:8080", # Vite dev
+#     "http://127.0.0.1:8080",
+#     "http://localhost:8081",
+#     "http://127.0.0.1:8081",
+#     "http://localhost:5173", # Vite alt port
+#     "http://127.0.0.1:5173",
+# ]
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins, #["*"],
-    allow_credentials=False, #True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=origins, #["*"],
+#     allow_credentials=False, #True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 # ---------------------------------------------------------
 # REQUEST / RESPONSE MODELS
 # ---------------------------------------------------------
+class FrontendChatItem(BaseModel):
+    role: str
+    text: str
+
 class ChatRequest(BaseModel):
-    chatHistory: list    # list of {role: "user"/"assistant", text: "..."}
+    chatHistory: list[FrontendChatItem]
     userMessage: str
-    clientName: str | None = "Guest"   # Optional: frontend can send the name
+    clientName: str | None = "Guest"
+
 
 class ChatResponse(BaseModel):
     response: str
@@ -69,7 +77,7 @@ class ChatSession(BaseModel):
 # SYSTEM PROMPT FOR RESTAURANT IN-ROOM DINING CHATBOT
 # ---------------------------------------------------------
 SYSTEM_PROMPT = """
-You are a highly ptofessional restaurant concierge AI assistant
+You are a highly professional restaurant concierge AI assistant
 
 Your objectives:
 
@@ -83,6 +91,8 @@ DO NOT mention that you are an AI unless the user explicitly asks.
 Your role is ONLY to respond to the client.
     Do not return JSON or metadata. Return ONLY the reply message.
 
+Your first response can include asking client's name, phone and email, to be able to extract all client information.
+    
 You can not clarify queries regarding:
 - Reservations
 - Tables information
@@ -106,22 +116,21 @@ Always prioritize customer satisfaction and provide exceptional service.
 # FORMAT MESSAGES FOR GEMINI
 # ---------------------------------------------------------
 def convert_messages(history, system_prompt, client_name):
-    """
-    Convert chat history into Gemini-compatible messages
-    using roles: user, model.
-    """
     messages = [
         {
             "role": "user",
-            "parts": [{"text": system_prompt.replace("{clientName}", client_name)}]
+            "parts": [{
+                "text": system_prompt.replace("{clientName}", client_name)
+            }]
         }
     ]
 
     for item in history:
-        role = "user" if item["role"] == "user" else "model"
+        role = "model" if item.role == "ai" else "user"
+
         messages.append({
             "role": role,
-            "parts": [{"text": item["text"]}]
+            "parts": [{"text": item.text}]
         })
 
     return messages
@@ -129,53 +138,47 @@ def convert_messages(history, system_prompt, client_name):
 # -----------------------------
 # Health Check (Optional)
 # -----------------------------
-@app.get("/health")
+@chatbot_router.get("/health")
 def health():
     return {"chatbot backend deployment status": "ok"}
 
 # ---------------------------------------------------------
 # LLM CHAT ENDPOINT
 # ---------------------------------------------------------
-@app.post("/llm-chat", response_model=ChatResponse)
+@chatbot_router.post("/llm-chat", response_model=ChatResponse)
 async def llm_chat(req: ChatRequest):
     print("\n🔥 /llm-chat endpoint HIT")
 
-    # full chat history converted
-    messages = convert_messages(req.chatHistory, SYSTEM_PROMPT, req.clientName or "Guest")
-    # append fresh message
-    messages.append({"role": "user", "parts": [{"text": req.userMessage}]})
+    messages = convert_messages(
+        req.chatHistory,
+        SYSTEM_PROMPT,
+        req.clientName or "Guest"
+    )
 
-    # Check GEMINI_API_KEY
-    if not GEMINI_API_KEY:
-        return {"response": "No gemini api"}
-    # test print partial API key
-    print("🔥 GEMINI_API_KEY starts with:", GEMINI_API_KEY[:6])
+    # append fresh user message
+    messages.append({
+        "role": "user",
+        "parts": [{"text": req.userMessage}]
+    })
 
-    # Fetch gemini api key
     import google.generativeai as genai
     genai.configure(api_key=GEMINI_API_KEY)
-    
-    # Check GEMINI_MODEL
-    if not GEMINI_MODEL:
-        return {"response": "No gemini model"}
-    # test print model
-    print("🔥 GEMINI_MODEL:", GEMINI_MODEL)
-    
-    # fetch gemini model and generate response
+
     try:
         model = genai.GenerativeModel(model_name=GEMINI_MODEL)
         response = model.generate_content(contents=messages)
         ai_reply = response.text
     except Exception as e:
         print("❌ Gemini API error:", e)
-        return {"response": str(e)}
-    
+        return ChatResponse(response=str(e))
+
     return ChatResponse(response=ai_reply)
+
 
 # ---------------------------------------------------------
 # SAVE CHAT SESSION ENDPOINT
 # ---------------------------------------------------------
-@app.post("/save-chat")
+@chatbot_router.post("/save-chat")
 async def save_chat(request: Request):
     """
     Receives chat session from frontend and forwards it to Apps Script
@@ -185,6 +188,7 @@ async def save_chat(request: Request):
 
     try:
         session = await request.json()
+
         print("📤 Received chat session:", session)
 
         if not APPS_SCRIPT_URL:
