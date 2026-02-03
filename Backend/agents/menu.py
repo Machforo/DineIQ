@@ -49,16 +49,16 @@ class MenuAgent:
             raise ValueError(f"Missing columns in Menu sheet: {missing}")
 
         # Normalize Is_Active
-        # df["Is_Active"] = (
-        #     df["Is_Active"]
-        #     .astype(str)
-        #     .str.strip()
-        #     .str.lower()
-        #     .isin(["true", "1", "yes"])
-        # )
+        df["Is_Active"] = (
+            df["Is_Active"]
+            .astype(str)
+            .str.strip()
+            .str.lower()
+            .isin(["active", "1", "yes", "true"])
+        )
 
         # Filter active items
-        # df = df[df["Is_Active"]]
+        df = df[df["Is_Active"]]
 
         # Shape response for frontend
         return [
@@ -150,11 +150,26 @@ class MenuAgent:
         # 1️⃣ LOAD MENU
         # -------------------------------------------------
         menu_df = self.sheets_client.read_sheet(self.menu_sheet_name)
+        
 
         if menu_df.empty:
             return []
 
         print("Menu has ", len(menu_df), " items")
+
+        # Normalize Is_Active
+        menu_df["Is_Active"] = (
+            menu_df["Is_Active"]
+            .astype(str)
+            .str.strip()
+            .str.lower()
+            .isin(["active", "1", "yes", "true"])
+        )
+
+        # Filter active items
+        menu_df = menu_df[menu_df["Is_Active"]]
+
+        print("Menu has ", len(menu_df), " active items")
 
         # Normalize
         menu_df["Item_Name"] = menu_df["Item_Name"].astype(str)
