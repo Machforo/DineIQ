@@ -6,6 +6,7 @@
 import os
 import json
 
+# import agents and services classes
 from services.sheets import SheetsClient
 from services.llm import GeminiClient
 
@@ -14,6 +15,12 @@ from services.llm import GeminiClient
 # ---------------------------------------------------------
 from dotenv import load_dotenv
 load_dotenv()
+
+# ---------------------------------------------------------
+# FastAPI router
+# ---------------------------------------------------------
+from fastapi import APIRouter, Depends
+menu_router = APIRouter()
 
 # ---------------------------------------------------------
 # Class definition for Menu related interactions
@@ -125,8 +132,6 @@ class MenuAgent:
             })
 
         return formatted_menu
-
-
 
     # -------------------------------------------------------------------
     # 🍽️ Personalized Menu
@@ -363,7 +368,6 @@ class MenuAgent:
 
         return item_names
 
-
     # -------------------------------------------------------------------
     # 🚧 Future Extensions (stubs)
     # -------------------------------------------------------------------
@@ -372,3 +376,35 @@ class MenuAgent:
 
     def get_menu_by_category(self, category: str) -> list:
         return []
+
+
+# ---------------------------------------------------------
+# Dependency: MenuAgent instance
+# ---------------------------------------------------------
+menu_agent = MenuAgent()
+
+def get_menu_agent() -> MenuAgent:
+    return menu_agent
+
+
+# ---------------------------------------------------------
+# 🍽️ API Endpoints
+# ---------------------------------------------------------
+@menu_router.get("/complete")
+def fetch_menu(agent: MenuAgent = Depends(get_menu_agent)):
+    """
+    Fetch full active menu (non-personalized)
+    """
+    return agent.get_menu()
+
+
+@menu_router.get("/customized/{customer_id}")
+def fetch_custom_menu(
+    customer_id: str,
+    agent: MenuAgent = Depends(get_menu_agent)
+):
+    """
+    Fetch personalized menu for a customer
+    """
+    return agent.get_customized_menu(customer_id)
+
