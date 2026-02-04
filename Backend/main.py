@@ -12,33 +12,37 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Optional
-from routes.auth import auth_router
 
+# Import API Routers
+# API Router for Customer Authentication
+from routes.auth import auth_router
+# API Router for Chatbot
+from agents.chatbot import chatbot_router
+# API Router for Fetching menu
+from agents.menu import menu_router
 
 # import agents and services classes
 # from services.auth_service          import AuthService
 # from services.profile_service       import ProfileService
 # from services.cart_service          import CartService
 # from services.order_service         import OrderService
-from agents.menu                    import MenuAgent
 # from agents.pricing                 import PricingAgent
 # from agents.recommendation          import RecommendationAgent
 from agents.monitoring              import MonitoringAgent
 # from agents.chat                    import ChatAgent
 # from agents.campaign                import CampaignService
 
-
-# Initialize agents
+# Initialize agents and services
 # auth_service            = AuthService()
 # profile_service         = ProfileService()
 # cart_service            = CartService()
 # order_service           = OrderService()
-menu_agent              = MenuAgent()
 # pricing_agent           = PricingAgent()
 # recommendation_agent    = RecommendationAgent()
 monitoring_agent        = MonitoringAgent()
 # chat_agent              = ChatAgent()
 # campaign_service        = CampaignService()
+
 
 # ---------------------------------------------------------
 # Initialize FastAPI app
@@ -55,6 +59,8 @@ app.add_middleware(
 
 # register routes
 app.include_router(auth_router, prefix="/auth")
+app.include_router(chatbot_router, prefix="/chatbot")
+app.include_router(menu_router, prefix="/menu")
 
 # -----------------------------
 # Request / Response Models
@@ -170,19 +176,23 @@ def home(customer_id: str = Query(..., description="Customer ID")): #"test_user"
     # place holders
     customer_id = customer_id
     
+    # test code to fetch menu in main.py:
     # smart_combos = menu_agent.get_smart_combos(customer_id)
     # recommendations = recommendation_agent.get_recommendations(customer_id)
-    all_dishes = menu_agent.get_menu()
+    # menu = menu_agent.get_menu()
+    # personalized_menu = menu_agent.get_customized_menu("Cust_000"+customer_id)
 
     # Log "View Menu" activity for specific customer monitoring
     monitoring_agent.view_menu(customer_id)
 
-    return {
-        # "category_filters": [],          # placeholder
-        # "smart_combos": [],              # placeholder
-        # "recommendations": [],           # placeholder
-        "menu": all_dishes
-    }
+    # test code to fetch menu in in main.py:
+    # return {
+    #     # "category_filters": [],          # placeholder
+    #     # "smart_combos": [],              # placeholder
+    #     # "recommendations": [],           # placeholder
+    #     "menu": menu,
+    #     "customized_menu": personalized_menu
+    # }
 
 # ---------------------------------------------------------------------------------------
 # post endpoint: update-cart
@@ -355,11 +365,11 @@ def health():
 # DB:
 # - no updates to DB
 # ---------------------------------------------------------------------------------------
-@app.post("/llm-chat", response_model=ChatResponse)
-async def llm_chat(req: ChatRequest):
-    # place holders
-    req = req
-    return
+# @app.post("/llm-chat", response_model=ChatResponse)
+# async def llm_chat(req: ChatRequest):
+#     # place holders
+#     req = req
+#     return
 
 # ---------------------------------------------------------------------------------------
 # post endpoint: end-chat
@@ -372,12 +382,12 @@ async def llm_chat(req: ChatRequest):
 # - Chats sheet: Chat_ID, Customer_ID, Customer_Name, Customer_Phone, Customer_Email, Chat_Date_Time, Chat_Session_Text
 #   - chat session records (if any) are stored in DB against the respective customer profile (name, phone number, email address)
 # ---------------------------------------------------------------------------------------
-@app.post("/end-chat")
-def end_chat(end_chat: bool):
-    # place holders
-    end_chat = end_chat
-    # return {"message": "Chat session ended and data saved successfully"}
-    return
+# @app.post("/end-chat")
+# def end_chat(end_chat: bool):
+#     # place holders
+#     end_chat = end_chat
+#     # return {"message": "Chat session ended and data saved successfully"}
+#     return
 
 # ---------------------------------------------------------------------------------------
 # post endpoint: campaign
@@ -398,17 +408,25 @@ def add_campaign(campaign: Campaign):
     return
 
 # test hook
+
+
 if __name__ == "__main__":
     print("🧪 Backend local test mode")
 
-    menu_agent = MenuAgent()
+    # test code to fetch menu in main.py:
+    # from agents.menu import MenuAgent
+    # menu_agent = MenuAgent()
 
-    menu = menu_agent.get_menu()
-    for item in menu:
-        print(item)
+    # fetch name, price of all menu items
+    # menu = menu_agent.get_menu()
+    # print(f"➡️ Items returned: {len(menu)}\n")
+    # for item in menu:
+    #     print(item)
 
-    personalized_menu = menu_agent.get_customized_menu("Cust_0004")
-    print(f"➡️ Items returned: {len(personalized_menu)}\n")
-    for item in personalized_menu:
-        print(item)
+    # fetch name, price, matching, rank from customized menu
+    # personalized_menu = menu_agent.get_customized_menu("Cust_0004")
+    # print(f"➡️ Items returned: {len(personalized_menu)}\n")
+    # for item in personalized_menu:
+    #     print(item)
+
 
