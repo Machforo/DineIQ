@@ -268,7 +268,7 @@ Chat Text:
         # result = json.loads(response)
         # if result is None:
         #     result = {"dietary": None, "attitude": None, "favorites": []}
-        print("\nResult:", result, "\n")
+        print("\nChat Inference Result:", result, "\n")
     except Exception as e:
         print("chat: exception -> ", repr(e))
         return {"dietary": None, "attitude": None, "favorites": []}
@@ -276,16 +276,17 @@ Chat Text:
     # Validate and normalize
     dietary = result.get("dietary")
     attitude = result.get("attitude")
-    favorites = result.get("favorites", [])
+    favorites = result.get("favorite_food_items", [])
 
     dietary = dietary if dietary in ALLOWED_DIETARY else None
     attitude = attitude if attitude in ALLOWED_ATTITUDE else None
     if not isinstance(favorites, list):
+        print("No favorites extracted from: ", favorites)
         favorites = []
 
     # return with all categories
     print (
-        "chat: ",
+        "Chat Inference final outcome: \n",
         "dietary: ", dietary,
         "attitude: ", attitude,
         "favorites: ", favorites
