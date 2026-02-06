@@ -72,6 +72,7 @@ def check_user(payload: dict):
             "status": "exists",
             "name": user["name"],
             "email": user["email"],
+            # "message": "OTP sent to email"     # add real customer email address
         }
 
     if method == "phone":
@@ -86,6 +87,7 @@ def check_user(payload: dict):
             "status": "exists",
             "name": user["name"],
             "mobile": user["mobile"],
+            # "message": "OTP sent to mobile"     # add real customer mobile number
         }
 
     raise HTTPException(status_code=400, detail="Invalid login method")

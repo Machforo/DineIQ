@@ -7,7 +7,7 @@ import os
 import re
 import time
 from datetime import datetime
-from dateutil import parser
+# from dateutil import parser
 
 from config import REQUEST_DELAY
 
@@ -90,8 +90,8 @@ def process_campaigns():
         campaign_id = str(row.get("Campaign_ID", "")).strip()
         campaign_text = str(row.get("Campaign_Text", "")).strip()
         target_category = str(row.get("Target_Customer_Category", "")).strip()
-        start_dt_str = str(row.get("Campaign_Start_DateTime", "")).strip()
-        end_dt_str = str(row.get("Campaign_End_DateTime", "")).strip()
+        start_dt_str = row.get("Campaign_Start_DateTime", "")
+        end_dt_str = row.get("Campaign_End_DateTime", "")
         current_status = str(row.get("Campaign_Status", "")).strip().upper()
 
         # Skip incomplete rows
@@ -100,8 +100,8 @@ def process_campaigns():
 
         # Parse date-times
         try:
-            start_dt = parser.parse(start_dt_str)
-            end_dt = parser.parse(end_dt_str)
+            start_dt = datetime.strptime(start_dt_str, "%Y-%m-%d %H:%M").replace(second=0)
+            end_dt = datetime.strptime(end_dt_str, "%Y-%m-%d %H:%M").replace(second=0)
         except Exception as e:
             print(f"⚠️ Could not parse date-time at row {idx+1}: {e}")
             continue
@@ -114,10 +114,14 @@ def process_campaigns():
             campaignIdUpdated = True
             print(f"\n🆔 Assigned Campaign_ID: {campaign_id}")
 
+        # test datetime
+        # print(f"Present date-time is: {now}")
+        # print(f"{campaign_id} Start and End date-time are: {start_dt} and {end_dt}")
+
         # Determine Campaign_Status
-        if start_dt <= now < end_dt:
+        if start_dt <= now <= end_dt:
             new_status = "ACTIVE"
-        elif now >= end_dt:
+        elif now > end_dt:
             new_status = "INACTIVE"
         else:
             new_status = "UPCOMING"
