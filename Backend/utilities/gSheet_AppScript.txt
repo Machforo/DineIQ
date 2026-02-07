@@ -759,74 +759,74 @@ function saveChatToSheet(session) {
 // -----------------------------------------------------------
 // Helper: Save campaign data to "Campaigns" sheet
 // -----------------------------------------------------------
-function saveCampaignToSheet(data) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("Campaigns");
-  if (!sheet) throw new Error("Campaigns sheet not found");
+// function saveCampaignToSheet(data) {
+//   const ss = SpreadsheetApp.getActiveSpreadsheet();
+//   const sheet = ss.getSheetByName("Campaigns");
+//   if (!sheet) throw new Error("Campaigns sheet not found");
 
-  let count = Number(data.campaignMessageCount) || 0;
-  if (count > 10) count = 10;
+//   let count = Number(data.campaignMessageCount) || 0;
+//   if (count > 10) count = 10;
 
-  ensureCampaignColumns(count);
+//   ensureCampaignColumns(count);
 
-  // Read headers
-  let headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  headers = headers.map(h => (typeof h === 'string' ? h.trim() : h));
+//   // Read headers
+//   let headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+//   headers = headers.map(h => (typeof h === 'string' ? h.trim() : h));
 
-  const row = new Array(headers.length).fill("");
+//   const row = new Array(headers.length).fill("");
 
-  const fieldMap = {
-    "Campaign_Text": "campaignText",
-    "Target_Customer_Category": "targetCustomerCategory",
-    "Campaign_Start_DateTime": "startDateTime",
-    "Campaign_End_DateTime": "endDateTime",
-    "Campaign_Message_Count": "campaignMessageCount",
-    "Campaign_Type" : "campaignType",
-    "Campaign_Status": "campaignStatus"
-  };
+//   const fieldMap = {
+//     "Campaign_Text": "campaignText",
+//     "Target_Customer_Category": "targetCustomerCategory",
+//     "Campaign_Start_DateTime": "startDateTime",
+//     "Campaign_End_DateTime": "endDateTime",
+//     "Campaign_Message_Count": "campaignMessageCount",
+//     "Campaign_Type" : "campaignType",
+//     "Campaign_Status": "campaignStatus"
+//   };
 
-  // Fill base fields
-  headers.forEach((header, idx) => {
-    if (data[header] !== undefined) {
-      row[idx] = data[header];
-      return;
-    }
-    const fk = fieldMap[header];
-    if (fk && data[fk] !== undefined) {
-      row[idx] = data[fk];
-    }
-  });
+//   // Fill base fields
+//   headers.forEach((header, idx) => {
+//     if (data[header] !== undefined) {
+//       row[idx] = data[header];
+//       return;
+//     }
+//     const fk = fieldMap[header];
+//     if (fk && data[fk] !== undefined) {
+//       row[idx] = data[fk];
+//     }
+//   });
 
-  // Fill message templates & timings
-  for (let i = 1; i <= count; i++) {
-    const templateKeyFrontend = `messageTemplate${i}`;
-    const timingKeyFrontend = `messageSendTiming${i}`;
+//   // Fill message templates & timings
+//   for (let i = 1; i <= count; i++) {
+//     const templateKeyFrontend = `messageTemplate${i}`;
+//     const timingKeyFrontend = `messageSendTiming${i}`;
 
-    const templateHeader = `Message Template #${i}`;
-    const timingHeader = `Message Send Timing #${i}`;
+//     const templateHeader = `Message Template #${i}`;
+//     const timingHeader = `Message Send Timing #${i}`;
 
-    const templateCol = headers.indexOf(templateHeader);
-    const timingCol = headers.indexOf(timingHeader);
+//     const templateCol = headers.indexOf(templateHeader);
+//     const timingCol = headers.indexOf(timingHeader);
 
-    if (templateCol !== -1) {
-      if (data[templateKeyFrontend] !== undefined) {
-        row[templateCol] = data[templateKeyFrontend];
-      } else if (data[templateHeader] !== undefined) {
-        row[templateCol] = data[templateHeader];
-      }
-    }
+//     if (templateCol !== -1) {
+//       if (data[templateKeyFrontend] !== undefined) {
+//         row[templateCol] = data[templateKeyFrontend];
+//       } else if (data[templateHeader] !== undefined) {
+//         row[templateCol] = data[templateHeader];
+//       }
+//     }
 
-    if (timingCol !== -1) {
-      if (data[timingKeyFrontend] !== undefined) {
-        row[timingCol] = data[timingKeyFrontend];
-      } else if (data[timingHeader] !== undefined) {
-        row[timingCol] = data[timingHeader];
-      }
-    }
-  }
+//     if (timingCol !== -1) {
+//       if (data[timingKeyFrontend] !== undefined) {
+//         row[timingCol] = data[timingKeyFrontend];
+//       } else if (data[timingHeader] !== undefined) {
+//         row[timingCol] = data[timingHeader];
+//       }
+//     }
+//   }
 
-  sheet.appendRow(row);
-}
+//   sheet.appendRow(row);
+// }
 
 /* ============================================================
    WEB APP ENTRY POINTS
@@ -1048,8 +1048,8 @@ function doPost(e) {
     // ----------------------------------------------
     // [7] Handle campaigns
     // ----------------------------------------------
-    saveCampaignToSheet(data);
-    return jsonResponse({ status: "success", message: "Campaign saved" });
+    // saveCampaignToSheet(data);
+    // return jsonResponse({ status: "success", message: "Campaign saved" });
 
   } catch (err) {
     // ----------------------------------------------
