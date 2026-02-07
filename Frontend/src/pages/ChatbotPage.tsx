@@ -143,31 +143,57 @@ const ChatbotPage = () => {
     saveSession();
   };
 
-  const saveSession = async () => {
-    try {
-      // If clientInfo fields are missing, just use empty strings
-      const session = createSessionObject(messages, {
+const saveSession = async () => {
+  try {
+    const session = createSessionObject(
+      messages,
+      {
         name: clientInfo.name,
         email: clientInfo.email,
         phone: clientInfo.phone
-      }, sessionStartTime);
+      },
+      sessionStartTime
+    );
 
-      await saveChatToBackend(session);
+    const result = await saveChatToBackend(session);
 
+    // 1️⃣ Success
+    if (result.status === "success") {
       setCurrentSession(session);
       setIsModalOpen(true);
 
       toast({
         title: "Chat saved",
-        description: "Session stored in backend"
+        description: `Chat ID: ${result.chatId}`
       });
-    } catch (error) {
+    }
+
+    // 2️⃣ Customer not registered
+    else if (result.status === "ignored") {
       toast({
-        title: "Error saving chat",
+        title: "Customer not registered",
+        description: "Chat was not saved.",
         variant: "destructive"
       });
     }
-  };
+
+    // 3️⃣ Any other error
+    else {
+      toast({
+        title: "Error saving chat",
+        description: result.message || "Unknown error",
+        variant: "destructive"
+      });
+    }
+
+  } catch (error) {
+    toast({
+      title: "Error saving chat",
+      description: "Unexpected failure",
+      variant: "destructive"
+    });
+  }
+};
 
   const handleCloseModal = () => {
     setIsModalOpen(false);

@@ -23,15 +23,15 @@ export interface ChatSession {
   transcriptText: string;
 }
 
-export function generateClientId(): string {
-  const num = Math.floor(10000 + Math.random() * 90000); // 5-digit number
-  return `Cust_${num}`;
-}
+// export function generateClientId(): string {
+//   const num = Math.floor(10000 + Math.random() * 90000); // 5-digit number
+//   return `Cust_${num}`;
+// }
 
-export function generateChatId(): string {
-  const num = Math.floor(10000 + Math.random() * 90000); // 5-digit number
-  return `Chat_${num}`;
-}
+// export function generateChatId(): string {
+//   const num = Math.floor(10000 + Math.random() * 90000); // 5-digit number
+//   return `Chat_${num}`;
+// }
 
 export function formatTranscript(messages: ChatMessage[], clientName: string): string {
   return messages
@@ -47,8 +47,8 @@ export function createSessionObject(
   clientInfo: ClientInfo,
   sessionStartTime: Date
 ): ChatSession {
-  const clientId = generateClientId();
-  const chatId = generateChatId();
+  const clientId = "";
+  const chatId = "";
 
   const date = sessionStartTime.toLocaleDateString('en-US', {
     year: 'numeric', month: '2-digit', day: '2-digit'
@@ -74,7 +74,7 @@ export function createSessionObject(
 /* -----------------------------------------------------------
    SAVE CHAT → backend (not Apps Script)
 ----------------------------------------------------------- */
-export async function saveChatToBackend(sessionObject: ChatSession): Promise<void> {
+export async function saveChatToBackend(sessionObject: ChatSession): Promise<any> {
   console.log("📤 Sending session to backend:", sessionObject);
 
   try {
@@ -88,19 +88,17 @@ export async function saveChatToBackend(sessionObject: ChatSession): Promise<voi
 
     if (!response.ok) {
       console.error("❌ Backend save failed:", response.statusText);
-      return;
+      return { status: "error", message: "Backend error" };
     }
+
     const data = await response.json();
-
-    // const text = await response.text();
-    // console.log("Raw Apps Script response:", text);
-    // const data = JSON.parse(text); // parse manually if needed
-
     console.log("✅ Backend save result:", data);
 
+    return data;   // ✅ return response
+
   } catch (error) {
-    // console.log("✅ Backend save error:", data);
     console.error("❌ Error saving chat:", error);
+    return { status: "error", message: "Network error" };
   }
 }
 
