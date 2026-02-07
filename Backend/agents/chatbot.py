@@ -4,7 +4,7 @@
 # Library and Packages Import
 # ---------------------------------------------------------
 import os, re
-# import google.generativeai as genai
+import google.generativeai as genai
 # import httpx  # async HTTP client
 # import json
 from fastapi import APIRouter
@@ -23,6 +23,12 @@ GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "").strip()
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID", "").strip()
 APPS_SCRIPT_URL = os.environ.get("APPS_SCRIPT_URL", "").strip()
+
+# ---------------------------------------------------------
+# llm Client
+# ---------------------------------------------------------
+from services.llm import GeminiClient
+gemini_client = GeminiClient()
 
 # ---------------------------------------------------------
 # Sheets Client
@@ -103,27 +109,24 @@ Always prioritize customer satisfaction and provide exceptional service.
 
 """
 # ---------------------------------------------------------
-# FORMAT MESSAGES FOR GEMINI
+# FORMAT PROMT FOR GEMINI
 # ---------------------------------------------------------
-def convert_messages(history, system_prompt, client_name):
-    messages = [
-        {
-            "role": "user",
-            "parts": [{
-                "text": system_prompt.replace("{clientName}", client_name)
-            }]
-        }
-    ]
+def build_prompt(history, system_prompt, client_name, user_message):
+    """
+    Convert chat history into a single text prompt
+    for LLM service.
+    """
+    lines = [system_prompt.replace("{clientName}", client_name), "\nConversation:\n"]
 
     for item in history:
-        role = "model" if item.role == "ai" else "user"
+        role = "Assistant" if item.role == "ai" else "User"
+        lines.append(f"{role}: {item.text}")
 
-        messages.append({
-            "role": role,
-            "parts": [{"text": item.text}]
-        })
+    # latest message
+    lines.append(f"User: {user_message}")
+    lines.append("Assistant:")
 
-    return messages
+    return "\n".join(lines)
 
 # -----------------------------
 # Health Check (Optional)
@@ -139,31 +142,24 @@ def health():
 async def llm_chat(req: ChatRequest):
     print("\n🔥 /llm-chat endpoint HIT")
 
-    messages = convert_messages(
+    prompt = build_prompt(
         req.chatHistory,
         SYSTEM_PROMPT,
-        req.clientName or "Guest"
+        req.clientName or "Guest",
+        req.userMessage
     )
 
-    # append fresh user message
-    messages.append({
-        "role": "user",
-        "parts": [{"text": req.userMessage}]
-    })
-
-    import google.generativeai as genai
-    genai.configure(api_key=GEMINI_API_KEY)
-
     try:
-        model = genai.GenerativeModel(model_name=GEMINI_MODEL)
-        response = model.generate_content(contents=messages)
-        ai_reply = response.text
+        ai_reply = gemini_client.call_gemini(prompt)
+
+        if not ai_reply:
+            raise Exception("Empty response from LLM")
+
     except Exception as e:
-        print("❌ Gemini API error:", e)
+        print("❌ LLM error:", e)
         return ChatResponse(response=str(e))
 
     return ChatResponse(response=ai_reply)
-
 
 # ---------------------------------------------------------
 # Helper: Find customer in Customer_Auth
