@@ -1,159 +1,260 @@
-# DineIQ\Backend\services\campaings.py
+# DineIQ\Backend\services\campaigns.py
 
 # ---------------------------------------------------------
 # Library and Packages Import
 # ---------------------------------------------------------
 import os
 import re
-import time
+from typing import List
 from datetime import datetime
-# from dateutil import parser
+from fastapi import APIRouter, Request, HTTPException
+from pydantic import BaseModel, Field
 
 from config import REQUEST_DELAY
 
-# -------------------------------------------------------------------
-# 🔧 SETUP KEYS and URLs
-# -------------------------------------------------------------------
+# ---------------------------------------------------------
+# Load environment variables from .env file
+# ---------------------------------------------------------
 from dotenv import load_dotenv
-
 load_dotenv()
 
+# ---------------------------------------------------------
+# Sheets Client
+# ---------------------------------------------------------
 from services.sheets import SheetsClient
 sheets_client = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
 
-from services.llm import GeminiClient
-gemini_client = GeminiClient()
+CAMPAIGNS_SHEET = "Campaigns"
+MAX_MESSAGES = 10
 
-CAMPAIGNS_SHEET = "Campaigns"   # Writable from Dashboard Campaign Form, Partially updated with Automation
+# ---------------------------------------------------------
+# Router
+# ---------------------------------------------------------
+campaigns_router = APIRouter()
 
-# -------------------------------------------------------------------
-# 🎯 CAMPAIGN LOGIC
-# -------------------------------------------------------------------
-def generate_campaign_id(existing_ids):
+# ---------------------------------------------------------
+# Internal Model
+# ---------------------------------------------------------
+class CampaignInternal(BaseModel):
+    campaign_text: str
+    target_customer_category: str
+    start_datetime: str
+    end_datetime: str
+    campaign_message_count: int = Field(ge=0, le=10)
+    campaign_type: str = ""
+    message_templates: List[str]
+    message_send_timings: List[str]
+
+
+# ---------------------------------------------------------
+# Utilities
+# ---------------------------------------------------------
+def generate_campaign_id(existing_ids: list[str]) -> str:
     pattern = re.compile(r"Cmp_(\d+)")
-    nums = [int(pattern.search(cid).group(1)) for cid in existing_ids if pattern.search(cid)]
+    nums = [
+        int(pattern.search(cid).group(1))
+        for cid in existing_ids
+        if cid and pattern.search(cid)
+    ]
     next_id = max(nums) + 1 if nums else 1
     return f"Cmp_{next_id:04d}"
 
-# -------------------------------------------------------------------
-# 🚀 MAIN PROCESS
-# -------------------------------------------------------------------
-def process_campaigns():
-    """
-    Google Sheets database document: 'DineIQ_DB' has following fields in 'Campaigns' sheet:
-    Campaign_ID, 
-    Campaign_Text, 
-    Target_Customer_Category, 
-    Campaign_Start_DateTime, 
-    Campaign_End_DateTime, 
-    Campaign_Message_Count, 
-    Campaign_Type, 
-    Campaign_Status, 
-    Message_Template, 
-    Message_Send_Timing
-    
-    Campaign Data is updated from a Campign form in Dashboard.
-    All fields except Campaign_ID and Campaign_Status are written.
-    Note: Campaign_Type is not yet processed. It is meant to be provided from Camapaign form later.
-    
-    In process_campaigns(), Campaign_ID and Campaign_Status are auto-updated.
-    Only the campaigns not processed before are analyzed.
-    
-    """
-    print("#" * 100)
-    print("📢 Campaigns Processing started ...")
 
-    # Initialize Sheets Client
+def compute_campaign_status(start_dt: datetime, end_dt: datetime) -> str:
+    now = datetime.now()
+    if start_dt <= now <= end_dt:
+        return "ACTIVE"
+    if now > end_dt:
+        return "INACTIVE"
+    return "UPCOMING"
+
+
+# ---------------------------------------------------------
+# Sheet helpers (HEADER CREATION ONLY)
+# ---------------------------------------------------------
+def _get_campaigns_sheet_id() -> int:
+    meta = sheets_client._service.get(
+        spreadsheetId=sheets_client.spreadsheet_id
+    ).execute()
+
+    for s in meta["sheets"]:
+        if s["properties"]["title"] == CAMPAIGNS_SHEET:
+            return s["properties"]["sheetId"]
+
+    raise RuntimeError("Campaigns sheet not found")
+
+
+def ensure_message_columns(count: int):
+    # Fetch current headers
+    result = sheets_client._service.values().get(
+        spreadsheetId=sheets_client.spreadsheet_id,
+        range=f"{CAMPAIGNS_SHEET}!1:1",
+    ).execute()
+
+    headers = result.get("values", [[]])[0]
+    headers = [h.strip() for h in headers]
+
+    sheet_id = _get_campaigns_sheet_id()
+    requests = []
+
+    def has_col(name: str) -> bool:
+        return name in headers
+
+    for i in range(1, count + 1):
+        tmpl_col = f"Message_Template #{i}"
+        time_col = f"Message_Send_Timing #{i}"
+
+        for col_name in (tmpl_col, time_col):
+            if not has_col(col_name):
+                col_index = len(headers)
+
+                requests.append({
+                    "updateCells": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 0,
+                            "endRowIndex": 1,
+                            "startColumnIndex": col_index,
+                            "endColumnIndex": col_index + 1,
+                        },
+                        "rows": [{
+                            "values": [{
+                                "userEnteredValue": {"stringValue": col_name}
+                            }]
+                        }],
+                        "fields": "userEnteredValue",
+                    }
+                })
+
+                headers.append(col_name)  # 🔑 immediately extend header list
+
+    if requests:
+        sheets_client._service.batchUpdate(
+            spreadsheetId=sheets_client.spreadsheet_id,
+            body={"requests": requests},
+        ).execute()
+
+
+
+# ---------------------------------------------------------
+# Payload normalization
+# ---------------------------------------------------------
+def normalize_frontend_campaign(payload: dict) -> CampaignInternal:
+    templates, timings = [], []
+
+    count = int(payload.get("campaignMessageCount", 0))
+
+    for i in range(1, count + 1):
+        if payload.get(f"messageTemplate{i}"):
+            templates.append(payload[f"messageTemplate{i}"])
+        if payload.get(f"messageSendTiming{i}"):
+            timings.append(payload[f"messageSendTiming{i}"])
+
+    return CampaignInternal(
+        campaign_text=payload["campaignText"],
+        target_customer_category=payload["targetClientCategory"],
+        start_datetime=payload["startDateTime"],
+        end_datetime=payload["endDateTime"],
+        campaign_message_count=count,
+        campaign_type=payload.get("campaignType", ""),
+        message_templates=templates,
+        message_send_timings=timings,
+    )
+
+
+# ---------------------------------------------------------
+# Core processor
+# ---------------------------------------------------------
+def process_single_campaign(campaign: CampaignInternal):
+    # Initialize Sheets service
     sheets_client.init_service()
 
-    # Process Campaigns sheet
-    df_campaigns = sheets_client.read_sheet(CAMPAIGNS_SHEET)
+    # 1️⃣ Ensure message columns exist (structure mutation)
+    ensure_message_columns(campaign.campaign_message_count)
 
-    # Ensure required columns exist
-    for col in ["Campaign_ID", "Campaign_Status"]:
-        if col not in df_campaigns.columns:
-            df_campaigns[col] = ""
+    # 2️⃣ RE-READ sheet so pandas sees new headers (CRITICAL)
+    df = sheets_client.read_sheet(CAMPAIGNS_SHEET)
 
-    print(f"\n📢 Processing {len(df_campaigns)} campaigns...")
+    # 3️⃣ Generate Campaign ID
+    existing_ids = (
+        df["Campaign_ID"].dropna().astype(str).tolist()
+        if "Campaign_ID" in df.columns
+        else []
+    )
+    campaign_id = generate_campaign_id(existing_ids)
 
-    existing_ids = df_campaigns["Campaign_ID"].dropna().tolist()
-    now = datetime.now()
+    # 4️⃣ Compute status
+    start_dt = datetime.strptime(campaign.start_datetime, "%Y-%m-%d %H:%M")
+    end_dt = datetime.strptime(campaign.end_datetime, "%Y-%m-%d %H:%M")
+    status = compute_campaign_status(start_dt, end_dt)
 
-    # Columns to be written
-    columnsToWrite = []
+    # 5️⃣ Build a row strictly aligned to sheet headers
+    new_row = {col: "" for col in df.columns}
 
-    # Update flags
-    campaignIdUpdated = False
-    campaignStatusUpdated = False
+    # Core campaign fields
+    new_row.update({
+        "Campaign_ID": campaign_id,
+        "Campaign_Text": campaign.campaign_text,
+        "Target_Customer_Category": campaign.target_customer_category,
+        "Campaign_Start_DateTime": campaign.start_datetime,
+        "Campaign_End_DateTime": campaign.end_datetime,
+        "Campaign_Message_Count": campaign.campaign_message_count,
+        "Campaign_Type": campaign.campaign_type or "",
+        "Campaign_Status": status,
+    })
 
-    for idx, row in df_campaigns.iterrows():
-        campaign_id = str(row.get("Campaign_ID", "")).strip()
-        campaign_text = str(row.get("Campaign_Text", "")).strip()
-        target_category = str(row.get("Target_Customer_Category", "")).strip()
-        start_dt_str = row.get("Campaign_Start_DateTime", "")
-        end_dt_str = row.get("Campaign_End_DateTime", "")
-        current_status = str(row.get("Campaign_Status", "")).strip().upper()
+    # 6️⃣ Populate dynamic message columns
+    for i in range(1, MAX_MESSAGES + 1):
+        tmpl_col = f"Message_Template #{i}"
+        time_col = f"Message_Send_Timing #{i}"
 
-        # Skip incomplete rows
-        if not all([campaign_text, target_category, start_dt_str, end_dt_str]):
-            continue
+        if tmpl_col in new_row:
+            new_row[tmpl_col] = (
+                campaign.message_templates[i - 1]
+                if i <= len(campaign.message_templates)
+                else ""
+            )
 
-        # Parse date-times
-        try:
-            start_dt = datetime.strptime(start_dt_str, "%Y-%m-%d %H:%M").replace(second=0)
-            end_dt = datetime.strptime(end_dt_str, "%Y-%m-%d %H:%M").replace(second=0)
-        except Exception as e:
-            print(f"⚠️ Could not parse date-time at row {idx+1}: {e}")
-            continue
+        if time_col in new_row:
+            new_row[time_col] = (
+                campaign.message_send_timings[i - 1]
+                if i <= len(campaign.message_send_timings)
+                else ""
+            )
 
-        # Auto-generate Campaign_ID if missing
-        if not campaign_id:
-            campaign_id = generate_campaign_id(existing_ids)
-            df_campaigns.at[idx, "Campaign_ID"] = campaign_id
-            existing_ids.append(campaign_id)
-            campaignIdUpdated = True
-            print(f"\n🆔 Assigned Campaign_ID: {campaign_id}")
+    # 7️⃣ Append row
+    df.loc[len(df)] = new_row
 
-        # test datetime
-        # print(f"Present date-time is: {now}")
-        # print(f"{campaign_id} Start and End date-time are: {start_dt} and {end_dt}")
+    # 8️⃣ Sanitize NaNs (Sheets hates NaN)
+    df = df.fillna("")
 
-        # Determine Campaign_Status
-        if start_dt <= now <= end_dt:
-            new_status = "ACTIVE"
-        elif now > end_dt:
-            new_status = "INACTIVE"
-        else:
-            new_status = "UPCOMING"
+    # 9️⃣ Persist back to Sheets
+    sheets_client.update_sheet(CAMPAIGNS_SHEET, df)
 
-        if new_status != current_status:
-            df_campaigns.at[idx, "Campaign_Status"] = new_status
-            campaignStatusUpdated = True
-            print(f"📅 {campaign_id} status set to {new_status}")
+    print("📐 Columns count:", len(df.columns))
+    print("📍 Last column:", df.columns[-1])
 
-        time.sleep(REQUEST_DELAY)
+    return campaign_id, status
 
-    # Append columns to write
-    if campaignIdUpdated:
-        columnsToWrite.append("Campaign_ID")
-    if campaignStatusUpdated:
-        columnsToWrite.append("Campaign_Status")
 
-    # Update Campaigns sheet only if needed
-    if columnsToWrite:
-        sheets_client.update_sheet(
-            CAMPAIGNS_SHEET,
-            df_campaigns,
-            columns_to_update=columnsToWrite
-        )
-        print("\n✅ Campaigns updated successfully.")
-    else:
-        print("\n✅ No campaign updates detected.")
 
-    print("#" * 100)
-    
-# -------------------------------------------------------------------
-# ▶️ RUN
-# -------------------------------------------------------------------
-if __name__ == "__main__":
-    process_campaigns()
+# ---------------------------------------------------------
+# 🚀 API: Add Campaign
+# ---------------------------------------------------------
+@campaigns_router.post("/add")
+async def add_campaign(request: Request):
+    payload = await request.json()
+    print("📥 Raw campaign payload:", payload)
+
+    try:
+        campaign = normalize_frontend_campaign(payload)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    campaign_id, status = process_single_campaign(campaign)
+
+    return {
+        "campaign_id": campaign_id,
+        "campaign_status": status,
+        "message": "Campaign created successfully",
+    }

@@ -67,7 +67,7 @@ class SheetsClient:
         """
         result = self._service.values().get(
             spreadsheetId=self.spreadsheet_id,
-            range=f"{sheet_name}!A:Z",
+            range=f"{sheet_name}!A:ZZ",
         ).execute()
 
         values = result.get("values", [])
@@ -89,7 +89,7 @@ class SheetsClient:
     def read_sheet_rows(self, sheet_name: str) -> list[dict]:
         result = self._service.values().get(
             spreadsheetId=self.spreadsheet_id,
-            range=f"{sheet_name}!A:Z",
+            range=f"{sheet_name}!A:ZZ",
         ).execute()
 
         values = result.get("values", [])
@@ -154,7 +154,7 @@ class SheetsClient:
         """
         self._service.values().append(
             spreadsheetId=self.spreadsheet_id,
-            range=f"{sheet_name}!A:Z",
+            range=f"{sheet_name}!A:ZZ",
             valueInputOption="RAW",
             insertDataOption="INSERT_ROWS",
             body={"values": [row]},

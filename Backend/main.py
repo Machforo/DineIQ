@@ -18,30 +18,26 @@ from typing import List, Optional
 from routes.auth import auth_router
 # API Router for Chatbot
 from agents.chatbot import chatbot_router
+# API router for Campaigns
+from services.campaigns import campaigns_router
 # API Router for Fetching menu
 from agents.menu import menu_router
 
 # import agents and services classes
-# from services.auth_service          import AuthService
 # from services.profile_service       import ProfileService
 # from services.cart_service          import CartService
 # from services.order_service         import OrderService
 # from agents.pricing                 import PricingAgent
 # from agents.recommendation          import RecommendationAgent
 from agents.monitoring              import MonitoringAgent
-# from agents.chat                    import ChatAgent
-# from agents.campaign                import CampaignService
 
 # Initialize agents and services
-# auth_service            = AuthService()
 # profile_service         = ProfileService()
 # cart_service            = CartService()
 # order_service           = OrderService()
 # pricing_agent           = PricingAgent()
 # recommendation_agent    = RecommendationAgent()
 monitoring_agent        = MonitoringAgent()
-# chat_agent              = ChatAgent()
-# campaign_service        = CampaignService()
 
 
 # ---------------------------------------------------------
@@ -60,6 +56,7 @@ app.add_middleware(
 # register routes
 app.include_router(auth_router, prefix="/auth")
 app.include_router(chatbot_router, prefix="/chatbot")
+app.include_router(campaigns_router, prefix="/campaigns")
 app.include_router(menu_router, prefix="/menu")
 
 # -----------------------------
