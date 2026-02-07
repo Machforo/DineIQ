@@ -3,12 +3,12 @@
 # ---------------------------------------------------------
 # Library and Packages Import
 # ---------------------------------------------------------
-import os
-import google.generativeai as genai
-import httpx  # async HTTP client
-import json
+import os, re
+# import google.generativeai as genai
+# import httpx  # async HTTP client
+# import json
 from fastapi import APIRouter
-from fastapi import Request
+# from fastapi import Request
 from pydantic import BaseModel
 from datetime import datetime, timezone
 
@@ -31,6 +31,7 @@ from services.sheets import SheetsClient
 sheets_client = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
 
 CHATS_SHEET = "Chats"
+CUSTOMER_AUTH_SHEET = "Customer_Auth"
 
 # ---------------------------------------------------------
 # Router
@@ -165,26 +166,96 @@ async def llm_chat(req: ChatRequest):
 
 
 # ---------------------------------------------------------
+# Helper: Find customer in Customer_Auth
+# ---------------------------------------------------------
+def find_customer_id(email: str, phone: str):
+    """
+    Returns Customer_ID if email or phone matches.
+    Otherwise returns None.
+    """
+    rows = sheets_client.read_sheet_rows("Customer_Auth")
+
+    for r in rows:
+        sheet_email = (r.get("Customer_Email") or "").strip().lower()
+        sheet_phone = (r.get("Customer_Phone") or "").strip()
+
+        if email and email.lower() == sheet_email:
+            return r.get("Customer_ID")
+
+        if phone and phone == sheet_phone:
+            return r.get("Customer_ID")
+
+    return None
+
+# ---------------------------------------------------------
+# Helper: Get next Chat ID
+# ---------------------------------------------------------
+def generate_next_chat_id():
+    """
+    Reads Chats sheet and returns next Chat_ID
+    in format: Chat_00001
+    """
+    try:
+        rows = sheets_client.read_sheet_rows("Chats")
+    except Exception:
+        rows = []
+
+    max_num = 0
+
+    for r in rows:
+        chat_id = r.get("Chat_ID", "")
+        match = re.search(r"Chat_(\d+)", chat_id)
+        if match:
+            num = int(match.group(1))
+            if num > max_num:
+                max_num = num
+
+    next_num = max_num + 1
+    return f"Chat_{str(next_num).zfill(5)}"
+
+# ---------------------------------------------------------
 # SAVE CHAT SESSION ENDPOINT
 # ---------------------------------------------------------
 @chatbot_router.post("/save-chat")
 async def save_chat(session: ChatSession):
     """
-    Receives chat session from frontend and saves it directly to Google Sheets.
+    Receives chat session and saves it only if
+    customer exists in Customer_Auth sheet.
     """
     print("\n🔥 /save-chat endpoint HIT")
     print("📥 Received chat session:", session.model_dump())
 
     try:
-        # Ensure timestamp
+        # 1️⃣ Find existing customer
+        customer_id = find_customer_id(
+            session.clientEmail,
+            session.clientPhone
+        )
+
+        print("Client ID: ", session.clientId)
+        print("Client Name: ", session.clientName)
+        print("Client Email: ", session.clientEmail)
+        print("Client Phone: ", session.clientPhone)
+
+        if not customer_id:
+            print("⚠️ Customer not found. Chat not saved.")
+            return {
+                "status": "ignored",
+                "message": "Customer not registered. Chat not saved."
+            }
+
+        # 2️⃣ Generate next Chat ID
+        chat_id = generate_next_chat_id()
+
+        # 3️⃣ Ensure timestamp
         chat_datetime = session.date
         if not chat_datetime:
             chat_datetime = datetime.now(timezone.utc).isoformat()
 
-        # Match Chats sheet column order
+        # 4️⃣ Prepare row
         row = [
-            session.chatId or "",
-            session.clientId or "",
+            chat_id,
+            customer_id,
             session.clientName or "",
             session.clientPhone or "",
             session.clientEmail or "",
@@ -192,13 +263,15 @@ async def save_chat(session: ChatSession):
             session.transcriptText or "",
         ]
 
+        # 5️⃣ Save
         sheets_client.append_row("Chats", row)
 
-        print("✅ Chat session saved to Google Sheets")
+        print("✅ Chat session saved:", chat_id)
 
         return {
             "status": "success",
-            "message": "Chat session saved"
+            "chatId": chat_id,
+            "customerId": customer_id
         }
 
     except Exception as e:
