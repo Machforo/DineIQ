@@ -4,11 +4,7 @@
 # Library and Packages Import
 # ---------------------------------------------------------
 import os, re
-import google.generativeai as genai
-# import httpx  # async HTTP client
-# import json
 from fastapi import APIRouter
-# from fastapi import Request
 from pydantic import BaseModel
 from datetime import datetime, timezone
 
@@ -19,10 +15,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "").strip()
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID", "").strip()
-APPS_SCRIPT_URL = os.environ.get("APPS_SCRIPT_URL", "").strip()
+
+# ---------------------------------------------------------
+# Menu Agent
+# ---------------------------------------------------------
+from agents.menu import MenuAgent
+menu_agent = MenuAgent()
 
 # ---------------------------------------------------------
 # llm Client
@@ -70,48 +69,80 @@ class ChatSession(BaseModel):
     transcriptText: str
 
 # ---------------------------------------------------------
-# SYSTEM PROMPT FOR RESTAURANT IN-ROOM DINING CHATBOT
+# SYSTEM PROMPT
 # ---------------------------------------------------------
 SYSTEM_PROMPT = """
 You are a highly professional restaurant concierge AI assistant
 
 Your objectives:
+- Respond politely, warmly, and naturally.
+- Always address the client by their name (if provided).
+- Maintain memory of previous chat messages.
+- Tone: friendly, concise, human-like, professional.
+- Provide accurate and helpful information.
+- Ask for Name, Email or Phone if not yet provided, but not for registration or signup.
 
-Respond to a customer (or potential customer) inquiring about restaurant in-room dinning.
-Respond politely, warmly, and naturally.
-Always address the client by their name (if provided).
-Maintain memory of all previous chat messages in the session.
-Your tone: friendly, concise, human-like, professional.
-Provide accurate, helpful, and friendly information about the restaurant.
-DO NOT mention that you are an AI unless the user explicitly asks.
-Your role is ONLY to respond to the client.
-    Do not return JSON or metadata. Return ONLY the reply message.
+Rules:
+- Use menu data if provided.
+- Do NOT invent menu items or prices.
+- Do NOT mention being an AI.
+- You are not here to take any orders or reservation requests.
+- If customer not registered, suggest registration politely.
+- Return ONLY the reply message (no JSON, no metadata).
 
-Your first response can include asking client's name, phone and email, to be able to extract all client information.
-    
-You can not clarify queries regarding:
-- Reservations
-- Tables information
-- Food Recommendations
-- Cancellations
-- Any other non-dining related queries
-In such cases, you can politely inform the customer about your limitation.
-
-There is a restaurant database stored in a google sheets document, named as DineIQ_DB.
-Refer 'Menu' sheet for any menu-related or price-related questions.
-Provide price details only when asked.
-
-Refer 'Customer_Auth' sheet to see if he/she is a registered customer.
-If the customer is a registered customer, greet them warmly and offer personalized assistance.
-If the customer is not registered, politely suggest them to register for a better experience.
-
-Always prioritize customer satisfaction and provide exceptional service.
+For any Any other queries such as Reservations, Tables information, Cancellations, you can politely inform the customer about your limitation.
 
 """
+
 # ---------------------------------------------------------
-# FORMAT PROMT FOR GEMINI
+# MENU INTENT DETECTION
 # ---------------------------------------------------------
-def build_prompt(history, system_prompt, client_name, user_message):
+MENU_KEYWORDS = [
+    "menu",
+    "dish",
+    "food",
+    "eat",
+    "price",
+    "cost",
+    "veg",
+    "non veg",
+    "vegetarian",
+    "recommend",
+    "order",
+    "special",
+]
+
+def is_menu_query(message: str) -> bool:
+    msg = message.lower()
+    return any(word in msg for word in MENU_KEYWORDS)
+
+# ---------------------------------------------------------
+# Helper: Find customer in Customer_Auth
+# ---------------------------------------------------------
+def find_customer_id(email: str, phone: str):
+    """
+    Returns Customer_ID if email or phone matches.
+    Otherwise returns None.
+    """
+    rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
+
+    for r in rows:
+        sheet_email = (r.get("Customer_Email") or "").strip().lower()
+        sheet_phone = (r.get("Customer_Phone") or "").strip()
+
+        if email and email.lower() == sheet_email:
+            return r.get("Customer_ID")
+
+        if phone and phone == sheet_phone:
+            return r.get("Customer_ID")
+
+    return None
+
+
+# ---------------------------------------------------------
+# Helper: FORMAT PROMT FOR GEMINI
+# ---------------------------------------------------------
+def build_prompt(history, system_prompt, client_name, user_message, menu_context=""):
     """
     Convert chat history into a single text prompt
     for LLM service.
@@ -121,6 +152,10 @@ def build_prompt(history, system_prompt, client_name, user_message):
     for item in history:
         role = "Assistant" if item.role == "ai" else "User"
         lines.append(f"{role}: {item.text}")
+
+    if menu_context:
+        lines.append("\nAvailable Menu Items:")
+        lines.append(menu_context)
 
     # latest message
     lines.append(f"User: {user_message}")
@@ -142,57 +177,63 @@ def health():
 async def llm_chat(req: ChatRequest):
     print("\n🔥 /llm-chat endpoint HIT")
 
-    prompt = build_prompt(
-        req.chatHistory,
-        SYSTEM_PROMPT,
-        req.clientName or "Guest",
-        req.userMessage
-    )
-
     try:
-        ai_reply = gemini_client.call_gemini(prompt)
+        # 1️⃣ Check if customer exists
+        # customer_id = find_customer_id(
+        #     req.clientEmail,
+        #     req.clientPhone
+        # )
+
+        # 2️⃣ Detect menu intent
+        menu_context = ""
+
+        if is_menu_query(req.userMessage):
+            print("🍽️ Menu query detected")
+
+            # if customer_id:
+            #     menu = menu_agent.get_customized_menu(customer_id)
+            # else:
+                # menu = menu_agent.get_menu()
+            menu = menu_agent.get_menu()
+
+            # Limit size
+            # menu = menu[:20]
+
+            menu_lines = []
+            for item in menu:
+                price = item.get("price")
+                price_str = f"₹{price}" if price else "Price on request"
+                menu_lines.append(f"- {item['name']} ({price_str})")
+
+            menu_context = "\n".join(menu_lines)
+
+        # 3️⃣ Build final prompt
+        prompt = build_prompt(
+            req.chatHistory,
+            SYSTEM_PROMPT,
+            req.clientName or "Guest",
+            req.userMessage,
+            menu_context
+        )
+
+        # 4️⃣ Call LLM service
+        ai_reply = gemini_client.call_gemini_with_retry(prompt)
 
         if not ai_reply:
             raise Exception("Empty response from LLM")
 
+        return ChatResponse(response=ai_reply)
+
     except Exception as e:
         print("❌ LLM error:", e)
-        return ChatResponse(response=str(e))
-
-    return ChatResponse(response=ai_reply)
+        return ChatResponse(response="Sorry, something went wrong.")
 
 # ---------------------------------------------------------
-# Helper: Find customer in Customer_Auth
-# ---------------------------------------------------------
-def find_customer_id(email: str, phone: str):
-    """
-    Returns Customer_ID if email or phone matches.
-    Otherwise returns None.
-    """
-    rows = sheets_client.read_sheet_rows("Customer_Auth")
-
-    for r in rows:
-        sheet_email = (r.get("Customer_Email") or "").strip().lower()
-        sheet_phone = (r.get("Customer_Phone") or "").strip()
-
-        if email and email.lower() == sheet_email:
-            return r.get("Customer_ID")
-
-        if phone and phone == sheet_phone:
-            return r.get("Customer_ID")
-
-    return None
-
-# ---------------------------------------------------------
-# Helper: Get next Chat ID
+# Helper: Generate next Chat ID
 # ---------------------------------------------------------
 def generate_next_chat_id():
-    """
-    Reads Chats sheet and returns next Chat_ID
-    in format: Chat_00001
-    """
     try:
-        rows = sheets_client.read_sheet_rows("Chats")
+        rows = sheets_client.read_sheet_rows(CHATS_SHEET)
     except Exception:
         rows = []
 
@@ -203,8 +244,7 @@ def generate_next_chat_id():
         match = re.search(r"Chat_(\d+)", chat_id)
         if match:
             num = int(match.group(1))
-            if num > max_num:
-                max_num = num
+            max_num = max(max_num, num)
 
     next_num = max_num + 1
     return f"Chat_{str(next_num).zfill(5)}"
@@ -228,6 +268,7 @@ async def save_chat(session: ChatSession):
             session.clientPhone
         )
 
+        # test
         print("Client ID: ", session.clientId)
         print("Client Name: ", session.clientName)
         print("Client Email: ", session.clientEmail)
@@ -260,7 +301,7 @@ async def save_chat(session: ChatSession):
         ]
 
         # 5️⃣ Save
-        sheets_client.append_row("Chats", row)
+        sheets_client.append_row(CHATS_SHEET, row)
 
         print("✅ Chat session saved:", chat_id)
 
@@ -276,7 +317,6 @@ async def save_chat(session: ChatSession):
             "status": "error",
             "message": str(e)
         }
-
 
 # ---------------------------------------------------------
 # Python-based port reading
