@@ -14,6 +14,7 @@ import CartPage from "@/pages/CartPage";
 import TrackOrderPage from "@/pages/TrackOrderPage";
 import NotFound from "@/pages/NotFound";
 import Payment from "@/pages/Payment";
+import PreferenceScreen from "@/pages/PreferenceScreen";
 import ChatbotPage from "@/pages/ChatbotPage";
 import AIButton from "@/components/AIButton"; // <-- Added AIButton
 
@@ -33,6 +34,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<SplashScreen />} />
               <Route path="/login" element={<LoginScreen />} />
+              <Route path="/preferences" element={<PreferenceScreen />} />
               <Route path="/home" element={<HomeScreen />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/orders" element={<OrderHistoryPage />} />

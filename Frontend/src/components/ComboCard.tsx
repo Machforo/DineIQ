@@ -12,7 +12,7 @@ export default function ComboCard({ item }: ComboCardProps) {
   const savings = item.originalPrice ? item.originalPrice - item.price : 0;
 
   return (
-    <div className="card-dish flex-shrink-0 w-72 snap-center overflow-hidden">
+    <div className="card-dish flex-shrink-0 w-[85vw] max-w-[300px] md:w-72 snap-center overflow-hidden">
       {/* Image */}
       <div className="relative h-36 -mx-4 -mt-4 mb-3">
         <img
@@ -40,7 +40,7 @@ export default function ComboCard({ item }: ComboCardProps) {
       </div>
 
       {/* Combo items */}
-      {item.comboItems && (
+      {item.comboItems && item.comboItems.length > 0 && (
         <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
           {item.comboItems.join(" • ")}
         </p>

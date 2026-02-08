@@ -6,11 +6,14 @@ import { Input } from "@/components/ui/input";
 import { User, Phone, Mail, Loader2, ArrowRight, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 
+import { API_BASE_URL } from "@/config";
+
 export default function LoginScreen() {
   const navigate = useNavigate();
   const { login } = useUser();
   // const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbziwt_310-tDnkzPTpgbgW89M6jxjDXQVbRIn7k-JzBiezCzoDcjhPjDDbZDjVrLf4N5w/exec";
-  const API_BASE_URL = "http://localhost:8000";
+
+
 
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
   const [loginMethod, setLoginMethod] = useState<"email" | "phone">("phone");
@@ -50,7 +53,7 @@ export default function LoginScreen() {
         if (loginMethod === "email") {
           // Email hone par OTP step 2 pe bhej rahe hain
           toast.success("User found! OTP sent to your email.");
-          setStep(2); 
+          setStep(2);
         } else {
           // Mobile number hone par direct login
           toast.success(`Welcome back, ${data.name}!`);
@@ -91,7 +94,7 @@ export default function LoginScreen() {
           1,           // guestCount (default)
           data.name,   // guestName (from backend)
           data.mobile  // phoneNumber (from backend)
-        ); 
+        );
         navigate("/home");
 
       } else {
@@ -131,11 +134,11 @@ export default function LoginScreen() {
         if (data.status === "ok") {
           toast.success("Registration Successful!");
           login(
-          "1",         // tableNumber (not known yet)
-          1,           // guestCount (default)
-          name,        // guestName
-          mobile       // phoneNumber
-        );
+            "1",         // tableNumber (not known yet)
+            1,           // guestCount (default)
+            name,        // guestName
+            mobile       // phoneNumber
+          );
           // Email ko state mein pass karein taki Preference page use save kar sake
           navigate("/home");
         } else {
@@ -164,15 +167,15 @@ export default function LoginScreen() {
         <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8" />
 
         <div className="flex bg-gray-50 p-1.5 rounded-xl mb-6 border border-gray-100">
-          <button onClick={() => {setActiveTab("login"); setStep(1);}} className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${activeTab === "login" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}>Log in</button>
-          <button onClick={() => {setActiveTab("register"); setStep(1);}} className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${activeTab === "register" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}>Sign up</button>
+          <button onClick={() => { setActiveTab("login"); setStep(1); }} className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${activeTab === "login" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}>Log in</button>
+          <button onClick={() => { setActiveTab("register"); setStep(1); }} className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${activeTab === "register" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}>Sign up</button>
         </div>
 
         <div className="space-y-5">
           <div className="mb-2">
             <h2 className="text-2xl font-bold text-gray-900">
-              {activeTab === "login" 
-                ? (step === 1 ? "Welcome Back!" : "Enter Login OTP") 
+              {activeTab === "login"
+                ? (step === 1 ? "Welcome Back!" : "Enter Login OTP")
                 : (step === 1 ? "Create Account" : "Enter OTP")}
             </h2>
           </div>
@@ -238,7 +241,7 @@ export default function LoginScreen() {
           )}
 
           {/* --- UPDATED BUTTON LOGIC --- */}
-          <Button 
+          <Button
             onClick={() => {
               if (activeTab === "login") {
                 step === 1 ? handleLogin() : handleLoginOTPVerify();
@@ -250,7 +253,7 @@ export default function LoginScreen() {
             className="w-full h-14 bg-[#E23744] hover:bg-[#d32f3c] text-white font-bold text-lg rounded-xl shadow-lg mt-2 transition-all"
           >
             {isLoading ? <Loader2 className="animate-spin mr-2" /> : (
-              activeTab === "login" 
+              activeTab === "login"
                 ? (step === 1 ? "Login to Order" : "Verify & Login")
                 : (step === 1 ? "Send OTP" : "Verify & Register")
             )}
@@ -258,7 +261,7 @@ export default function LoginScreen() {
           </Button>
 
           <p className="text-center text-[11px] text-gray-400 mt-4 leading-relaxed">
-            By continuing, you agree to our <br/>
+            By continuing, you agree to our <br />
             <span className="text-gray-600 font-semibold underline">Terms of Service</span> & <span className="text-gray-600 font-semibold underline">Privacy Policy</span>
           </p>
         </div>
