@@ -87,8 +87,15 @@ class GmailClient:
 
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
+                try:
+                    print("🔄 Refreshing Gmail access token...")
+                    creds.refresh(Request())
+                except Exception as e:
+                    print(f"⚠️ Refresh token invalid: {e}. Re-authenticating...")
+                    creds = None
+
+            if not creds:
+                print("🔑 Running local server for Gmail OAuth...")
                 flow = InstalledAppFlow.from_client_secrets_file(
                     self.client_secret_file,
                     self.SCOPES,
