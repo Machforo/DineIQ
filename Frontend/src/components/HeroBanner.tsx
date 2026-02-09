@@ -30,7 +30,7 @@ export default function HeroBanner({ onOrderNow }: HeroBannerProps) {
                     Sizzling <span className="text-yellow-400">Combos</span>
                 </h1>
                 <p className="text-white/90 text-sm md:text-base font-medium mb-6 max-w-xs mx-auto">
-                    Get 50% OFF on our premium AI-curated family feasts. limited time offer!
+                    Discover our premium AI-curated family feasts. limited time offer!
                 </p>
 
                 <button
