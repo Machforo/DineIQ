@@ -108,5 +108,29 @@ export const api = {
             console.error("Combo Gen Error:", e);
             return null;
         }
+    },
+
+    async fetchOrderHistory(email: string) {
+        try {
+            const res = await fetch(`${API_BASE_URL}/order-history/${email}`);
+            return await res.json();
+        } catch (e) {
+            console.error("Order History Error:", e);
+            return { orders: [] };
+        }
+    },
+
+    async placeOrder(orderData: any) {
+        try {
+            const res = await fetch(`${API_BASE_URL}/place-order`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(orderData),
+            });
+            return await res.json();
+        } catch (e) {
+            console.error("Place Order Error:", e);
+            return null;
+        }
     }
 };

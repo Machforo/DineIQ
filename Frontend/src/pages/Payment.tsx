@@ -3,50 +3,103 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 
 // Apna Stripe Public Key yahan dalein
-const stripePromise = loadStripe('pk_test_YOUR_STRIPE_PUBLIC_KEY'); 
+import { useUser } from '@/contexts/UserContext';
+import { useCart } from '@/contexts/CartContext';
+import { api } from '@/api';
+import { toast } from 'sonner';
+
+const stripePromise = loadStripe('pk_test_YOUR_STRIPE_PUBLIC_KEY');
 
 const Payment = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  
-  // Cart se total amount receive karna (agar direct aa raha hai to)
-  // Fallback 0 rakha hai taaki error na aaye
-  const { totalAmount } = location.state || { totalAmount: 0 }; 
+  const { user, refreshOrders } = useUser();
+  const { clearCart } = useCart();
+
+  // Cart se data receive karna
+  const { totalAmount, cartItems, instructions } = location.state || { totalAmount: 0, cartItems: [], instructions: "" };
 
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [loading, setLoading] = useState(false);
 
   // Cash Payment Handler
-  const handleCashPayment = () => {
+  const handleCashPayment = async () => {
     setLoading(true);
-    // Yahan backend API call hogi order save karne ke liye
-    setTimeout(() => {
+
+    const orderData = {
+      customer_email: user?.email || "guest@dineiq.ai",
+      cart_items: cartItems,
+      final_total: totalAmount,
+      discount_amount: 0, // In reality, we should pass this from CartPage
+      payment_method: 'CASH',
+      instructions: instructions
+    };
+
+    try {
+      const response = await api.placeOrder(orderData);
+
+      if (response && response.status === "success") {
+        toast.success("Order Placed Successfully!");
+        clearCart();
+        await refreshOrders(); // Refresh history immediately
+
+        // Success page pe le jayein ya direct home, but user asked for pop-up then home.
+        // navigate('/order-success', { state: { orderId: response.order_id } });
+
+        // Redirection after a few seconds
+        setTimeout(() => {
+          navigate('/home');
+        }, 5000);
+      } else {
+        toast.error(response?.message || "Failed to place order. Please try again.");
+      }
+    } catch (error) {
+      console.error("Payment Error:", error);
+      toast.error("Something went wrong. Please try again.");
+    } finally {
       setLoading(false);
-      // Success page ya Bill generation par bhej dein
-      alert(`Order Placed Successfully! Please pay ₹${totalAmount} at the counter.`);
-      navigate('/order-success'); // Yahan aap apne success page ka route dalein
-    }, 1500);
+    }
   };
 
-  // Online (Stripe) Payment Handler
+  // Online (Stripe) Payment Handler (Mock Update)
   const handleOnlinePayment = async () => {
     setLoading(true);
-    const stripe = await stripePromise;
 
-    // Yahan aapko backend se session ID mangwani padegi
-    // Example call:
-    // const response = await fetch('/create-checkout-session', { method: 'POST' });
-    // const session = await response.json();
-    
-    // Abhi ke liye bas alert dikha raha hu (Integration ke time uncomment karein)
-    alert("Stripe Gateway Opening... (Backend Integration Required)");
-    setLoading(false);
+    // Yahan hum dummy bank gateway feel dene ke liye ek notification dikhayenge
+    toast.info("Connecting to Secure Payment Gateway...");
 
-    // Actual redirect code:
-    // const result = await stripe.redirectToCheckout({
-    //   sessionId: session.id,
-    // });
-    // if (result.error) alert(result.error.message);
+    const orderData = {
+      customer_email: user?.email || "guest@dineiq.ai",
+      cart_items: cartItems,
+      final_total: totalAmount,
+      discount_amount: 0,
+      payment_method: 'ONLINE',
+      instructions: instructions
+    };
+
+    try {
+      // Mock processing delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      const response = await api.placeOrder(orderData);
+
+      if (response && response.status === "success") {
+        toast.success("Online Payment Successful!");
+        clearCart();
+        await refreshOrders();
+
+        setTimeout(() => {
+          navigate('/home');
+        }, 5000);
+      } else {
+        toast.error(response?.message || "Payment Failed. Please try again.");
+      }
+    } catch (error) {
+      console.error("Online Payment Error:", error);
+      toast.error("Something went wrong with the payment.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -68,16 +121,15 @@ const Payment = () => {
       {/* Payment Options */}
       <div className="space-y-4">
         {/* Cash Option */}
-        <label 
-          className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${
-            paymentMethod === 'cash' ? 'border-red-500 bg-red-50' : 'border-gray-200'
-          }`}
+        <label
+          className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'cash' ? 'border-red-500 bg-red-50' : 'border-gray-200'
+            }`}
         >
-          <input 
-            type="radio" 
-            name="payment" 
-            value="cash" 
-            checked={paymentMethod === 'cash'} 
+          <input
+            type="radio"
+            name="payment"
+            value="cash"
+            checked={paymentMethod === 'cash'}
             onChange={() => setPaymentMethod('cash')}
             className="w-5 h-5 text-red-500"
           />
@@ -88,16 +140,15 @@ const Payment = () => {
         </label>
 
         {/* Online Option */}
-        <label 
-          className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${
-            paymentMethod === 'online' ? 'border-red-500 bg-red-50' : 'border-gray-200'
-          }`}
+        <label
+          className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'online' ? 'border-red-500 bg-red-50' : 'border-gray-200'
+            }`}
         >
-          <input 
-            type="radio" 
-            name="payment" 
-            value="online" 
-            checked={paymentMethod === 'online'} 
+          <input
+            type="radio"
+            name="payment"
+            value="online"
+            checked={paymentMethod === 'online'}
             onChange={() => setPaymentMethod('online')}
             className="w-5 h-5 text-red-500"
           />

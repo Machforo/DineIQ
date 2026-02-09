@@ -25,14 +25,17 @@ export default function OrderHistoryPage() {
 
   const allMenuItems = [...menuItems, ...combos, ...chefSpecials];
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
+    const d = typeof date === "string" ? new Date(date) : date;
+    if (isNaN(d.getTime())) return date.toString(); // Fallback if invalid
+
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const day = days[date.getDay()];
-    const dateNum = date.getDate();
-    const month = months[date.getMonth()];
-    const hours = date.getHours();
-    const mins = date.getMinutes().toString().padStart(2, "0");
+    const day = days[d.getDay()];
+    const dateNum = d.getDate();
+    const month = months[d.getMonth()];
+    const hours = d.getHours();
+    const mins = d.getMinutes().toString().padStart(2, "0");
     const ampm = hours >= 12 ? "PM" : "AM";
     const hour12 = hours % 12 || 12;
     return `${day}, ${dateNum} ${month} | ${hour12}:${mins} ${ampm}`;
@@ -160,11 +163,10 @@ export default function OrderHistoryPage() {
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star
                       key={star}
-                      className={`w-4 h-4 ${
-                        star <= order.rating!
+                      className={`w-4 h-4 ${star <= order.rating!
                           ? "fill-gold text-gold"
                           : "text-muted-foreground"
-                      }`}
+                        }`}
                     />
                   ))}
                 </div>
@@ -208,11 +210,10 @@ export default function OrderHistoryPage() {
                   className="p-1 transition-transform hover:scale-110"
                 >
                   <Star
-                    className={`w-10 h-10 transition-colors ${
-                      star <= selectedRating
+                    className={`w-10 h-10 transition-colors ${star <= selectedRating
                         ? "fill-gold text-gold"
                         : "text-muted-foreground hover:text-gold/50"
-                    }`}
+                      }`}
                   />
                 </button>
               ))}
@@ -221,10 +222,10 @@ export default function OrderHistoryPage() {
               {selectedRating === 0
                 ? "Tap to rate"
                 : selectedRating <= 2
-                ? "We'll do better next time!"
-                : selectedRating <= 4
-                ? "Thanks for your feedback!"
-                : "Excellent! You're awesome!"}
+                  ? "We'll do better next time!"
+                  : selectedRating <= 4
+                    ? "Thanks for your feedback!"
+                    : "Excellent! You're awesome!"}
             </p>
           </div>
           <Button
