@@ -1,6 +1,8 @@
 import { useUser } from "@/contexts/UserContext";
-import { Search, Mic, MapPin } from "lucide-react";
+import { Search, Mic, MapPin, ShoppingBag } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { useCart } from "@/contexts/CartContext";
+import { useNavigate } from "react-router-dom";
 import SidebarMenu from "./SidebarMenu";
 
 interface HomeHeaderProps {
@@ -11,6 +13,8 @@ interface HomeHeaderProps {
 export default function HomeHeader({ onSearch, searchQuery = "" }: HomeHeaderProps) {
   // 'tableNumber' को context से निकाला
   const { guestName, isVegMode, toggleVegMode, tableNumber } = useUser();
+  const { totalItems } = useCart();
+  const navigate = useNavigate();
 
   return (
     <header className="bg-white sticky top-0 z-40 pb-3 transition-all shadow-[0_4px_20px_-4px_rgba(0,0,0,0.08)]">
@@ -37,8 +41,21 @@ export default function HomeHeader({ onSearch, searchQuery = "" }: HomeHeaderPro
           </div>
         </div>
 
-        {/* Right Side Actions - Veg Mode Toggle */}
-        <div className="flex items-center gap-3">
+        {/* Right Side Actions - Veg Mode Toggle & Cart */}
+        <div className="flex items-center gap-2">
+          {/* Cart Icon */}
+          <button
+            onClick={() => navigate("/cart")}
+            className="relative w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center transition-all active:scale-95"
+          >
+            <ShoppingBag className="w-5 h-5 text-gray-700" />
+            {totalItems > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[#E23744] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-white">
+                {totalItems}
+              </span>
+            )}
+          </button>
+
           <div className="bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-full flex flex-col items-center justify-center">
             <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-1">VEG</span>
             <Switch
