@@ -15,7 +15,7 @@ import { Ticket, Percent, Gift } from "lucide-react";
 
 export default function HomeScreen() {
   const navigate = useNavigate();
-  const { isLoggedIn, user } = useUser();
+  const { isLoggedIn, user, setFullMenu } = useUser();
 
   const [offers, setOffers] = useState([]);
   const [combos, setCombos] = useState<MenuItem[]>([]);
@@ -86,6 +86,7 @@ export default function HomeScreen() {
                 rating: 4.5,
                 ratingCount: 100,
                 comboItems: item.Combo_Items || [],
+                isCombo: category === "Combos" || (item.Combo_Items && item.Combo_Items.length > 0) || Boolean(item.isCombo),
               };
             };
 
@@ -108,7 +109,7 @@ export default function HomeScreen() {
             });
 
             console.log(`✅ Loaded ${allItems.length} items`);
-
+            setFullMenu(allItems);
             setMenuItems(allItems);
 
             // Generate smart combos if none exist

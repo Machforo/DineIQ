@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { api } from "@/api";
+import { MenuItem } from "@/lib/data";
 
 export interface Order {
   id: string;
@@ -27,6 +28,8 @@ interface UserContextType {
   profile: UserProfile;
   user: UserProfile;
   orders: Order[];
+  fullMenu: MenuItem[];
+  setFullMenu: (menu: MenuItem[]) => void;
   login: (tableNumber: string, guestCount: number, guestName?: string, phone?: string, email?: string) => void;
   logout: () => void;
   refreshOrders: () => Promise<void>;
@@ -99,6 +102,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
     if (profile.phone) setPhoneNumber(profile.phone);
     if (profile.email) setIsLoggedIn(true);
   }, [profile]);
+
+  const [fullMenu, setFullMenuState] = useState<MenuItem[]>(() => {
+    const saved = localStorage.getItem("dineiq_full_menu");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const setFullMenu = (menu: MenuItem[]) => {
+    setFullMenuState(menu);
+    localStorage.setItem("dineiq_full_menu", JSON.stringify(menu));
+  };
+
   const [orders, setOrders] = useState<Order[]>([]);
 
   const fetchOrders = async () => {
@@ -190,6 +204,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
         profile,
         user: profile,
         orders,
+        fullMenu,
+        setFullMenu,
         login,
         logout,
         refreshOrders,

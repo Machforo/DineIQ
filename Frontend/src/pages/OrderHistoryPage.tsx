@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser, Order } from "@/contexts/UserContext";
 import { useCart } from "@/contexts/CartContext";
-import { menuItems, combos, chefSpecials } from "@/lib/data";
 import { ArrowLeft, Star, RotateCcw, Clock, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +14,7 @@ import { toast } from "sonner";
 
 export default function OrderHistoryPage() {
   const navigate = useNavigate();
-  const { orders, rateOrder } = useUser();
+  const { orders, rateOrder, fullMenu } = useUser();
   const { addItem } = useCart();
   const [ratingModal, setRatingModal] = useState<{ open: boolean; orderId: string }>({
     open: false,
@@ -23,7 +22,6 @@ export default function OrderHistoryPage() {
   });
   const [selectedRating, setSelectedRating] = useState(0);
 
-  const allMenuItems = [...menuItems, ...combos, ...chefSpecials];
 
   const formatDate = (date: Date | string) => {
     const d = typeof date === "string" ? new Date(date) : date;
@@ -65,7 +63,10 @@ export default function OrderHistoryPage() {
 
   const handleRepeatOrder = (order: Order) => {
     order.items.forEach((item) => {
-      const menuItem = allMenuItems.find((m) => m.name === item.name);
+      // Find the best match in the current menu (name matching is robust for history)
+      const targetName = item.name.trim().toLowerCase();
+      const menuItem = fullMenu.find((m) => m.name.trim().toLowerCase() === targetName);
+
       if (menuItem) {
         for (let i = 0; i < item.quantity; i++) {
           addItem(menuItem);
@@ -164,8 +165,8 @@ export default function OrderHistoryPage() {
                     <Star
                       key={star}
                       className={`w-4 h-4 ${star <= order.rating!
-                          ? "fill-gold text-gold"
-                          : "text-muted-foreground"
+                        ? "fill-gold text-gold"
+                        : "text-muted-foreground"
                         }`}
                     />
                   ))}
@@ -211,8 +212,8 @@ export default function OrderHistoryPage() {
                 >
                   <Star
                     className={`w-10 h-10 transition-colors ${star <= selectedRating
-                        ? "fill-gold text-gold"
-                        : "text-muted-foreground hover:text-gold/50"
+                      ? "fill-gold text-gold"
+                      : "text-muted-foreground hover:text-gold/50"
                       }`}
                   />
                 </button>
