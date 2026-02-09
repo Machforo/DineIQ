@@ -726,35 +726,35 @@ function ensureCampaignColumns(count) {
 // -----------------------------------------------------------
 // Helper: Save chat session to "Chats" sheet
 // -----------------------------------------------------------
-function saveChatToSheet(session) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("Chats") || ss.insertSheet("Chats");
+// function saveChatToSheet(session) {
+//   const ss = SpreadsheetApp.getActiveSpreadsheet();
+//   const sheet = ss.getSheetByName("Chats") || ss.insertSheet("Chats");
   
-  // Chat_ID	Customer_ID	Customer_Name	Customer_Phone	Customer_Email	Chat_Date_Time	Chat_Session_Text
+//   // Chat_ID	Customer_ID	Customer_Name	Customer_Phone	Customer_Email	Chat_Date_Time	Chat_Session_Text
   
-  // Add headers if empty
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow([
-      'Chat_ID',
-      'Customer_ID',
-      'Customer_Name',
-      'Customer_Phone',
-      'Customer_Email',
-      'Chat_Date_Time',
-      'Chat_Session_Text'
-    ]);
-  }
+//   // Add headers if empty
+//   if (sheet.getLastRow() === 0) {
+//     sheet.appendRow([
+//       'Chat_ID',
+//       'Customer_ID',
+//       'Customer_Name',
+//       'Customer_Phone',
+//       'Customer_Email',
+//       'Chat_Date_Time',
+//       'Chat_Session_Text'
+//     ]);
+//   }
 
-  sheet.appendRow([
-    session.chatId || '',
-    session.clientId || '',
-    session.clientName || '',
-    session.clientPhone || '',
-    session.clientEmail || '',
-    session.date || new Date(),
-    session.transcriptText || ''
-  ]);
-}
+//   sheet.appendRow([
+//     session.chatId || '',
+//     session.clientId || '',
+//     session.clientName || '',
+//     session.clientPhone || '',
+//     session.clientEmail || '',
+//     session.date || new Date(),
+//     session.transcriptText || ''
+//   ]);
+// }
 
 // -----------------------------------------------------------
 // Helper: Save campaign data to "Campaigns" sheet
@@ -905,34 +905,34 @@ function doPost(e) {
     // [2] Preference Screen after Signup
     // ----------------------------------------------
     // doPost ke andar jahan check_user ya verify_otp khatam ho raha hai:
-    if (data.action === "save_preferences") {
-      var ss = SpreadsheetApp.getActiveSpreadsheet();
-      var prefSheet = ss.getSheetByName("Customer_Preferences") || ss.insertSheet("Customer_Preferences");
+    // if (data.action === "save_preferences") {
+    //   var ss = SpreadsheetApp.getActiveSpreadsheet();
+    //   var prefSheet = ss.getSheetByName("Customer_Preferences") || ss.insertSheet("Customer_Preferences");
   
-      // Agar sheet nayi hai toh headers add karein
-      if (prefSheet.getLastRow() === 0) {
-        prefSheet.appendRow(["Email", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", "Timestamp"]);
-      }
+    //   // Agar sheet nayi hai toh headers add karein
+    //   if (prefSheet.getLastRow() === 0) {
+    //     prefSheet.appendRow(["Email", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", "Timestamp"]);
+    //   }
 
-      // User ke answers array banayein
-      var rowData = [
-        data.email,            // Column A
-        data.preferences[1],   // Column B (Meal Type)
-        data.preferences[2],   // Column C (Beverages)
-        data.preferences[3],   // Column D (Dessert)
-        data.preferences[4],   // Column E (Comfort Food)
-        data.preferences[5],   // Column F (Late-night)
-        data.preferences[6],   // Column G (Diet Plan)
-        data.preferences[7],   // Column H (Recommendations)
-        data.preferences[8],   // Column I (Roti)
-        data.preferences[9],   // Column J (Spice Level)
-        data.preferences[10],  // Column K (Delivery)
-        new Date()             // Column L (Timestamp)
-      ];
+    //   // User ke answers array banayein
+    //   var rowData = [
+    //     data.email,            // Column A
+    //     data.preferences[1],   // Column B (Meal Type)
+    //     data.preferences[2],   // Column C (Beverages)
+    //     data.preferences[3],   // Column D (Dessert)
+    //     data.preferences[4],   // Column E (Comfort Food)
+    //     data.preferences[5],   // Column F (Late-night)
+    //     data.preferences[6],   // Column G (Diet Plan)
+    //     data.preferences[7],   // Column H (Recommendations)
+    //     data.preferences[8],   // Column I (Roti)
+    //     data.preferences[9],   // Column J (Spice Level)
+    //     data.preferences[10],  // Column K (Delivery)
+    //     new Date()             // Column L (Timestamp)
+    //   ];
 
-      prefSheet.appendRow(rowData);
-      return jsonResponse({ "status": "ok" });
-    }
+    //   prefSheet.appendRow(rowData);
+    //   return jsonResponse({ "status": "ok" });
+    // }
 
     // ----------------------------------------------
     // [3] Handle user existence check (Login Logic)
@@ -1040,10 +1040,10 @@ function doPost(e) {
     // ----------------------------------------------
     // [5] Handle chat sessions
     // ----------------------------------------------
-    if (data.clientId && data.chatId && data.transcriptText) {
-      saveChatToSheet(data);
-      return jsonResponse({ status: "ok", message: "Chat session saved" });
-    }
+    // if (data.clientId && data.chatId && data.transcriptText) {
+    //   saveChatToSheet(data);
+    //   return jsonResponse({ status: "ok", message: "Chat session saved" });
+    // }
 
     // ----------------------------------------------
     // [7] Handle campaigns
