@@ -273,8 +273,8 @@ export default function HomeScreen() {
           <>
             {/* 1. Hero Banner */}
             <HeroBanner onOrderNow={() => {
-              const element = document.getElementById("smart-combos");
-              if (element) element.scrollIntoView({ behavior: "smooth", block: "center" });
+              const element = document.getElementById("all-dishes");
+              if (element) element.scrollIntoView({ behavior: "smooth", block: "start" });
             }} />
 
             {/* 2. Offers (Discount Cards) */}
