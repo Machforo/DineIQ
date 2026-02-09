@@ -4,6 +4,7 @@
 # Library and Packages Import
 # ---------------------------------------------------------
 import os
+import time
 import pandas as pd
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
@@ -58,6 +59,24 @@ class SheetsClient:
         return service.spreadsheets()
 
     # -------------------------------------------------------------------
+    # Retry mechanism to handle SSL or temporary network errors
+    # -------------------------------------------------------------------
+    def _execute_with_retry(self, request, retries=3, delay=1):
+        """Helper to retry API calls on SSL or temporary network errors"""
+        for i in range(retries):
+            try:
+                return request.execute()
+            except Exception as e:
+                # Catching general Exception but specifically looking for SSL/Connection errors in logs
+                if i < retries - 1:
+                    print(f"⚠️ Sheets API Error (Attempt {i+1}/{retries}): {e}. Retrying in {delay}s...")
+                    time.sleep(delay)
+                    delay *= 2 # Exponential backoff
+                else:
+                    print(f"❌ Sheets API Operation Failed after {retries} attempts: {e}")
+                    raise e
+
+    # -------------------------------------------------------------------
     # 📖 Read
     # Caching can be added to avoid repeated sheet reads
     # -------------------------------------------------------------------
@@ -65,10 +84,11 @@ class SheetsClient:
         """
         Read a Google Sheet into a pandas DataFrame (auto-pads rows).
         """
-        result = self._service.values().get(
+        request = self._service.values().get(
             spreadsheetId=self.spreadsheet_id,
             range=f"{sheet_name}!A:ZZ",
-        ).execute()
+        )
+        result = self._execute_with_retry(request)
 
         values = result.get("values", [])
         if not values:
@@ -87,10 +107,11 @@ class SheetsClient:
     # 📖 Read - Lightweight Reader (non-pandas)
     # -------------------------------------------------------------------
     def read_sheet_rows(self, sheet_name: str) -> list[dict]:
-        result = self._service.values().get(
+        request = self._service.values().get(
             spreadsheetId=self.spreadsheet_id,
             range=f"{sheet_name}!A:ZZ",
-        ).execute()
+        )
+        result = self._execute_with_retry(request)
 
         values = result.get("values", [])
         if not values:
@@ -134,12 +155,13 @@ class SheetsClient:
 
             values = [[v] for v in df[col].tolist()]
 
-            self._service.values().update(
+            request = self._service.values().update(
                 spreadsheetId=self.spreadsheet_id,
                 range=f"{sheet_name}!{col_letter}2",
                 valueInputOption="RAW",
                 body={"values": values},
-            ).execute()
+            )
+            self._execute_with_retry(request)
 
             print(f"✅ Column '{col}' updated ({col_letter})")
 
@@ -152,14 +174,15 @@ class SheetsClient:
         """
         Append a single row at the end of the sheet.
         """
-        self._service.values().append(
+        request = self._service.values().append(
             spreadsheetId=self.spreadsheet_id,
             range=f"{sheet_name}!A:ZZ",
             valueInputOption="RAW",
             insertDataOption="INSERT_ROWS",
             body={"values": [row]},
-        ).execute()
-    
+        )
+        self._execute_with_retry(request)
+
     # -------------------------------------------------------------------
     # ✍️ Update a cell in sheet
     # -------------------------------------------------------------------
@@ -168,12 +191,13 @@ class SheetsClient:
         Update a single cell in a Google Sheet.
         Example: update_cell("Customer_Auth", "H2", "2026-01-01 10:30:00")
         """
-        self._service.values().update(
+        request = self._service.values().update(
             spreadsheetId=self.spreadsheet_id,
             range=f"{sheet_name}!{cell}",
             valueInputOption="RAW",
             body={"values": [[value]]},
-        ).execute()
+        )
+        self._execute_with_retry(request)
 
     # -------------------------------------------------------------------
     # 🔠 Utilities

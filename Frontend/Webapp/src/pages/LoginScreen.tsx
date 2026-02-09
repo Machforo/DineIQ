@@ -61,7 +61,8 @@ export default function LoginScreen() {
             "1",         // tableNumber (not known yet)
             1,           // guestCount (default)
             data.name,   // guestName (from backend)
-            data.mobile  // phoneNumber (from backend)
+            data.mobile, // phoneNumber (from backend)
+            data.email   // email (from backend)
           );
           navigate("/home");
         }
@@ -93,7 +94,8 @@ export default function LoginScreen() {
           "1",         // tableNumber (not known yet)
           1,           // guestCount (default)
           data.name,   // guestName (from backend)
-          data.mobile  // phoneNumber (from backend)
+          data.mobile, // phoneNumber (from backend)
+          data.email   // email (from backend)
         );
         navigate("/home");
 
@@ -137,7 +139,8 @@ export default function LoginScreen() {
             "1",         // tableNumber (not known yet)
             1,           // guestCount (default)
             name,        // guestName
-            mobile       // phoneNumber
+            mobile,      // phoneNumber
+            email        // email
           );
           // Email ko state mein pass karein taki Preference page use save kar sake
           navigate("/preferences", { state: { email, name, mobile } });

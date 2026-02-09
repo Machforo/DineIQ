@@ -1,11 +1,12 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { api } from "@/api";
 
 export interface Order {
   id: string;
-  date: Date;
+  date: string | Date;
   items: { name: string; quantity: number; price: number }[];
   total: number;
-  status: "preparing" | "on_the_way" | "delivered";
+  status: "preparing" | "on_the_way" | "delivered" | "created";
   rating?: number;
 }
 
@@ -26,8 +27,9 @@ interface UserContextType {
   profile: UserProfile;
   user: UserProfile;
   orders: Order[];
-  login: (tableNumber: string, guestCount: number, guestName?: string, phone?: string) => void;
+  login: (tableNumber: string, guestCount: number, guestName?: string, phone?: string, email?: string) => void;
   logout: () => void;
+  refreshOrders: () => Promise<void>;
   toggleVegMode: () => void;
   updateProfile: (profile: Partial<UserProfile>) => void;
   addOrder: (order: Order) => void;
@@ -80,13 +82,41 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isVegMode, setIsVegMode] = useState(false);
-  const [profile, setProfile] = useState<UserProfile>({
-    name: "",
-    phone: "",
-    email: "",
-    dateOfBirth: "",
+  const [profile, setProfile] = useState<UserProfile>(() => {
+    const saved = localStorage.getItem("dineiq_user");
+    return saved ? JSON.parse(saved) : {
+      name: "",
+      phone: "",
+      email: "",
+      dateOfBirth: "",
+    };
   });
-  const [orders, setOrders] = useState<Order[]>(mockOrders);
+
+  useEffect(() => {
+    localStorage.setItem("dineiq_user", JSON.stringify(profile));
+    // Profile change hone par basic states update karein
+    if (profile.name) setGuestName(profile.name);
+    if (profile.phone) setPhoneNumber(profile.phone);
+    if (profile.email) setIsLoggedIn(true);
+  }, [profile]);
+  const [orders, setOrders] = useState<Order[]>([]);
+
+  const fetchOrders = async () => {
+    if (isLoggedIn && profile.email) {
+      const data = await api.fetchOrderHistory(profile.email);
+      if (data && data.orders) {
+        setOrders(data.orders);
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, [isLoggedIn, profile.email]);
+
+  const refreshOrders = async () => {
+    await fetchOrders();
+  };
 
   // const login = (table: string, count: number, name?: string, phone?: string, email: string = "") => {
   //   setTableNumber(table);
@@ -162,6 +192,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         orders,
         login,
         logout,
+        refreshOrders,
         toggleVegMode,
         updateProfile,
         addOrder,

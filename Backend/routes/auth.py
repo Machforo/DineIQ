@@ -87,6 +87,7 @@ def check_user(payload: dict):
             "status": "exists",
             "name": user["name"],
             "mobile": user["mobile"],
+            "email": user["email"],
             # "message": "OTP sent to mobile"     # add real customer mobile number
         }
 
@@ -108,6 +109,7 @@ def verify_otp(payload: dict):
         "status": "ok",
         "name": result["name"],
         "mobile": result["mobile"],
+        "email": email,
     }
 
 # ------------------------------------------------------------------
