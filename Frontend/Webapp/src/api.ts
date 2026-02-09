@@ -34,7 +34,7 @@ export const api = {
     // Save Preferences
     savePreferences: async (email: string, preferences: any) => {
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/save-preferences`, {
+            const response = await fetch(`${API_BASE_URL}/save-preferences`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, preferences }),

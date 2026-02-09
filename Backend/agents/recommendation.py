@@ -28,8 +28,6 @@ class AddonRequest(BaseModel):
 
 class PreferencesRequest(BaseModel):
     email: str
-class PreferencesRequest(BaseModel):
-    email: str
     preferences: Dict
 
 class ComboRequest(BaseModel):
@@ -133,13 +131,45 @@ class RecommendationAgent:
             return []
 
     def save_user_preference(self, email: str, preferences: Dict):
-        """Saves user preferences to Customer_Insights or similar"""
-        # Logic to save to Google Sheets
-        # For now, just logging as a placeholder or implementing minimal save
-        # This matches the 'save-preferences' endpoint requirement
-        print(f"Saving preferences for {email}: {preferences}")
-        # Implementation: Find row by email in Customer_Preferences or similar and update
-        return {"status": "success", "message": "Preferences saved"}
+        """Saves user preferences to Customer_Preferences sheet"""
+        try:
+            print(f">>> Saving preferences for {email}")
+            
+            # 1. Look up User in Customer_Auth to get ID and Name
+            auth_rows = self.sheets_client.read_sheet_rows("Customer_Auth")
+            user_row = next((r for r in auth_rows if r.get("Customer_Email") == email), None)
+            
+            if not user_row:
+                print(f"!!! User not found in auth: {email}")
+                return {"status": "error", "message": "User not found"}
+                
+            customer_id = user_row.get("Customer_ID", "Unknown")
+            customer_name = user_row.get("Customer_Name", "Unknown")
+
+            # 2. Prepare Preference Row
+            # Questions mapping: 1:Dietary, 2:Bread, 3:Beverage, 4:Dessert
+            import time
+            new_row = [
+                customer_id,
+                customer_name,
+                email,
+                preferences.get("1", ""), # Dietary Type
+                preferences.get("2", ""), # Preferred Bread
+                preferences.get("3", ""), # Favorite Beverage
+                preferences.get("4", ""), # Dessert Preference
+                time.strftime("%d/%m/%Y %H:%M:%S")
+            ]
+
+            # 3. Append to Customer_Preferences
+            # Ensure the sheet exists if possible, or just append
+            self.sheets_client.append_row("Customer_Preferences", new_row)
+            
+            return {"status": "success", "message": "Preferences saved successfully"}
+            
+        except Exception as e:
+            print(f"!!! Error saving preferences: {e}")
+            traceback.print_exc()
+            return {"status": "error", "message": str(e)}
 
     def generate_combos(self, num_combos: int = 3, email: str = None) -> List[Dict]:
         """Generate AI-powered combo deals (Integrated from ComboAgent)"""

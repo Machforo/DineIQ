@@ -5,16 +5,10 @@ import { toast } from "sonner";
 
 // Questions List with Icons
 const questions = [
-  { id: 1, q: "What is your preferred meal type?", icon: <Utensils className="text-red-500" />, options: ["Pure Veg", "Non-Veg", "Jain (No Onion/Garlic)"] },
-  { id: 2, q: "What type of beverages do you enjoy most?", icon: <Coffee className="text-amber-700" />, options: ["Fresh Juices", "Tea/Coffee", "Soft Drinks", "Mocktails"] },
-  { id: 3, q: "What is your favorite type of dessert?", icon: <IceCream className="text-pink-500" />, options: ["Indian Sweets", "Cakes & Pastries", "Ice Cream", "Fruit-based"] },
-  { id: 4, q: "What is your 'Comfort Food'?", icon: <Pizza className="text-orange-500" />, options: ["Dal Khichdi", "Paneer Butter Masala", "Chicken Biryani", "Curd Rice"] },
-  { id: 5, q: "Do you order late-night snacks?", icon: <Moon className="text-indigo-600" />, options: ["Often", "Occasionally", "Only if traveling", "Never"] },
-  { id: 6, q: "Any specific diet plan?", icon: <Activity className="text-green-500" />, options: ["Keto-friendly", "High Protein", "Low Carb", "Just a foodie!"] },
-  { id: 7, q: "Daily Chef Recommendations?", icon: <Bell className="text-yellow-500" />, options: ["Yes (via WhatsApp)", "Yes (Notification)", "No thanks"] },
-  { id: 8, q: "Preferred Indian Bread (Roti)?", icon: <Sandwich className="text-amber-600" />, options: ["Tandoori Roti", "Butter Naan", "Phulka", "Paratha"] },
-  { id: 9, q: "Spice level for Curries?", icon: <Flame className="text-red-600" />, options: ["Authentic", "Balanced", "Mild", "No Chilli"] },
-  { id: 10, q: "Room delivery preference?", icon: <DoorOpen className="text-blue-500" />, options: ["Knock and Enter", "Contactless", "Call before Arrival"] },
+  { id: 1, q: "Dietary Type?", icon: <Utensils className="text-red-500" />, options: ["Vegetarian", "Non-Vegetarian", "Vegan", "Eggetarian", "Jain"] },
+  { id: 2, q: "Preferred Indian Bread?", icon: <Sandwich className="text-amber-600" />, options: ["Roti", "Kulcha", "Naan"] },
+  { id: 3, q: "Favorite beverages?", icon: <Coffee className="text-amber-700" />, options: ["Chaas", "Lassi", "Juice", "Soda"] },
+  { id: 4, q: "Dessert Preferences?", icon: <IceCream className="text-pink-500" />, options: ["Ice-Creams", "Sweets"] },
 ];
 
 import { api } from "@/api";
@@ -72,13 +66,13 @@ export default function PreferenceScreen() {
           {/* Progress Bar */}
           <div className="mt-6">
             <div className="flex justify-between items-end mb-2">
-              <span className="text-[#E23744] font-bold text-xs">Question {currentStep + 1}/10</span>
-              <span className="text-gray-400 text-[10px] uppercase tracking-wider font-bold">{Math.round(((currentStep + 1) / 10) * 100)}% Done</span>
+              <span className="text-[#E23744] font-bold text-xs">Question {currentStep + 1}/4</span>
+              <span className="text-gray-400 text-[10px] uppercase tracking-wider font-bold">{Math.round(((currentStep + 1) / 4) * 100)}% Done</span>
             </div>
             <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
               <div
                 className="bg-[#E23744] h-full transition-all duration-700 ease-out"
-                style={{ width: `${((currentStep + 1) / 10) * 100}%` }}
+                style={{ width: `${((currentStep + 1) / 4) * 100}%` }}
               />
             </div>
           </div>
