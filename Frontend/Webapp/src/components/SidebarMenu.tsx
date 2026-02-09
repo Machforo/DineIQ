@@ -25,7 +25,7 @@ interface SidebarMenuProps {
 
 export default function SidebarMenu({ children }: SidebarMenuProps) {
   const navigate = useNavigate();
-  const { guestName, phoneNumber, tableNumber, logout } = useUser();
+  const { guestName, phoneNumber, tableNumber, logout, orders } = useUser();
   const [open, setOpen] = useState(false);
 
   const menuItems = [
@@ -38,7 +38,7 @@ export default function SidebarMenu({ children }: SidebarMenuProps) {
       icon: ClipboardList,
       label: "Order History",
       path: "/orders",
-      badge: "3",
+      badge: orders.length > 0 ? String(orders.length) : undefined,
     },
     {
       icon: MapPin,
