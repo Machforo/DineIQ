@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { MenuItem } from "@/lib/data";
+import { useUser } from "./UserContext";
 
 interface CartItem extends MenuItem {
   quantity: number;
@@ -19,9 +20,44 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const { fullMenu } = useUser();
+
+  const [items, setItems] = useState<CartItem[]>(() => {
+    const saved = localStorage.getItem("dineiq_cart");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("dineiq_cart", JSON.stringify(items));
+  }, [items]);
 
   const addItem = (item: MenuItem) => {
+    // If it's a combo, deconstruct it into individual items
+    if (item.isCombo && item.comboItems && item.comboItems.length > 0) {
+      item.comboItems.forEach(componentName => {
+        // Clean the component name (remove multipliers like "2x", "2 ")
+        const cleanName = componentName.replace(/^\d+x?\s+/, '').trim().toLowerCase();
+
+        // Find matching item in fullMenu
+        const matchedItem = fullMenu.find(m => m.name.toLowerCase() === cleanName);
+
+        if (matchedItem) {
+          addItem(matchedItem); // Recursively add the individual item
+        } else {
+          // Fallback: If not found in fullMenu, add it as a new standard item with a placeholder ID
+          addItem({
+            ...item,
+            id: `ind-${Date.now()}-${Math.random()}`,
+            name: componentName,
+            isCombo: false,
+            comboItems: [],
+            price: 0,
+          });
+        }
+      });
+      return; // Stop here for the combo item itself
+    }
+
     setItems((prev) => {
       const existing = prev.find((i) => i.id === item.id);
       if (existing) {
