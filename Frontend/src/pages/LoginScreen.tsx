@@ -140,7 +140,7 @@ export default function LoginScreen() {
             mobile       // phoneNumber
           );
           // Email ko state mein pass karein taki Preference page use save kar sake
-          navigate("/home");
+          navigate("/preferences", { state: { email, name, mobile } });
         } else {
           toast.error("Invalid OTP");
         }
