@@ -1,5 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { Offer } from "@/lib/data";
+// @ts-ignore
+import heroVideo from "@/assets/hero-video.mp4";
 
 interface OfferCarouselProps {
   offers?: any[];
@@ -40,7 +42,7 @@ export default function OfferCarousel({ offers = [], onBannerClick }: OfferCarou
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <div className="flex items-baseline gap-2">
+                  <div className="flex items-baseline gap-2 hidden">
                     <span className="text-3xl font-black">{offer.discount}</span>
                     <span className="text-sm opacity-80">OFF</span>
                   </div>
