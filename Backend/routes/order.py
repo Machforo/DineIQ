@@ -174,6 +174,28 @@ async def place_order(req: OrderRequest):
                 item_price
             ]
             sheets_client.append_row(ORDER_ITEMS_SHEET, item_row)
+        
+        # ===================================================================
+        # 🤖 TRIGGER CATEGORIZATION AGENT
+        # Automatically categorize the customer after order placement
+        # ===================================================================
+        try:
+            from agents.categorization import categorize_single_customer
+            
+            print(f"\n🤖 Triggering categorization for customer: {customer_id}")
+            categorization_success = categorize_single_customer(customer_id)
+            
+            if categorization_success:
+                print(f"✅ Categorization completed successfully for customer {customer_id}")
+            else:
+                print(f"⚠️ Categorization failed for customer {customer_id}, but order was saved")
+                
+        except Exception as e:
+            # Fail-safe: Don't let categorization errors break order placement
+            print(f"⚠️ Categorization error for customer {customer_id}: {e}")
+            print("Order was saved successfully despite categorization error")
+            import traceback
+            traceback.print_exc()
             
         return {"status": "success", "order_id": order_id, "message": "Order placed successfully"}
         

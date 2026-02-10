@@ -310,7 +310,181 @@ def build_customer_category(insights):
     return ", ".join(v for v in fields if v)
 
 # -------------------------------------------------------------------
-# 🚀 MAIN PROCESS
+# 🚀 SINGLE CUSTOMER CATEGORIZATION (for order triggers)
+# -------------------------------------------------------------------
+def categorize_single_customer(customer_id: str) -> bool:
+    """
+    Categorize a single customer based on their order history and chat history.
+    This function is called when a new order is placed.
+    
+    Args:
+        customer_id: The unique customer ID to categorize
+        
+    Returns:
+        bool: True if categorization succeeded, False otherwise
+    """
+    try:
+        print(f"\n{'='*80}")
+        print(f"📢 Starting categorization for Customer ID: {customer_id}")
+        print(f"{'='*80}\n")
+        
+        # Initialize services if not already initialized
+        try:
+            sheets_client.init_service()
+            gemini_client.init_gemini()
+            gemini_client_2.init_gemini()
+        except Exception as e:
+            # Services might already be initialized, that's okay
+            print(f"ℹ️ Services initialization: {e}")
+        
+        # Read all necessary sheets
+        df_customers = sheets_client.read_sheet(CUSTOMER_AUTH_SHEET)
+        df_insights  = sheets_client.read_sheet(CUSTOMER_INSIGHTS_SHEET)
+        df_orders    = sheets_client.read_sheet(ORDERS_SHEET)
+        df_items     = sheets_client.read_sheet(ORDER_ITEMS_SHEET)
+        df_chats     = sheets_client.read_sheet(CHATS_SHEET)
+        
+        # Expected columns for Customer_Insights sheet
+        EXPECTED_INSIGHTS_COLUMNS = [
+            "Customer_ID", "Customer_Name", "Dietary", "Favorites", 
+            "AOV", "Frequency", "Attitude", "Customer_Score"
+        ]
+        
+        # Ensure schema alignment with Google Sheet
+        if df_insights.empty:
+            df_insights = pd.DataFrame(columns=EXPECTED_INSIGHTS_COLUMNS)
+        else:
+            for col in EXPECTED_INSIGHTS_COLUMNS:
+                if col not in df_insights.columns:
+                    df_insights[col] = ""
+            # Enforce correct column order
+            df_insights = df_insights[EXPECTED_INSIGHTS_COLUMNS]
+        
+        # Find the customer in Customer_Auth sheet
+        customer_row = df_customers[df_customers["Customer_ID"] == customer_id]
+        
+        if customer_row.empty:
+            print(f"❌ Customer ID {customer_id} not found in {CUSTOMER_AUTH_SHEET}")
+            return False
+        
+        customer_name = str(customer_row.iloc[0].get("Customer_Name", "")).strip()
+        print(f"✅ Found customer: {customer_name} ({customer_id})")
+        
+        # Fetch orders specific to this customer
+        cust_orders = df_orders[df_orders["Customer_ID"] == customer_id]
+        print(f"📊 Found {len(cust_orders)} orders for this customer")
+        
+        # Fetch items specific to orders for this customer
+        cust_items = df_items[df_items["Order_ID"].isin(cust_orders["Order_ID"])]
+        print(f"📦 Found {len(cust_items)} order items for this customer")
+        
+        # Infer order history based insights
+        order_insights = {
+            "Dietary": infer_dietary(cust_items),
+            "AOV": infer_aov(cust_orders),
+            "Frequency": infer_frequency(cust_orders),
+            "Attitude": infer_attitude(cust_orders)
+        }
+        print("✅ Order-based insights inferred")
+        
+        # Fetch chats specific to this customer
+        cust_chats = df_chats[df_chats["Customer_ID"] == customer_id]
+        chat_text = "\n".join(
+            cust_chats["Chat_Session_Text"]
+            .dropna()
+            .astype(str)
+            .tolist()
+        )
+        print(f"💬 Found {len(cust_chats)} chat sessions for this customer")
+        
+        # Infer chat-based insights
+        chat_insights = infer_from_chat(chat_text)
+        print("✅ Chat-based insights inferred")
+        
+        # Combine all insights (order insights take priority over chat insights)
+        final_insights = {
+            "Customer_ID": customer_id,
+            "Customer_Name": customer_name,
+            "Dietary": order_insights["Dietary"] or chat_insights["dietary"],
+            "Favorites": ", ".join(chat_insights["favorites"]),
+            "AOV": order_insights["AOV"],
+            "Frequency": order_insights["Frequency"],
+            "Attitude": order_insights["Attitude"] or chat_insights["attitude"]
+        }
+        
+        # Update or insert in Customer_Insights sheet
+        existing_idx = df_insights[df_insights["Customer_ID"] == customer_id].index
+        
+        if len(existing_idx):
+            # Update existing customer
+            i = existing_idx[0]
+            df_insights.at[i, "Customer_ID"] = customer_id
+            df_insights.at[i, "Customer_Name"] = customer_name
+            
+            for col in ["Dietary", "Favorites", "AOV", "Frequency", "Attitude"]:
+                if final_insights.get(col) is not None:
+                    df_insights.at[i, col] = final_insights[col]
+            print(f"✅ Updated existing insights for customer {customer_id}")
+        else:
+            # Insert new customer
+            new_row = {
+                "Customer_ID": customer_id,
+                "Customer_Name": customer_name,
+                "Dietary": final_insights["Dietary"],
+                "Favorites": final_insights["Favorites"],
+                "AOV": final_insights["AOV"],
+                "Frequency": final_insights["Frequency"],
+                "Attitude": final_insights["Attitude"],
+            }
+            df_insights = pd.concat(
+                [df_insights, pd.DataFrame([new_row])],
+                ignore_index=True
+            )
+            print(f"✅ Created new insights entry for customer {customer_id}")
+        
+        # Build final customer category
+        customer_category = build_customer_category(final_insights)
+        print(f"🏷️ Customer Category: {customer_category}")
+        
+        # Treat NaN values before writing to Google Sheets
+        for col in ["Customer_ID", "Customer_Name", "Dietary", "Favorites", "AOV", "Frequency", "Attitude"]:
+            df_insights[col] = df_insights[col].fillna("")
+        
+        # Update Customer_Insights sheet
+        sheets_client.update_sheet(
+            CUSTOMER_INSIGHTS_SHEET,
+            df_insights,
+            columns_to_update=["Customer_ID", "Customer_Name", "Dietary", "Favorites", "AOV", "Frequency", "Attitude"]
+        )
+        print(f"✅ Customer_Insights sheet updated")
+        
+        # Update Customer_Auth sheet with the category
+        customer_idx = df_customers[df_customers["Customer_ID"] == customer_id].index[0]
+        df_customers.at[customer_idx, "Customer_Category"] = customer_category
+        
+        sheets_client.update_sheet(
+            CUSTOMER_AUTH_SHEET,
+            df_customers,
+            columns_to_update=["Customer_Category"]
+        )
+        print(f"✅ Customer_Auth sheet updated")
+        
+        print(f"\n{'='*80}")
+        print(f"✅ Categorization completed successfully for {customer_name} ({customer_id})")
+        print(f"{'='*80}\n")
+        
+        return True
+        
+    except Exception as e:
+        print(f"\n{'='*80}")
+        print(f"❌ Error categorizing customer {customer_id}: {e}")
+        print(f"{'='*80}\n")
+        import traceback
+        traceback.print_exc()
+        return False
+
+# -------------------------------------------------------------------
+# 🚀 MAIN PROCESS (Batch processing all customers)
 # -------------------------------------------------------------------
 def categorize_customers():
 
