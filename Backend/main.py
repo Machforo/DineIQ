@@ -3,6 +3,9 @@
 # Modular Architecture Entry Point
 # ---------------------------------------------------------
 
+# CRITICAL: Import startup FIRST to decode credentials before any other imports
+import startup  # This decodes Base64 credentials if on Render
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
