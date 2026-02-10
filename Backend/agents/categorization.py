@@ -28,11 +28,13 @@ gemini_client_2 = GeminiClient_2()
 GEMINI_CHAT_LLM_INFERENCE_ENABLED = (os.getenv("GEMINI_CHAT_LLM_INFERENCE_ENABLED", "false").lower() == "true")
 GEMINI_DIETARY_LLM_INFERENCE_ENABLED = (os.getenv("GEMINI_DIETARY_LLM_INFERENCE_ENABLED", "false").lower() == "true")
 
-CUSTOMER_AUTH_SHEET     = "Customer_Auth"       # Read-Write from Customer Frontend Web/App
-CUSTOMER_INSIGHTS_SHEET = "Customer_Insights"   # Multiple customer sub-categories derived and recorded here
-ORDERS_SHEET            = "Orders"              # Writable from Customer Frontend Web/App, Partially Updated with AI/Automation
-ORDER_ITEMS_SHEET       = "Order_Items"         # Writable from Customer Frontend Web/App
-CHATS_SHEET             = "Chats"               # Writable from Customer-AI Frontend Chatbot
+
+CUSTOMER_AUTH_SHEET        = "Customer_Auth"       # Read-Write from Customer Frontend Web/App
+CUSTOMER_INSIGHTS_SHEET    = "Customer_Insights"   # Multiple customer sub-categories derived and recorded here
+CUSTOMER_PREFERENCES_SHEET = "Customer_Preferences" # Customer preferences from signup questionnaire
+ORDERS_SHEET               = "Orders"              # Writable from Customer Frontend Web/App, Partially Updated with AI/Automation
+ORDER_ITEMS_SHEET          = "Order_Items"         # Writable from Customer Frontend Web/App
+CHATS_SHEET                = "Chats"               # Writable from Customer-AI Frontend Chatbot
 
 # -------------------------------------------------------------------
 # 🧩 Infer Customer category based on dietary preferences
@@ -340,6 +342,7 @@ def categorize_single_customer(customer_id: str) -> bool:
         # Read all necessary sheets
         df_customers = sheets_client.read_sheet(CUSTOMER_AUTH_SHEET)
         df_insights  = sheets_client.read_sheet(CUSTOMER_INSIGHTS_SHEET)
+        df_preferences = sheets_client.read_sheet(CUSTOMER_PREFERENCES_SHEET)
         df_orders    = sheets_client.read_sheet(ORDERS_SHEET)
         df_items     = sheets_client.read_sheet(ORDER_ITEMS_SHEET)
         df_chats     = sheets_client.read_sheet(CHATS_SHEET)
@@ -401,12 +404,46 @@ def categorize_single_customer(customer_id: str) -> bool:
         chat_insights = infer_from_chat(chat_text)
         print("✅ Chat-based insights inferred")
         
-        # Combine all insights (order insights take priority over chat insights)
+        # Fetch customer preferences from signup questionnaire
+        cust_prefs = df_preferences[df_preferences["Customer_ID"] == customer_id]
+        preference_insights = {"dietary": None, "favorites": []}
+        
+        if not cust_prefs.empty:
+            pref_row = cust_prefs.iloc[0]
+            
+            # Extract dietary type from preferences
+            dietary_type = str(pref_row.get("Dietary_Type", "")).strip()
+            if dietary_type and dietary_type.lower() != "nan":
+                preference_insights["dietary"] = dietary_type
+                print(f"🍽️ Dietary preference from signup: {dietary_type}")
+            
+            # Extract favorite items from preferences
+            favorites = []
+            for col in ["Preferred_Bread", "Favorite_Beverage", "Dessert_Preference"]:
+                item = str(pref_row.get(col, "")).strip()
+                if item and item.lower() not in ["", "nan", "none"]:
+                    favorites.append(item)
+            
+            if favorites:
+                preference_insights["favorites"] = favorites
+                print(f"❤️ Favorite items from signup: {', '.join(favorites)}")
+            
+            print("✅ Customer preferences from signup processed")
+        else:
+            print("ℹ️ No signup preferences found for this customer")
+        
+        # Combine all insights with priority: preferences > orders > chats
+        # For dietary: preferences (explicit choice) > orders (behavior) > chats (mentioned)
+        # For favorites: combine all sources
+        all_favorites = []
+        all_favorites.extend(preference_insights["favorites"])
+        all_favorites.extend(chat_insights["favorites"])
+        
         final_insights = {
             "Customer_ID": customer_id,
             "Customer_Name": customer_name,
-            "Dietary": order_insights["Dietary"] or chat_insights["dietary"],
-            "Favorites": ", ".join(chat_insights["favorites"]),
+            "Dietary": preference_insights["dietary"] or order_insights["Dietary"] or chat_insights["dietary"],
+            "Favorites": ", ".join(all_favorites) if all_favorites else "",
             "AOV": order_insights["AOV"],
             "Frequency": order_insights["Frequency"],
             "Attitude": order_insights["Attitude"] or chat_insights["attitude"]
@@ -497,9 +534,10 @@ def categorize_customers():
     gemini_client_2.init_gemini()
     print("\n✅ Initialized Sheets and Gemini")
 
-    # === STEP 1: Read Customer_Auth, Customer_Insights, Orders, Order_Items & Chats sheets ===
+    # === STEP 1: Read Customer_Auth, Customer_Insights, Customer_Preferences, Orders, Order_Items & Chats sheets ===
     df_customers = sheets_client.read_sheet(CUSTOMER_AUTH_SHEET)
     df_insights  = sheets_client.read_sheet(CUSTOMER_INSIGHTS_SHEET)
+    df_preferences = sheets_client.read_sheet(CUSTOMER_PREFERENCES_SHEET)
     df_orders    = sheets_client.read_sheet(ORDERS_SHEET)
     df_items     = sheets_client.read_sheet(ORDER_ITEMS_SHEET)
     df_chats     = sheets_client.read_sheet(CHATS_SHEET)
@@ -573,12 +611,39 @@ def categorize_customers():
         chat_insights = infer_from_chat(chat_text)
         print("✅ Customer Chats based Category(ies) inferred")
 
-        # Club all insights, primary from orders data, secondary from chats
+        # Fetch customer preferences from signup questionnaire
+        cust_prefs = df_preferences[df_preferences["Customer_ID"] == customer_id]
+        preference_insights = {"dietary": None, "favorites": []}
+        
+        if not cust_prefs.empty:
+            pref_row = cust_prefs.iloc[0]
+            
+            # Extract dietary type from preferences
+            dietary_type = str(pref_row.get("Dietary_Type", "")).strip()
+            if dietary_type and dietary_type.lower() != "nan":
+                preference_insights["dietary"] = dietary_type
+            
+            # Extract favorite items from preferences
+            favorites = []
+            for col in ["Preferred_Bread", "Favorite_Beverage", "Dessert_Preference"]:
+                item = str(pref_row.get(col, "")).strip()
+                if item and item.lower() not in ["", "nan", "none"]:
+                    favorites.append(item)
+            
+            preference_insights["favorites"] = favorites
+
+        # Combine all insights with priority: preferences > orders > chats
+        # For dietary: preferences (explicit choice) > orders (behavior) > chats (mentioned)
+        # For favorites: combine all sources
+        all_favorites = []
+        all_favorites.extend(preference_insights["favorites"])
+        all_favorites.extend(chat_insights["favorites"])
+        
         final_insights = {
             "Customer_ID": customer_id,
             "Customer_Name": customer_name,
-            "Dietary": order_insights["Dietary"] or chat_insights["dietary"],
-            "Favorites": ", ".join(chat_insights["favorites"]),
+            "Dietary": preference_insights["dietary"] or order_insights["Dietary"] or chat_insights["dietary"],
+            "Favorites": ", ".join(all_favorites) if all_favorites else "",
             "AOV": order_insights["AOV"],
             "Frequency": order_insights["Frequency"],
             "Attitude": order_insights["Attitude"] or chat_insights["attitude"]
