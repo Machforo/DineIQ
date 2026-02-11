@@ -170,18 +170,33 @@ class SheetsClient:
     # -------------------------------------------------------------------
     # ✍️ Append a single row at the end of the sheet.
     # -------------------------------------------------------------------
-    def append_row(self, sheet_name: str, row: list):
+    # -------------------------------------------------------------------
+    # ✍️ Append multiple rows at the end of the sheet (Batch)
+    # -------------------------------------------------------------------
+    def append_rows(self, sheet_name: str, rows: list[list]):
         """
-        Append a single row at the end of the sheet.
+        Append multiple rows at data end of the sheet.
         """
+        if not rows:
+            return
+
         request = self._service.values().append(
             spreadsheetId=self.spreadsheet_id,
             range=f"{sheet_name}!A:ZZ",
             valueInputOption="RAW",
             insertDataOption="INSERT_ROWS",
-            body={"values": [row]},
+            body={"values": rows},
         )
         self._execute_with_retry(request)
+
+    # -------------------------------------------------------------------
+    # ✍️ Append a single row at the end of the sheet.
+    # -------------------------------------------------------------------
+    def append_row(self, sheet_name: str, row: list):
+        """
+        Append a single row at the end of the sheet.
+        """
+        self.append_rows(sheet_name, [row])
 
     # -------------------------------------------------------------------
     # ✍️ Update a cell in sheet

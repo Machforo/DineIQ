@@ -11,7 +11,7 @@ export default function CartBar() {
   }
 
   return (
-    <div className="fixed bottom-[80px] left-4 right-4 z-40 animate-in slide-in-from-bottom-5 duration-300">
+    <div className="fixed bottom-[120px] left-4 right-4 z-40 animate-in slide-in-from-bottom-5 duration-300">
       <Link to="/cart">
         <div className="bg-[#E23744] text-white rounded-xl shadow-[0_8px_20px_-4px_rgba(226,55,68,0.5)] p-3.5 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-transform border border-white/10 backdrop-blur-md">
 

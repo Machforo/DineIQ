@@ -509,10 +509,21 @@ CRITICAL:
         # Join with " + " separator
         description = " + ".join(item_descriptions)
         
+        # Format items for frontend (matches AIComboCard interface)
+        formatted_items = []
+        for item in items:
+            formatted_items.append({
+                "name": item['Item_Name'],
+                "quantity": item.get('quantity', 1),
+                "price": float(item['Current_Price']),
+                "category": item.get('Item_Category', 'General')
+            })
+
         return {
             "Item_ID": f"combo_{random.randint(1000, 9999)}",
             "Item_Name": name,
             "Item_Description": description,  # e.g., "1 Butter Chicken + 2 Naan + 1 Rice"
+            "Items": formatted_items, # <--- Added this for better UI rendering
             "Current_Price": price,
             "Original_Price": total,
             "Discount_Percent": discount_percent,

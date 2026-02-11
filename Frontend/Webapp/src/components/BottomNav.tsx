@@ -17,8 +17,8 @@ export default function BottomNav() {
         { icon: User, label: "Profile", path: "/profile" },
     ];
 
-    // Hide on login/splash screens
-    if (path === "/" || path === "/login") return null;
+    // Hide on login/splash screens and checkout flow
+    if (path === "/" || path === "/login" || path === "/cart" || path === "/payment") return null;
 
     return (
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-lg border-t border-gray-200 safe-bottom shadow-premium">

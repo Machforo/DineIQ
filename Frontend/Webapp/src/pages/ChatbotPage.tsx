@@ -130,77 +130,108 @@ const ChatbotPage = () => {
     }
   };
 
-  return (
-    <div className="flex flex-col h-screen bg-[#F4F4F2] relative">
-      {/* Background Pattern */}
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-red-50 via-transparent to-transparent pointer-events-none" />
+  const quickPrompts = [
+    "🌶️ Spicy food suggestions",
+    "🍰 Best desserts",
+    "🥗 Healthy vegan options",
+    "👨‍🍳 Chef's specials",
+    "🍹 Refreshing drinks"
+  ];
 
-      {/* HEADER */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm transition-all">
-        <div className="container p-3 flex items-center justify-between">
+  return (
+    <div className="flex flex-col h-screen bg-[#F4F4F2] relative overflow-hidden">
+      {/* Background Pattern - Subtle Zomato Doodle-like */}
+      <div className="fixed inset-0 opacity-[0.03] pointer-events-none bg-[url('https://b.zmtcdn.com/web_assets/81f3ff974d82520780078ba1cfbd453a1583259680.png')]" />
+
+      {/* HEADER - Clean & Premium */}
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm">
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate("/home")}
-              className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
+              className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-all active:scale-95"
             >
-              <ChevronLeft className="w-6 h-6 text-gray-700" />
+              <ChevronLeft className="w-5 h-5 text-gray-700" />
             </button>
 
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#E23744] to-pink-500 flex items-center justify-center shadow-lg">
-                  <Bot className="w-6 h-6 text-white" />
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#E23744] to-pink-600 flex items-center justify-center shadow-md border-2 border-white">
+                  <Bot className="w-5 h-5 text-white" />
                 </div>
-                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full animate-pulse"></span>
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full animate-pulse"></span>
               </div>
               <div>
-                <h1 className="text-lg font-black text-gray-900 leading-none">DineIQ AI</h1>
+                <h1 className="text-base font-black text-gray-900 leading-tight">DineIQ Concierge</h1>
                 <div className="flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-gold animate-pulse" />
-                  <p className="text-xs font-bold text-gray-500">Concierge</p>
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                  <p className="text-[10px] font-bold text-gray-500 tracking-wide uppercase">Online & Ready</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <SessionControls onStartNew={handleStartNew} onEndChat={handleEndChat} hasMessages={messages.length > 1} />
-          </div>
+          <SessionControls onStartNew={handleStartNew} onEndChat={handleEndChat} hasMessages={messages.length > 1} />
         </div>
       </header>
 
-      {/* CHAT MESSAGES */}
+      {/* CHAT AREA */}
       <div className="flex-1 overflow-y-auto p-4 scroll-smooth">
-        <div className="max-w-3xl mx-auto space-y-6 pb-4">
-          <div className="text-center py-4">
-            <div className="inline-block bg-gray-200/50 rounded-full px-4 py-1.5 text-xs text-gray-500 font-medium">
-              Today, {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </div>
+        <div className="max-w-2xl mx-auto flex flex-col justify-end min-h-full pb-0">
+
+          {/* Timestamp Divider */}
+          <div className="text-center py-6">
+            <span className="bg-gray-200/50 px-3 py-1 rounded-full text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+              Today
+            </span>
           </div>
 
-          {messages.map(msg => (
-            <ChatMessage key={msg.id} message={msg} />
-          ))}
+          {/* Messages */}
+          <div className="space-y-6">
+            {messages.map((msg) => (
+              <ChatMessage key={msg.id} message={msg} />
+            ))}
 
-          {loading && (
-            <div className="flex justify-start animate-fade-in pl-2">
-              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-2">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            {/* AI Loading Indicator */}
+            {loading && (
+              <div className="flex justify-start animate-fade-in pl-2">
+                <div className="bg-white rounded-2xl rounded-tl-sm p-4 shadow-sm border border-gray-100 flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
               </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
         </div>
       </div>
 
-      {/* CHAT INPUT */}
-      <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] z-40 safe-bottom">
-        <div className="max-w-3xl mx-auto">
+      {/* FOOTER INPUT AREA */}
+      <div className="bg-white border-t border-gray-100 p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] z-40">
+        <div className="max-w-2xl mx-auto">
+
+          {/* Quick Prompts (Show only if conversation is short) */}
+          {messages.length <= 2 && !loading && (
+            <div className="flex gap-2 overflow-x-auto hide-scrollbar mb-3 pb-1">
+              {quickPrompts.map((prompt, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSendMessage(prompt)}
+                  className="whitespace-nowrap px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs font-semibold text-gray-600 hover:bg-[#E23744] hover:text-white hover:border-[#E23744] transition-all active:scale-95"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          )}
+
           <ChatInput onSend={handleSendMessage} disabled={loading} />
-          <p className="text-[10px] text-center text-gray-400 mt-2 font-medium">
-            AI can make mistakes. Please check menu info.
+
+          <p className="text-[10px] text-center text-gray-400 mt-2 font-medium flex items-center justify-center gap-1">
+            <Sparkles className="w-3 h-3 text-gold" />
+            AI-powered suggestions may vary.
           </p>
         </div>
       </div>

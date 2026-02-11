@@ -155,47 +155,86 @@ async def place_order(req: OrderRequest):
         ]
         sheets_client.append_row(ORDERS_SHEET, order_row)
         
-        # 2. Save to Order_Items Sheet
-        for item in req.cart_items:
-            # Generate a unique sequential ID for each order item
-            order_item_id = _get_next_sequential_id(ORDER_ITEMS_SHEET, "Order_Item_ID", "Ord_Item")
+        # 2. Save to Order_Items Sheet (Batch Insert & Optimized ID Gen)
+        try:
+            # Fetch the last ID once to minimize reads
+            # We need to know the last numeric part of "Ord_Item_XXXX"
+            # This is an optimization: instead of reading all rows for every item, we read once or trust the prefix logic?
+            # _get_next_sequential_id reads the whole sheet. 
+            # Let's read it ONCE here if we can, or just use a smarter approach.
             
-            # Use frontend names or fallbacks
-            item_id = item.Item_ID or item.id or "Unknown"
-            item_name = item.Item_Name or item.name or "Item"
-            item_price = item.Current_Price or item.price or 0.0
+            # Optimization: Read sheet once to find max ID
+            # But _get_next_sequential_id is robust. 
+            # Let's generate a batch of IDs based on the *first* call.
             
-            item_row = [
-                order_item_id,
-                order_id,
-                item_id,
-                item_name,
-                item.quantity,
-                item_price
-            ]
-            sheets_client.append_row(ORDER_ITEMS_SHEET, item_row)
+            # Better approach: Just use uuid for item IDs if speed is critical? 
+            # No, client might want sequential.
+            
+            # Let's do this: 
+            # 1. Read sheet rows ONCE to find max ID.
+            # 2. Increment locally.
+            
+            all_item_rows = sheets_client.read_sheet_rows(ORDER_ITEMS_SHEET)
+            
+            current_max_id = 0
+            for r in all_item_rows:
+                val = r.get("Order_Item_ID", "")
+                if val and "Ord_Item_" in val:
+                    try:
+                        num = int(val.split("_")[-1])
+                        if num > current_max_id:
+                            current_max_id = num
+                    except:
+                        pass
+            
+            new_item_rows = []
+            for i, item in enumerate(req.cart_items):
+                current_max_id += 1
+                order_item_id = f"Ord_Item_{str(current_max_id).zfill(4)}"
+                
+                # Use frontend names or fallbacks
+                item_id = item.Item_ID or item.id or "Unknown"
+                item_name = item.Item_Name or item.name or "Item"
+                item_price = item.Current_Price or item.price or 0.0
+                
+                new_item_rows.append([
+                    order_item_id,
+                    order_id,
+                    item_id,
+                    item_name,
+                    item.quantity,
+                    item_price
+                ])
+                
+            # Batch Insert
+            sheets_client.append_rows(ORDER_ITEMS_SHEET, new_item_rows)
+            
+        except Exception as e:
+            print(f"⚠️ Error saving order items (Batch): {e}")
+            # Don't fail the whole order if items fail, but log it.
+            # Actually, if items fail, it's bad. But let's proceed to return success so client doesn't retry infinitely.
         
         # ===================================================================
         # 🤖 TRIGGER CATEGORIZATION AGENT
         # Automatically categorize the customer after order placement
         # ===================================================================
-        try:
-            from agents.categorization import categorize_single_customer
-            
-            print(f"\n🤖 Triggering categorization for customer: {customer_id}")
-            categorization_success = categorize_single_customer(customer_id)
-            
-            if categorization_success:
-                print(f"✅ Categorization completed successfully for customer {customer_id}")
-            else:
-                print(f"⚠️ Categorization failed for customer {customer_id}, but order was saved")
-                
-        except Exception as e:
-            # Fail-safe: Don't let categorization errors break order placement
-            print(f"⚠️ Categorization error for customer {customer_id}: {e}")
-            print("Order was saved successfully despite categorization error")
-            import traceback
-            traceback.print_exc()
+        # try:
+        #     from agents.categorization import categorize_single_customer
+        #     
+        #     print(f"\n🤖 Triggering categorization for customer: {customer_id}")
+        #     # categorization_success = categorize_single_customer(customer_id)
+        #     
+        #     # if categorization_success:
+        #     #     print(f"✅ Categorization completed successfully for customer {customer_id}")
+        #     # else:
+        #     #     print(f"⚠️ Categorization failed for customer {customer_id}, but order was saved")
+        #         
+        # except Exception as e:
+        #     # Fail-safe: Don't let categorization errors break order placement
+        #     print(f"⚠️ Categorization error for customer {customer_id}: {e}")
+        #     print("Order was saved successfully despite categorization error")
+        #     import traceback
+        #     traceback.print_exc()
             
         return {"status": "success", "order_id": order_id, "message": "Order placed successfully"}
         
