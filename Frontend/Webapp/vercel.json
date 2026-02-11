@@ -1,0 +1,16 @@
+# Vercel configuration for DineIQ Frontend
+# This file optimizes the deployment for Vite + React
+
+{
+    "buildCommand": "npm run build",
+    "outputDirectory": "dist",
+    "devCommand": "npm run dev",
+    "installCommand": "npm install",
+    "framework": "vite",
+    "rewrites": [
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ]
+}

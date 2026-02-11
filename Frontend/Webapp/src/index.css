@@ -1,0 +1,247 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* --- ZOMATO INSPIRED THEME --- */
+
+  /* Primary Red - The Zomato Color */
+  --primary: 355 78% 56%;
+  /* #E23744 */
+  --primary-foreground: 0 0% 100%;
+
+  /* Backgrounds */
+  --background: 0 0% 98%;
+  /* Lightest Gray */
+  --foreground: 0 0% 10%;
+  /* Almost Black */
+
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 10%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 10%;
+
+  /* Secondary / Muted */
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 20%;
+
+  --muted: 0 0% 94%;
+  --muted-foreground: 0 0% 50%;
+  /* Gray text */
+
+  --accent: 0 0% 96%;
+  --accent-foreground: 0 0% 15%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 0 0% 92%;
+  --input: 0 0% 92%;
+  --ring: 355 78% 56%;
+
+  --radius: 1rem;
+  /* 16px - Soft rounded corners */
+
+  /* Custom Tokens */
+  --gold: 40 92% 55%;
+  --veg-green: 142 76% 36%;
+  --non-veg-red: 355 78% 56%;
+
+  /* Gradients */
+  --gradient-brand: linear-gradient(135deg, #FF7E5F 0%, #FEB47B 100%);
+  /* Warm sunset */
+  --gradient-gold: linear-gradient(135deg, hsl(43 96% 56%) 0%, hsl(36 100% 50%) 100%);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-premium: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+.dark {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+
+  --card: 240 10% 6%;
+  --card-foreground: 0 0% 98%;
+
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+
+  --primary: 355 78% 56%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --ring: 240 4.9% 83.9%;
+}
+
+
+@layer components {
+
+  /* Glassmorphism Classes */
+  .glass {
+    @apply bg-white/70 backdrop-blur-md border border-white/20;
+  }
+
+  .glass-dark {
+    @apply bg-black/60 backdrop-blur-md border border-white/10;
+  }
+
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-sm border border-white/40 shadow-lg rounded-2xl;
+  }
+
+  .text-dense {
+    @apply leading-tight tracking-tight;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    /* Isse text thoda compact (Zomato style) lagega */
+    letter-spacing: -0.015em;
+  }
+
+  /* Image fit fix */
+  img {
+    @apply object-cover;
+  }
+}
+
+@layer components {
+
+  /* Buttons */
+  .btn-primary {
+    @apply bg-primary text-primary-foreground font-bold rounded-xl px-6 py-3 transition-transform active:scale-95;
+    box-shadow: var(--shadow-button);
+  }
+
+  /* Dish Card - Updated for Dense Look */
+  .card-dish {
+    @apply bg-white rounded-2xl border border-gray-100 p-3 relative overflow-hidden;
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Badges */
+  .badge-gold {
+    background: var(--gradient-gold);
+    @apply text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md shadow-sm;
+    color: hsl(var(--gold-foreground));
+  }
+
+  .badge-veg {
+    @apply w-4 h-4 border-[2px] rounded-sm flex items-center justify-center bg-white;
+    border-color: hsl(var(--veg-green));
+  }
+
+  .badge-veg::before {
+    content: '';
+    @apply w-2 h-2 rounded-full;
+    background-color: hsl(var(--veg-green));
+  }
+
+  .badge-nonveg {
+    @apply w-4 h-4 border-[2px] rounded-sm flex items-center justify-center bg-white;
+    border-color: hsl(var(--non-veg-red));
+  }
+
+  .badge-nonveg::before {
+    content: '';
+    @apply w-0 h-0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 7px solid hsl(var(--non-veg-red));
+  }
+
+  .floating-button {
+    @apply fixed z-50 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-105 active:scale-95;
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .cart-bar {
+    background: var(--gradient-dark);
+    @apply fixed bottom-3 left-3 right-3 z-40 text-white rounded-xl flex items-center justify-between px-4 py-3;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  }
+}
+
+@layer utilities {
+  .text-gold {
+    color: hsl(var(--gold));
+  }
+
+  .bg-gold {
+    background-color: hsl(var(--gold));
+  }
+
+  .text-veg {
+    color: hsl(var(--veg-green));
+  }
+
+  .text-rating {
+    color: hsl(var(--rating-star));
+  }
+
+  .gradient-gold {
+    background: var(--gradient-gold);
+  }
+
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-dark {
+    background: var(--gradient-dark);
+  }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
+}
+
+/* Final Force Override to ensure font applies everywhere */
+@layer base {
+
+  body,
+  button,
+  input,
+  textarea {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+  }
+}
