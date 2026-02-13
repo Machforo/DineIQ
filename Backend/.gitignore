@@ -2,17 +2,34 @@
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+.Python
 
 # Virtual environment (if used)
 conda/
 venv/
 env/
+.venv/
 
-# Secrets
+# Secrets & Credentials
 .env
+*.json
+!package.json
+!package-lock.json
+!tsconfig*.json
+!components.json
+!vercel.json
 dineIQ_service_account.json
 dineIQ_gmail_OAuth_Credentials.json
 token.json
+
+# Logs & Debug files
+*.log
+debug_*.log
+
+# Test files
+test_*.py
+*_test.py
 
 # OS
 .DS_Store
@@ -21,3 +38,10 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# Build & Distribution
+dist/
+build/
+*.egg-info/

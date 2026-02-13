@@ -1,9 +1,5 @@
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ShoppingCart, Sparkles, TrendingUp, ChefHat, Tag } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import { toast } from "sonner";
+import { Plus, Minus, Sparkles, Star, TrendingUp } from "lucide-react";
 
 interface ComboItem {
     name: string;
@@ -33,171 +29,148 @@ interface ComboCardProps {
 }
 
 export default function AIComboCard({ combo }: ComboCardProps) {
-    const { addItem } = useCart();
+    const { addItem, removeItem, getItemQuantity } = useCart();
 
-    const handleAddToCart = () => {
-        addItem({
-            id: combo.Item_ID,
-            name: combo.Item_Name,
-            price: combo.Current_Price,
-            image: combo.Image_URL || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c",
-            description: combo.Item_Description,
-            category: "Combos",
-            isVeg: true, // Defaulting to true as per most combos, or could be derived
-            rating: 4.5,
-            ratingCount: 0,
-            isCombo: false // Treat as single unit
-        });
-
-        toast.success("✨ Combo added to cart!", {
-            description: combo.Item_Name,
-        });
+    const cartItem = {
+        id: combo.Item_ID,
+        name: combo.Item_Name,
+        price: combo.Current_Price,
+        originalPrice: combo.Original_Price,
+        image: combo.Image_URL || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c",
+        description: combo.Items && combo.Items.length > 0
+            ? combo.Items.map(i => `${i.quantity} ${i.name}`).join(" + ")
+            : combo.Item_Description,
+        isVeg: true,
+        category: "Combos",
+        isCombo: true,
+        rating: 4.8,
+        ratingCount: 85
     };
 
-    return (
-        <Card className="group overflow-hidden hover:shadow-2xl transition-all duration-500 border-0 bg-white/80 backdrop-blur-sm">
-            {/* Image Section with Premium Overlay */}
-            <div className="relative h-56 overflow-hidden">
-                {/* Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent z-10" />
+    const quantity = getItemQuantity(combo.Item_ID);
 
+    return (
+        <div className="bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl border border-gray-100 flex-shrink-0 w-96 md:w-[420px] snap-center group">
+            {/* Image Section - Vibrant */}
+            <div className="relative h-48 overflow-hidden bg-gradient-to-br from-orange-50 to-red-50">
                 <img
-                    src={combo.Image_URL || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c"}
-                    alt={combo.Item_Name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    src={cartItem.image}
+                    alt={cartItem.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
 
-                {/* Top Badges */}
-                <div className="absolute top-3 left-3 flex flex-col gap-2 z-20">
-                    {combo.Is_Personalized && (
-                        <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white flex items-center gap-1.5 px-3 py-1.5 shadow-lg">
-                            <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-                            <span className="font-semibold">AI Curated</span>
-                        </Badge>
+                {/* Vibrant Badges */}
+                <div className="absolute top-3 left-3 right-3 flex items-start justify-between z-10">
+                    {/* Savings Badge - Yellow Highlight */}
+                    {combo.Savings > 0 && (
+                        <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 text-xs font-black px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1">
+                            <Star className="w-3 h-3 fill-current" />
+                            <span>SAVE ₹{combo.Savings}</span>
+                        </div>
                     )}
-                    {combo.customer_type && (
-                        <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white flex items-center gap-1.5 px-3 py-1.5 shadow-lg">
-                            <TrendingUp className="w-3.5 h-3.5" />
-                            <span className="font-semibold text-xs">{combo.customer_type}</span>
-                        </Badge>
-                    )}
-                </div>
 
-                {/* Discount Badge - Top Right */}
-                <div className="absolute top-3 right-3 z-20">
-                    <div className="relative">
-                        <div className="absolute inset-0 bg-red-500 blur-md opacity-50 rounded-full" />
-                        <Badge className="relative bg-gradient-to-br from-red-500 to-rose-600 text-white text-base font-bold px-4 py-2 shadow-xl">
-                            {combo.Discount_Percent}% OFF
-                        </Badge>
+                    {/* AI Badge - Blue Accent */}
+                    <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1">
+                        <Sparkles className="w-3.5 h-3.5 fill-current" />
+                        <span>AI Pick</span>
                     </div>
                 </div>
 
-                {/* Savings Badge - Bottom Left on Image */}
-                <div className="absolute bottom-3 left-3 z-20">
-                    <div className="bg-green-500/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg">
-                        <Tag className="w-4 h-4" />
-                        <span className="font-bold text-sm">Save ₹{combo.Savings}</span>
+                {/* Match Score - Green */}
+                {combo.personalization_score && (
+                    <div className="absolute bottom-3 left-3 z-10">
+                        <div className="bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                            {combo.personalization_score}% Match
+                        </div>
+                    </div>
+                )}
+
+                {/* Rating - White with Yellow Star */}
+                <div className="absolute bottom-3 right-3 z-10">
+                    <div className="bg-white text-gray-900 text-xs font-bold px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1">
+                        <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                        <span>4.8</span>
                     </div>
                 </div>
             </div>
 
             {/* Content Section */}
-            <div className="p-5 space-y-4">
-                {/* Combo Name */}
-                <div>
-                    <h3 className="font-bold text-xl text-gray-900 line-clamp-1 mb-1">
+            <div className="p-4">
+                {/* Title & Veg Badge */}
+                <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-bold text-gray-900 text-base leading-tight line-clamp-2 flex-1">
                         {combo.Item_Name}
                     </h3>
-                    {combo.personalization_score && combo.personalization_score >= 70 && (
-                        <div className="flex items-center gap-1.5 text-xs text-purple-600 font-medium">
-                            <ChefHat className="w-3.5 h-3.5" />
-                            <span>Highly Recommended ({combo.personalization_score}% match)</span>
-                        </div>
-                    )}
-                </div>
-
-                {/* Items List - CRITICAL SECTION */}
-                <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl p-4 border border-orange-100 space-y-2.5">
-                    <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs font-bold text-orange-800 uppercase tracking-wide">
-                            Combo Includes:
-                        </p>
-                        <div className="h-px flex-1 bg-orange-200 ml-3" />
+                    {/* Green Veg Badge */}
+                    <div className="flex-shrink-0 w-5 h-5 border-2 ml-2 border-green-600 flex items-center justify-center rounded-sm bg-white">
+                        <div className="w-2.5 h-2.5 rounded-full bg-green-600" />
                     </div>
-
-                    {/* Display Items from Items array OR Item_Description */}
-                    {combo.Items && combo.Items.length > 0 ? (
-                        <div className="space-y-2">
-                            {combo.Items.map((item, idx) => (
-                                <div key={idx} className="flex items-start justify-between gap-3">
-                                    <div className="flex items-start gap-2 flex-1">
-                                        <span className="text-orange-500 font-bold text-sm mt-0.5">•</span>
-                                        <div className="flex-1">
-                                            <p className="text-sm font-semibold text-gray-800 leading-snug">
-                                                {item.quantity} × {item.name}
-                                            </p>
-                                            {item.category && (
-                                                <p className="text-xs text-gray-500 mt-0.5">{item.category}</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <span className="text-xs text-gray-600 font-medium whitespace-nowrap">
-                                        ₹{(item.price * item.quantity).toFixed(0)}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    ) : combo.Item_Description ? (
-                        /* Fallback: Parse Item_Description if Items array not available */
-                        <div className="space-y-1.5">
-                            {combo.Item_Description.split('+').map((item, idx) => (
-                                <div key={idx} className="flex items-center gap-2">
-                                    <span className="text-orange-500 font-bold">•</span>
-                                    <p className="text-sm text-gray-700 font-medium">
-                                        {item.trim()}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="text-sm text-gray-600 italic">Premium combo selection</p>
-                    )}
                 </div>
 
-                {/* AI Insight */}
+                {/* Description */}
+                <p className="text-sm text-gray-600 mb-3 line-clamp-2 leading-relaxed">
+                    {combo.Items && combo.Items.length > 0
+                        ? combo.Items.map(i => i.name).join(" • ")
+                        : combo.Item_Description}
+                </p>
+
+                {/* AI Insight - Blue Accent */}
                 {combo.Insight && (
-                    <div className="bg-purple-50 border border-purple-100 rounded-lg p-3">
-                        <p className="text-xs text-purple-900 leading-relaxed flex items-start gap-2">
-                            <Sparkles className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
-                            <span className="italic">{combo.Insight}</span>
-                        </p>
+                    <div className="mb-3 p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-100">
+                        <div className="flex items-start gap-2">
+                            <TrendingUp className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-blue-800 font-medium leading-relaxed">
+                                {combo.Insight}
+                            </p>
+                        </div>
                     </div>
                 )}
 
-                {/* Pricing Section */}
-                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                            ₹{combo.Current_Price}
-                        </span>
-                        <div className="flex flex-col">
-                            <span className="text-xs text-gray-500 line-through">
-                                ₹{combo.Original_Price}
-                            </span>
+                {/* Price & Action */}
+                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                    <div className="flex flex-col">
+                        {combo.Original_Price > combo.Current_Price && (
+                            <span className="text-xs text-gray-400 line-through">₹{combo.Original_Price}</span>
+                        )}
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-xl font-black text-gray-900">₹{combo.Current_Price}</span>
+                            {combo.Discount_Percent > 0 && (
+                                <span className="text-xs font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                                    {combo.Discount_Percent}% OFF
+                                </span>
+                            )}
                         </div>
                     </div>
-                </div>
 
-                {/* Add to Cart Button */}
-                <Button
-                    onClick={handleAddToCart}
-                    className="w-full bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 hover:from-orange-600 hover:via-red-600 hover:to-pink-600 text-white font-bold py-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] group"
-                >
-                    <ShoppingCart className="w-5 h-5 mr-2 group-hover:animate-bounce" />
-                    Add Combo to Cart
-                </Button>
+                    {/* Vibrant Red CTA */}
+                    {quantity === 0 ? (
+                        <button
+                            onClick={() => addItem(cartItem)}
+                            className="bg-gradient-to-r from-red-500 to-red-600 text-white font-bold px-7 py-2.5 rounded-xl shadow-lg hover:shadow-xl hover:from-red-600 hover:to-red-700 transition-all text-sm uppercase tracking-wide"
+                        >
+                            ADD
+                        </button>
+                    ) : (
+                        <div className="flex items-center bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg overflow-hidden h-10">
+                            <button
+                                onClick={() => removeItem(cartItem.id)}
+                                className="w-10 h-full flex items-center justify-center text-white hover:bg-black/10 transition-colors"
+                            >
+                                <Minus className="w-4 h-4" />
+                            </button>
+                            <span className="text-white font-bold min-w-[32px] text-center text-sm">
+                                {quantity}
+                            </span>
+                            <button
+                                onClick={() => addItem(cartItem)}
+                                className="w-10 h-full flex items-center justify-center text-white hover:bg-black/10 transition-colors"
+                            >
+                                <Plus className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
-        </Card>
+        </div>
     );
 }

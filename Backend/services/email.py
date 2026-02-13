@@ -96,6 +96,7 @@ class GmailClient:
 
             if not creds:
                 print("🔑 Running local server for Gmail OAuth...")
+                # This will BLOCK/HANG if no browser interaction is possible
                 flow = InstalledAppFlow.from_client_secrets_file(
                     self.client_secret_file,
                     self.SCOPES,
@@ -107,6 +108,20 @@ class GmailClient:
 
         service = build("gmail", "v1", credentials=creds)
         return service.users()
+    
+    # -------------------------------------------------------------------
+    # Mock Service Class
+    # -------------------------------------------------------------------
+    class MockService:
+        def messages(self):
+            return self
+
+        def send(self, userId, body):
+            return self
+            
+        def execute(self):
+            print(f">>> [MOCK EMAIL SENT] (Auth not verified)")
+            return {"id": "mock_id", "labelIds": ["SENT"]}
     
     # -------------------------------------------------------------------
     # ✉️ Send Email

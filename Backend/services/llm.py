@@ -173,6 +173,64 @@ class GrokClient:
             return None
 
 # ---------------------------------------------------------
+# Class definition for Groq LLM interactions
+# ---------------------------------------------------------
+class GroqClient:
+    # -------------------------------------------------------------------
+    # 🔧 SETUP: Groq
+    # https://console.groq.com/
+    # -------------------------------------------------------------------
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model_name: str | None = None,
+    ):
+        """
+        :param api_key: Groq API key (defaults to GROQ_API_KEY env var)
+        :param model_name: Groq model (defaults to GROQ_MODEL env var)
+        """
+        self.api_key = api_key or os.getenv("GROQ_API_KEY")
+        self.model_name = model_name or os.getenv("GROQ_MODEL", "llama3-70b-8192")
+
+        if not self.api_key:
+            raise ValueError("GROQ_API_KEY missing")
+        
+        # Initialize standard OpenAI client pointing to Groq
+        self._client = OpenAI(
+            api_key=self.api_key,
+            base_url="https://api.groq.com/openai/v1",
+        )
+
+    # -------------------------------------------------------------------
+    # 🧠 Groq LLM Call (with retry)
+    # -------------------------------------------------------------------
+    def call_groq_with_retry(
+        self,
+        prompt: str,
+        max_retries: int = 3,
+        rate_limit_sleep: int = 5,
+    ) -> str | None:
+        """
+        Call Groq with basic retry logic.
+        """
+        for attempt in range(1, max_retries + 1):
+            try:
+                response = self._client.chat.completions.create(
+                    model=self.model_name,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.7,
+                )
+                return response.choices[0].message.content
+
+            except Exception as e:
+                print(f"⚠️ Groq call failed (attempt {attempt}): {e}")
+                if "429" in str(e):
+                    time.sleep(rate_limit_sleep)
+                else:
+                    time.sleep(1)
+        return None
+
+# ---------------------------------------------------------
 # Class definition for Claude LLM interactions
 # ---------------------------------------------------------
 class ClaudeClient:

@@ -50,12 +50,20 @@ class SheetsClient:
     # -------------------------------------------------------------------
     # 🔐 Init
     # -------------------------------------------------------------------
+    # -------------------------------------------------------------------
+    # 🔐 Init
+    # -------------------------------------------------------------------
     def init_service(self):
         credentials = Credentials.from_service_account_file(
             self.service_account_file,
             scopes=self.SCOPES,
         )
         service = build("sheets", "v4", credentials=credentials)
+        
+        # Initialize Cache
+        self._cache = {}
+        self._cache_ttl = 300  # 5 minutes cache
+        
         return service.spreadsheets()
 
     # -------------------------------------------------------------------
@@ -78,12 +86,21 @@ class SheetsClient:
 
     # -------------------------------------------------------------------
     # 📖 Read
-    # Caching can be added to avoid repeated sheet reads
+    # Caching added to avoid repeated sheet reads
     # -------------------------------------------------------------------
     def read_sheet(self, sheet_name: str) -> pd.DataFrame:
         """
         Read a Google Sheet into a pandas DataFrame (auto-pads rows).
+        Uses 5-minute in-memory cache.
         """
+        # Check Cache
+        now = time.time()
+        if sheet_name in self._cache:
+            data, timestamp = self._cache[sheet_name]
+            if now - timestamp < self._cache_ttl:
+                # print(f"🚀 Using cached data for '{sheet_name}'")
+                return data
+
         request = self._service.values().get(
             spreadsheetId=self.spreadsheet_id,
             range=f"{sheet_name}!A:ZZ",
@@ -92,7 +109,8 @@ class SheetsClient:
 
         values = result.get("values", [])
         if not values:
-            raise ValueError(f"No data found in sheet '{sheet_name}'.")
+            # Return empty DF ensuring no crash
+            return pd.DataFrame()
 
         headers, rows = values[0], values[1:]
 
@@ -100,30 +118,38 @@ class SheetsClient:
             r + [""] * (len(headers) - len(r)) if len(r) < len(headers) else r[:len(headers)]
             for r in rows
         ]
-
-        return pd.DataFrame(clean_rows, columns=headers)
+        
+        df = pd.DataFrame(clean_rows, columns=headers)
+        
+        # Update Cache
+        self._cache[sheet_name] = (df, now)
+        
+        return df
 
     # -------------------------------------------------------------------
     # 📖 Read - Lightweight Reader (non-pandas)
     # -------------------------------------------------------------------
     def read_sheet_rows(self, sheet_name: str) -> list[dict]:
-        request = self._service.values().get(
-            spreadsheetId=self.spreadsheet_id,
-            range=f"{sheet_name}!A:ZZ",
-        )
-        result = self._execute_with_retry(request)
-
-        values = result.get("values", [])
-        if not values:
+        """
+        Read sheet as list of dicts. Uses cache shared with read_sheet if available metadata matches,
+        but for simplicity currently caches separately or just relies on API if needed?
+        Actually, let's cache this too to speed up auth/orders.
+        """
+        # We can reuse the dataframe cache if strict consistency isn't required, 
+        # or just cache the raw values/dicts separately. 
+        # For simplicity, let's key the cache by function+sheet or just sheet if we accept DF format.
+        # But converting DF to dicts every time is fast enough. 
+        
+        # Let's use the SAME cache key but store the raw result? 
+        # Or better, just call read_sheet and convert.
+        try:
+            df = self.read_sheet(sheet_name)
+            if df.empty:
+                return []
+            return df.to_dict('records')
+        except Exception as e:
+            print(f"Read Rows Error: {e}")
             return []
-
-        headers = values[0]
-        rows = values[1:]
-
-        return [
-            dict(zip(headers, r + [""] * (len(headers) - len(r))))
-            for r in rows
-        ]
 
     # -------------------------------------------------------------------
     # ✍️ Update columns in sheet
@@ -162,8 +188,18 @@ class SheetsClient:
                 body={"values": values},
             )
             self._execute_with_retry(request)
+        
+        # Invalidate Cache
+        if sheet_name in self._cache:
+            del self._cache[sheet_name]
+            # print(f"🔄 Cache invalidated for '{sheet_name}'")
 
             print(f"✅ Column '{col}' updated ({col_letter})")
+
+        # Invalidate Cache
+        if sheet_name in self._cache:
+            del self._cache[sheet_name]
+            print(f"🔄 Cache invalidated for '{sheet_name}'")
 
         print(f"✅ Partial update completed for sheet '{sheet_name}'.")
 

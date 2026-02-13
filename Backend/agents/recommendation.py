@@ -4,10 +4,11 @@ import logging
 from typing import List, Dict, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+import pandas as pd
 
 # Services
 from services.sheets import SheetsClient
-from services.llm import GeminiClient
+from services.llm import GeminiClient, GroqClient
 from agents.menu import MenuAgent, get_menu_agent
 import random
 import json
@@ -41,7 +42,7 @@ class RecommendationAgent:
     def __init__(self):
         self.spreadsheet_id = os.getenv("SPREADSHEET_ID")
         self.sheets_client = SheetsClient(spreadsheet_id=self.spreadsheet_id)
-        self.gemini_client = GeminiClient()
+        self.groq_client = GroqClient()
         self.menu_agent = get_menu_agent()
         
         # 🍽️ STRATEGIC CATEGORY MAPPING: Defining logical pairs for cross-selling
@@ -178,6 +179,25 @@ class RecommendationAgent:
     def generate_combos(self, num_combos: int = 3, email: str = None) -> List[Dict]:
         """🤖 SUPER AI COMBO GENERATOR - Powered by Gemini with Deep Customer Intelligence"""
         try:
+            # -------------------------------------------------
+            # CACHE CHECK
+            # -------------------------------------------------
+            if not hasattr(self, '_combo_cache'):
+                self._combo_cache = {}
+            
+            cache_key = f"{email}_{num_combos}"
+            current_time = pd.Timestamp.now().timestamp()
+            CACHE_TTL = 900  # 15 Minutes Cache for AI Combos
+            
+            if cache_key in self._combo_cache:
+                data, timestamp = self._combo_cache[cache_key]
+                if current_time - timestamp < CACHE_TTL:
+                    # print(f"🚀 Using Cached AI Combos for {email}")
+                    return data
+            
+            # -------------------------------------------------
+            # GENERATE NEW
+            # -------------------------------------------------
             print(f"🚀 Generating {num_combos} Super AI Combos for {email or 'guest'}")
             
             # Step 1: Load all necessary data
@@ -208,15 +228,20 @@ class RecommendationAgent:
                 )]
                 print(f"🌱 Filtered for {diet} diet")
 
-            # Step 4: Use Gemini AI to generate intelligent combos
-            ai_combos = self._generate_gemini_super_combos(
+            # Step 4: Use Groq AI to generate intelligent combos
+            ai_combos = self._generate_ai_super_combos(
                 active_items=active_items,
                 customer_insights=customer_insights,
                 num_combos=num_combos
             )
 
             print(f"✅ Generated {len(ai_combos)} combos")
-            return ai_combos[:num_combos]
+            result = ai_combos[:num_combos]
+            
+            # UPDATE CACHE
+            self._combo_cache[cache_key] = (result, current_time)
+            
+            return result
 
         except Exception as e:
             print(f"❌ Combo Generation Error: {e}")
@@ -225,6 +250,22 @@ class RecommendationAgent:
 
     def _gather_customer_insights(self, email: str) -> Dict:
         """🧠 Deep Customer Intelligence Gathering"""
+        
+        # -------------------------------------------------
+        # CACHE CHECK
+        # -------------------------------------------------
+        if not hasattr(self, '_insights_cache'):
+            self._insights_cache = {}
+            
+        current_time = pd.Timestamp.now().timestamp()
+        CACHE_TTL = 600  # 10 Minutes Cache for Insights
+        
+        if email in self._insights_cache:
+            data, timestamp = self._insights_cache[email]
+            if current_time - timestamp < CACHE_TTL:
+                # print(f"🚀 Using Cached Insights for {email}")
+                return data
+
         insights = {
             'dietary_preference': 'General',
             'favorite_items': [],
@@ -239,20 +280,36 @@ class RecommendationAgent:
         }
         
         try:
-            # 1. Get Customer Preferences
+            # 1. Get Customer Preferences & Insights
             try:
+                # A. Check Customer_Preferences Sheet (Explicit preferences)
                 prefs_df = self.sheets_client.read_sheet("Customer_Preferences")
-                user_prefs = prefs_df[prefs_df['Email'] == email]
-                
-                if not user_prefs.empty:
-                    latest_pref = user_prefs.iloc[-1]  # Get latest preferences
-                    insights['dietary_preference'] = latest_pref.get('Dietary', 'General')
-                    insights['preferred_bread'] = latest_pref.get('Preferred_Bread', None)
-                    insights['preferred_beverage'] = latest_pref.get('Favorite_Beverage', None)
-                    insights['preferred_dessert'] = latest_pref.get('Dessert_Preference', None)
-                    print(f"✅ Found customer preferences")
+                if not prefs_df.empty and 'Email' in prefs_df.columns:
+                    user_prefs = prefs_df[prefs_df['Email'] == email]
+                    if not user_prefs.empty:
+                        latest_pref = user_prefs.iloc[-1]
+                        insights['dietary_preference'] = latest_pref.get('Dietary', 'General')
+                        insights['preferred_bread'] = latest_pref.get('Preferred_Bread', None)
+                        insights['preferred_beverage'] = latest_pref.get('Favorite_Beverage', None)
+                        insights['preferred_dessert'] = latest_pref.get('Dessert_Preference', None)
+                        print(f"✅ Found customer preferences")
+
+                # B. Check Customer_Auth Sheet (For 'Customer_Insights' column)
+                auth_df = self.sheets_client.read_sheet("Customer_Auth")
+                if not auth_df.empty and 'Customer_Email' in auth_df.columns:
+                    user_auth = auth_df[auth_df['Customer_Email'] == email]
+                    if not user_auth.empty:
+                        auth_row = user_auth.iloc[-1]
+                        # Look for 'Customer_Insights' or 'Computed_Insights'
+                        if 'Customer_Insights' in auth_row and pd.notna(auth_row['Customer_Insights']):
+                            insights['manual_insights'] = auth_row['Customer_Insights']
+                            print(f"✅ Found Manual Customer Insights: {insights['manual_insights']}")
+                        elif 'Insights' in auth_row and pd.notna(auth_row['Insights']):
+                            insights['manual_insights'] = auth_row['Insights']
+                            print(f"✅ Found Manual Insights: {insights['manual_insights']}")
+                            
             except Exception as e:
-                print(f"⚠️ Could not load preferences: {e}")
+                print(f"⚠️ Could not load preferences/insights: {e}")
 
             # 2. Analyze Order History
             try:
@@ -260,47 +317,50 @@ class RecommendationAgent:
                 order_items_df = self.sheets_client.read_sheet("Order_Items")
                 menu_df = self.sheets_client.read_sheet("Menu")
                 
-                # Clean data
-                orders_df['Customer_Email'] = orders_df['Customer_Email'].astype(str).str.strip()
-                order_items_df['Item_ID'] = order_items_df['Item_ID'].astype(str).str.strip()
-                menu_df['Item_ID'] = menu_df['Item_ID'].astype(str).str.strip()
-                
-                # Get user's orders
-                user_orders = orders_df[orders_df['Customer_Email'] == email]
-                
-                if not user_orders.empty:
-                    # Order frequency
-                    num_orders = len(user_orders)
-                    if num_orders >= 10:
-                        insights['order_frequency'] = 'Loyal Customer'
-                    elif num_orders >= 5:
-                        insights['order_frequency'] = 'Regular Customer'
-                    else:
-                        insights['order_frequency'] = 'Occasional Customer'
+                # Check required columns before processing
+                if not orders_df.empty and 'Customer_Email' in orders_df.columns:
+                    # Clean data
+                    orders_df['Customer_Email'] = orders_df['Customer_Email'].astype(str).str.strip()
+                    if not order_items_df.empty: order_items_df['Item_ID'] = order_items_df['Item_ID'].astype(str).str.strip()
+                    menu_df['Item_ID'] = menu_df['Item_ID'].astype(str).str.strip()
                     
-                    # Average order value
-                    if 'Total_Amount' in user_orders.columns:
-                        insights['average_order_value'] = user_orders['Total_Amount'].mean()
+                    # Get user's orders
+                    user_orders = orders_df[orders_df['Customer_Email'] == email]
                     
-                    # Get items from user's orders
-                    order_ids = user_orders['Order_ID'].tolist()
-                    user_items = order_items_df[order_items_df['Order_ID'].isin(order_ids)]
-                    
-                    if not user_items.empty:
-                        # Most ordered items
-                        item_counts = user_items['Item_ID'].value_counts().head(5)
-                        favorite_item_ids = item_counts.index.tolist()
+                    if not user_orders.empty:
+                        # Order frequency
+                        num_orders = len(user_orders)
+                        if num_orders >= 10:
+                            insights['order_frequency'] = 'Loyal Customer'
+                        elif num_orders >= 5:
+                            insights['order_frequency'] = 'Regular Customer'
+                        else:
+                            insights['order_frequency'] = 'Occasional Customer'
                         
-                        # Get item details
-                        favorite_items = menu_df[menu_df['Item_ID'].isin(favorite_item_ids)]
-                        insights['favorite_items'] = favorite_items['Item_Name'].tolist()
+                        # Average order value
+                        if 'Total_Amount' in user_orders.columns:
+                            insights['average_order_value'] = pd.to_numeric(user_orders['Total_Amount'], errors='coerce').mean()
                         
-                        # Preferred categories
-                        if not favorite_items.empty:
-                            category_counts = favorite_items['Item_Category'].value_counts()
-                            insights['preferred_categories'] = category_counts.head(3).index.tolist()
-                        
-                        print(f"✅ Analyzed {num_orders} orders, {len(user_items)} items")
+                        # Get items from user's orders
+                        if not order_items_df.empty:
+                            order_ids = user_orders['Order_ID'].tolist()
+                            user_items = order_items_df[order_items_df['Order_ID'].isin(order_ids)]
+                            
+                            if not user_items.empty:
+                                # Most ordered items
+                                item_counts = user_items['Item_ID'].value_counts().head(5)
+                                favorite_item_ids = item_counts.index.tolist()
+                                
+                                # Get item details
+                                favorite_items = menu_df[menu_df['Item_ID'].isin(favorite_item_ids)]
+                                insights['favorite_items'] = favorite_items['Item_Name'].tolist()
+                                
+                                # Preferred categories
+                                if not favorite_items.empty:
+                                    category_counts = favorite_items['Item_Category'].value_counts()
+                                    insights['preferred_categories'] = category_counts.head(3).index.tolist()
+                                
+                                print(f"✅ Analyzed {num_orders} orders, {len(user_items)} items")
             
             except Exception as e:
                 print(f"⚠️ Could not analyze order history: {e}")
@@ -308,27 +368,30 @@ class RecommendationAgent:
             # 3. Global Combo Patterns (what combinations are popular across all users)
             try:
                 order_items_df = self.sheets_client.read_sheet("Order_Items")
-                orders_df = self.sheets_client.read_sheet("Orders")
                 
-                # Find orders with multiple items (potential combos)
-                order_item_counts = order_items_df.groupby('Order_ID').size()
-                combo_orders = order_item_counts[order_item_counts >= 2].index.tolist()
-                
-                # Analyze popular combinations
-                popular_combos = []
-                for order_id in combo_orders[:20]:  # Sample top 20 combo orders
-                    items_in_order = order_items_df[order_items_df['Order_ID'] == order_id]['Item_ID'].tolist()
-                    if len(items_in_order) >= 2:
-                        popular_combos.append(tuple(sorted(items_in_order)))
-                
-                # Get most common combos
-                combo_freq = Counter(popular_combos)
-                insights['favorite_combos'] = [list(combo) for combo, _ in combo_freq.most_common(3)]
-                
-                print(f"✅ Analyzed {len(popular_combos)} popular combos")
+                if not order_items_df.empty:
+                    # Find orders with multiple items (potential combos)
+                    order_item_counts = order_items_df.groupby('Order_ID').size()
+                    combo_orders = order_item_counts[order_item_counts >= 2].index.tolist()
+                    
+                    # Analyze popular combinations
+                    popular_combos = []
+                    for order_id in combo_orders[:20]:  # Sample top 20 combo orders
+                        items_in_order = order_items_df[order_items_df['Order_ID'] == order_id]['Item_ID'].tolist()
+                        if len(items_in_order) >= 2:
+                            popular_combos.append(tuple(sorted(items_in_order)))
+                    
+                    # Get most common combos
+                    combo_freq = Counter(popular_combos)
+                    insights['favorite_combos'] = [list(combo) for combo, _ in combo_freq.most_common(3)]
+                    
+                    print(f"✅ Analyzed {len(popular_combos)} popular combos")
                 
             except Exception as e:
                 print(f"⚠️ Could not analyze combo patterns: {e}")
+                
+            # UPDATE CACHE
+            self._insights_cache[email] = (insights, current_time)
 
         except Exception as e:
             print(f"❌ Error gathering customer insights: {e}")
@@ -336,8 +399,8 @@ class RecommendationAgent:
         
         return insights
 
-    def _generate_gemini_super_combos(self, active_items, customer_insights: Dict, num_combos: int) -> List[Dict]:
-        """🎯 Use Gemini AI to create personalized, intelligent combos"""
+    def _generate_ai_super_combos(self, active_items, customer_insights: Dict, num_combos: int) -> List[Dict]:
+        """🎯 Use Groq AI to create personalized, intelligent combos"""
         try:
             # Prepare menu context for Gemini
             menu_sample = active_items[['Item_Name', 'Item_Category', 'Current_Price']].head(50).to_dict('records')
@@ -355,6 +418,7 @@ CUSTOMER INTELLIGENCE:
 - Preferred Beverage: {customer_insights.get('preferred_beverage') or 'Any'}
 - Preferred Dessert: {customer_insights.get('preferred_dessert') or 'Any'}
 - Average Order Value: ₹{customer_insights.get('average_order_value', 0):.0f}
+- SPECIAL CUSTOMER INSIGHTS: {customer_insights.get('manual_insights', 'None provided')}
 
 AVAILABLE MENU ITEMS:
 {json.dumps(menu_sample, indent=2)}
@@ -395,8 +459,8 @@ CRITICAL:
 - NO markdown, NO explanations, ONLY the JSON array
 """
 
-            print("🎯 Sending request to Gemini...")
-            response = self.gemini_client.call_gemini_with_retry(prompt)
+            print("🎯 Sending request to Groq...")
+            response = self.groq_client.call_groq_with_retry(prompt)
             
             if not response:
                 print("❌ Empty response from Gemini")
@@ -692,7 +756,7 @@ CRITICAL:
             rec_name = recommendations[0]['name']
             prompt = f"Write a 1-line appetizing pitch for adding {rec_name} to {item_name} ({category}). Max 12 words. Be creative and enticing."
             
-            response = self.gemini_client.call_gemini_with_retry(prompt)
+            response = self.groq_client.call_groq_with_retry(prompt)
             
             if response:
                 return response.strip().replace('"', '').replace('*', '')

@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Sparkles } from "lucide-react";
 // @ts-ignore
 import heroVideo from "@/assets/hero-video.mp4";
 
@@ -8,37 +8,54 @@ interface HeroBannerProps {
 
 export default function HeroBanner({ onOrderNow }: HeroBannerProps) {
     return (
-        <div className="relative w-full h-[50vh] max-h-[450px] overflow-hidden shadow-lg mb-6">
+        <div className="relative w-full h-[55vh] max-h-[500px] overflow-hidden rounded-3xl shadow-2xl mb-8 mx-4 animate-slide-up">
+            {/* Video Background */}
             <video
                 src={heroVideo}
                 autoPlay
                 muted
                 loop
                 playsInline
-                className="absolute inset-0 w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-cover scale-105"
             />
 
-            {/* Dark Overlay/Gradient */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+            {/* Premium Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+
+            {/* Subtle Pattern Overlay */}
+            <div className="absolute inset-0 opacity-10" style={{
+                backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
+                backgroundSize: '40px 40px'
+            }} />
 
             {/* Content */}
-            <div className="absolute bottom-0 left-0 right-0 p-6 text-white text-center flex flex-col items-center animate-fade-in-up">
-                <span className="inline-block px-3 py-1 bg-red-600 text-white text-xs font-bold rounded-full mb-3 uppercase tracking-wider">
-                    Steal Deal of the Day
-                </span>
-                <h1 className="text-4xl md:text-5xl font-black mb-2 leading-tight">
-                    Sizzling <span className="text-yellow-400">Combos</span>
+            <div className="absolute bottom-0 left-0 right-0 p-8 text-white text-center flex flex-col items-center">
+                {/* Premium Badge */}
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-500 text-white text-xs font-black rounded-full mb-4 uppercase tracking-wider shadow-xl animate-pulse-glow">
+                    <Sparkles className="w-4 h-4 fill-current" />
+                    <span>Steal Deal of the Day</span>
+                </div>
+
+                {/* Headline */}
+                <h1 className="text-5xl md:text-6xl font-black mb-3 leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    Sizzling <span className="text-gradient-gold">Combos</span>
                 </h1>
-                <p className="text-white/90 text-sm md:text-base font-medium mb-6 max-w-xs mx-auto">
-                    Discover our premium AI-curated family feasts. limited time offer!
+
+                {/* Subtitle */}
+                <p className="text-white/90 text-base md:text-lg font-medium mb-8 max-w-md mx-auto leading-relaxed">
+                    Discover our premium AI-curated family feasts. Limited time offer!
                 </p>
 
+                {/* Premium CTA Button */}
                 <button
                     onClick={onOrderNow}
-                    className="group flex items-center gap-2 bg-white text-red-600 px-8 py-3 rounded-full font-bold text-lg shadow-xl hover:bg-gray-100 transition-all active:scale-95"
+                    className="group relative flex items-center gap-3 bg-white text-red-600 px-10 py-4 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105 active:scale-95 overflow-hidden"
                 >
-                    Check Menu
-                    <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    {/* Button Shine Effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+
+                    <span className="relative z-10">Check Menu</span>
+                    <ChevronRight className="w-6 h-6 relative z-10 group-hover:translate-x-2 transition-transform duration-300" />
                 </button>
             </div>
         </div>

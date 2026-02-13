@@ -137,24 +137,34 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F4F2] pb-40">
-      {/* Sticky Premium Header */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md shadow-sm border-b border-gray-100">
-        <div className="flex items-center gap-4 px-4 py-3">
-          <button onClick={() => navigate("/home")} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-yellow-50 pb-24 relative overflow-x-hidden">
+      {/* Vibrant Background Pattern */}
+      <div className="fixed inset-0 opacity-30 pointer-events-none" style={{
+        backgroundImage: `radial-gradient(circle at 20% 50%, rgba(244, 67, 54, 0.08) 0%, transparent 50%),
+                          radial-gradient(circle at 80% 80%, rgba(255, 193, 7, 0.08) 0%, transparent 50%),
+                          radial-gradient(circle at 40% 20%, rgba(33, 150, 243, 0.06) 0%, transparent 50%)`
+      }} />
+
+      {/* Decorative Dots Pattern */}
+      <div className="fixed inset-0 opacity-20 pointer-events-none" style={{
+        backgroundImage: `radial-gradient(circle at 2px 2px, rgba(244, 67, 54, 0.15) 1px, transparent 0)`,
+        backgroundSize: '48px 48px'
+      }} />
+
+      {/* Header */}
+      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm">
+        <div className="flex items-center gap-3 p-4">
+          <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors">
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
-          <div>
-            <h1 className="text-lg font-black text-gray-900 leading-none">Your Cart</h1>
-            <p className="text-xs text-gray-500 mt-0.5 font-medium">{items.length} items from <strong>DineIQ Premium</strong></p>
-          </div>
-          <div className="ml-auto bg-green-50 text-green-700 px-2 py-1 rounded-lg text-[10px] font-bold tracking-wide uppercase border border-green-200">
-            Dine In • T-{tableNumber || "1"}
+          <div className="flex-1">
+            <h1 className="text-xl font-bold text-gray-900">Your Cart</h1>
+            <p className="text-sm text-gray-600">{items.length} {items.length === 1 ? 'item' : 'items'}</p>
           </div>
         </div>
-      </header>
+      </div>
 
-      <div className="p-4 space-y-6">
+      <div className="max-w-2xl mx-auto p-4 space-y-5 relative z-10">
 
         {/* Cart Items List */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
@@ -172,8 +182,25 @@ export default function CartPage() {
 
               {/* Details */}
               <div className="flex-1 flex flex-col justify-between">
-                <div>
-                  <h3 className="font-bold text-gray-800 text-sm leading-tight line-clamp-1">{item.name}</h3>
+                <div className="flex-1">
+                  <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-2">{item.name}</h3>
+
+                  {/* Show Combo Items if available */}
+                  {item.comboItems && item.comboItems.length > 0 && (
+                    <div className="mt-1.5 p-2 bg-blue-50 rounded-lg border border-blue-100">
+                      <p className="text-xs text-blue-800 font-medium mb-1">Contains:</p>
+                      <p className="text-xs text-blue-700 leading-relaxed">
+                        {item.comboItems.map((ci: any) => `${ci.quantity}x ${ci.name}`).join(' • ')}
+                      </p>
+                    </div>
+                  )}
+
+                  {item.description && !item.comboItems && (
+                    <p className="text-xs text-gray-500 mt-1 line-clamp-1">{item.description}</p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between mt-2">
                   <p className="text-xs text-gray-400 mt-1 font-medium">₹{item.price} x {item.quantity}</p>
                 </div>
 
@@ -210,40 +237,48 @@ export default function CartPage() {
           />
         </div>
 
-        {/* Recommendations - "You might also like" */}
+        {/* Recommendations - "Best Compliments" */}
         {(recommendations.length > 0) && (
-          <div>
-            <div className="flex items-center gap-2 mb-3 px-1">
-              <Sparkles className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-              <h3 className="font-bold text-gray-800 text-sm">
-                {aiPitch || "Complete your meal"}
-              </h3>
+          <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-5 border border-yellow-200 shadow-md">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-1 h-12 bg-gradient-to-b from-yellow-400 to-orange-500 rounded-full shadow-lg" />
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-yellow-600 fill-yellow-500" />
+                  <h3 className="font-bold text-gray-900 text-lg">
+                    Best Compliments
+                  </h3>
+                </div>
+                <p className="text-sm text-gray-700 mt-0.5">
+                  {aiPitch || "Perfect pairings for your meal"}
+                </p>
+              </div>
             </div>
-            <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-4 -mx-4 px-4">
+            <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
               {recommendations.map((rec, i) => (
-                <div key={i} className="flex-shrink-0 w-44 bg-white rounded-xl p-3 border border-gray-100 shadow-sm flex flex-col gap-2 group hover:shadow-md transition-shadow">
-                  <div className="relative h-28 rounded-lg overflow-hidden bg-gray-100">
+                <div key={i} className="flex-shrink-0 w-52 bg-white rounded-2xl p-3 border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                  <div className="relative h-32 rounded-xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
                     <img
                       src={rec.Image_URL || "https://images.unsplash.com/photo-1544145945-f90425340c7e"}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       alt={rec.Item_Name}
                     />
 
-                    {/* Tag Badge (e.g. "Best with Curry") */}
+                    {/* Tag Badge */}
                     {rec.tag && (
-                      <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-md text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                      <div className="absolute top-2 left-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 text-[10px] font-black px-2 py-1 rounded-lg shadow-lg">
                         {rec.tag}
                       </div>
                     )}
 
                     <button
                       onClick={() => handleAddRecommendation(rec)}
-                      className="absolute bottom-2 right-2 bg-white text-green-600 text-xs font-bold px-3 py-1.5 rounded-lg shadow-md uppercase border border-green-50 active:scale-95 transition-transform hover:bg-green-50"
+                      className="absolute bottom-2 right-2 bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-bold px-4 py-1.5 rounded-lg shadow-lg uppercase hover:from-green-600 hover:to-green-700 active:scale-95 transition-all"
                     >
                       Add
                     </button>
                   </div>
-                  <div>
+                  <div className="mt-2.5">
                     <div className="flex items-start justify-between gap-1">
                       <p className="text-xs font-bold text-gray-800 line-clamp-2 leading-tight">{rec.Item_Name}</p>
                       <div className={`w-2.5 h-2.5 border-[1px] flex-shrink-0 mt-0.5 ${rec.isVeg ? "border-green-600" : "border-red-500"} flex items-center justify-center p-[1px]`}>
@@ -360,7 +395,7 @@ export default function CartPage() {
 
           <div className="flex justify-between items-center">
             <span className="font-bold text-gray-900">Grand Total</span>
-            <span className="font-black text-xl text-gray-900">₹{finalTotal}</span>
+            <span className="font-black text-xl text-gray-900">₹{finalTotal.toFixed(2)}</span>
           </div>
         </div>
       </div>
@@ -373,7 +408,7 @@ export default function CartPage() {
         >
           <div className="flex flex-col items-start leading-none">
             <span className="text-sm font-medium opacity-80">Total to Pay</span>
-            <span>₹{finalTotal}</span>
+            <span>₹{finalTotal.toFixed(2)}</span>
           </div>
           <div className="flex items-center gap-2">
             Proceed <CreditCard className="w-5 h-5" />

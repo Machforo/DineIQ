@@ -26,8 +26,8 @@ menu_agent = MenuAgent()
 # ---------------------------------------------------------
 # llm Client
 # ---------------------------------------------------------
-from services.llm import GeminiClient
-gemini_client = GeminiClient()
+from services.llm import GroqClient
+groq_client = GroqClient()
 
 # ---------------------------------------------------------
 # Sheets Client
@@ -217,7 +217,7 @@ async def llm_chat(req: ChatRequest):
         )
 
         # 4️⃣ Call LLM service
-        ai_reply = gemini_client.call_gemini_with_retry(prompt)
+        ai_reply = groq_client.call_groq_with_retry(prompt)
 
         if not ai_reply:
             raise Exception("Empty response from LLM")

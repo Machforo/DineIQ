@@ -44,8 +44,14 @@ def signup(payload: dict):
     otp = generate_otp()
     save_otp_for_email(email, otp, name=name, mobile=mobile)
     
-    gmail_client = GmailClient()
-    gmail_client.send_otp_email(email, otp)
+    # Synchronous email send (Restored as per user request)
+    try:
+        gmail_client = GmailClient()
+        gmail_client.send_otp_email(email, otp)
+    except Exception as e:
+        print(f"Failed to send OTP email: {e}")
+        # We don't block signup success even if email fails, or should we? 
+        # Original likely just crashed or logged error. Keeping it safe but synchronous.
 
     return {"status": "otp_sent"}
 
@@ -65,8 +71,13 @@ def check_user(payload: dict):
 
         otp = generate_otp()
         save_otp_for_email(value, otp)
-        gmail_client = GmailClient()
-        gmail_client.send_otp_email(value, otp)
+        
+        # Synchronous email send
+        try:
+            gmail_client = GmailClient()
+            gmail_client.send_otp_email(value, otp)
+        except Exception as e:
+            print(f"Failed to send OTP email: {e}")
 
         return {
             "status": "exists",

@@ -9,7 +9,7 @@ import pandas as pd
 
 # import agents and services classes
 from services.sheets import SheetsClient
-from services.llm import GeminiClient
+from services.llm import GroqClient
 
 # ---------------------------------------------------------
 # Load environment variables
@@ -255,7 +255,7 @@ class MenuAgent:
         # -------------------------------------------------
         # 4️⃣ GEMINI: FILTER + RANK (STRICT DIETARY)
         # -------------------------------------------------
-        ranked_names = self.rank_menu_items_with_gemini(
+        ranked_names = self.rank_menu_items_with_ai(
             menu_items=menu_items_for_llm,
             customer_profile=customer_profile,
         )
@@ -310,15 +310,15 @@ class MenuAgent:
 
     
     # -------------------------------------------------------------------
-    # 🤖 Gemini-based ranking (SAFE + INTERPRETIVE)
+    # 🤖 AI-based ranking (SAFE + INTERPRETIVE)
     # -------------------------------------------------------------------
-    def rank_menu_items_with_gemini(
+    def rank_menu_items_with_ai(
         self,
         menu_items: list[dict],
         customer_profile: dict
     ) -> list[str]:
         """
-        Uses Gemini to:
+        Uses Groq AI to:
         1. Remove items violating dietary preference
         2. Rank remaining items using AOV + Attitude
         """
@@ -371,8 +371,8 @@ class MenuAgent:
     - No explanation, no markdown
     """
 
-        gemini_client = GeminiClient()
-        response = gemini_client.call_gemini_with_retry(prompt)
+        groq_client = GroqClient()
+        response = groq_client.call_groq_with_retry(prompt)
 
         if not response:
             return item_names
@@ -436,92 +436,137 @@ class MenuAgent:
         """
         Get menu organized smartly for DineIQ frontend (Sections: Favorites, Bestsellers, etc.)
         Reads Orders and Order_Items from Sheets for history.
+        Uses Caching for Performance.
         """
         try:
-            # Load Data
-            menu_df = self.sheets_client.read_sheet("Menu")
+            # -------------------------------------------------
+            # 1. Check Cache for Global Data (Base Menu + Bestsellers/Chef Special)
+            # -------------------------------------------------
+            if not hasattr(self, '_smart_menu_cache'):
+                self._smart_menu_cache = {}
+                self._smart_menu_last_update = 0
             
-            # Defensive Handling for Empty Sheets
-            try:
-                orders_df = self.sheets_client.read_sheet("Orders")
-            except:
-                orders_df = pd.DataFrame(columns=['Order_ID', 'Customer_ID'])
+            current_time = pd.Timestamp.now().timestamp()
+            CACHE_TTL = 300 # 5 Minutes for Global Data
+            
+            # If cache is valid, use it as base
+            base_data = None
+            if current_time - self._smart_menu_last_update < CACHE_TTL:
+                base_data = self._smart_menu_cache.get('GLOBAL')
+            
+            if not base_data:
+                # RECOMPUTE GLOBAL DATA
+                # Load Data
+                menu_df = self.sheets_client.read_sheet("Menu")
                 
-            try:
-                order_items_df = self.sheets_client.read_sheet("Order_Items")
-            except:
-                order_items_df = pd.DataFrame(columns=['Order_ID', 'Item_ID', 'Item_Name'])
+                # Filter Active
+                valid_status = ['active', '1', 'yes', 'true']
+                menu_df["Is_Active"] = menu_df["Is_Active"].astype(str).str.strip().str.lower().isin(valid_status)
+                active_df = menu_df[menu_df["Is_Active"]].copy()
+                if active_df.empty: active_df = menu_df.copy() # Fallback
 
-            # Filter Active
-            valid_status = ['active', '1', 'yes', 'true']
-            menu_df["Is_Active"] = menu_df["Is_Active"].astype(str).str.strip().str.lower().isin(valid_status)
-            active_df = menu_df[menu_df["Is_Active"]].copy()
-            
-            if active_df.empty: active_df = menu_df.copy() # Fallback
+                # Helper
+                def format_item(row) -> dict:
+                    item_name = str(row['Item_Name'])
+                    category = str(row['Item_Category'])
+                    return {
+                        'Item_ID': str(row['Item_ID']),
+                        'Item_Name': item_name,
+                        'Item_Description': self._get_item_description(category, item_name),
+                        'Current_Price': float(row['Current_Price']) if row['Current_Price'] else 0.0,
+                        'Image_URL': self._get_image_for_item(category, item_name),
+                        'Is_Veg': self._is_veg_item(item_name),
+                        'Item_Category': category,
+                        'Dietary_Type': 'Veg' if self._is_veg_item(item_name) else 'Non-Veg'
+                    }
+                
+                global_sections = {}
+                
+                # A. BESTSELLERS & CHEF SPECIAL (Need Order Stats)
+                try:
+                    order_items_df = self.sheets_client.read_sheet("Order_Items")
+                    
+                    # Bestsellers
+                    if not order_items_df.empty:
+                        popular_names = order_items_df['Item_Name'].value_counts().head(6).index
+                        bestsellers = active_df[active_df['Item_Name'].isin(popular_names)]
+                        if not bestsellers.empty:
+                            global_sections["Bestseller"] = [format_item(row) for _, row in bestsellers.iterrows()]
 
-            menu_sections = {}
+                    # Chef Special
+                    active_df['Price_Float'] = pd.to_numeric(active_df['Current_Price'], errors='coerce').fillna(0)
+                    sorted_by_price = active_df.sort_values(by='Price_Float', ascending=False)
+                    chef_special = sorted_by_price.head(max(1, int(len(sorted_by_price) * 0.3))).head(8)
+                    if not chef_special.empty:
+                        global_sections["Chef Special"] = [format_item(row) for _, row in chef_special.iterrows()]
+                        
+                except Exception as e:
+                    print(f"Stats Error: {e}")
 
-            # Helper
-            def format_item(row) -> dict:
-                item_name = str(row['Item_Name'])
-                category = str(row['Item_Category'])
-                return {
-                    'Item_ID': str(row['Item_ID']),
-                    'Item_Name': item_name,
-                    'Item_Description': self._get_item_description(category, item_name),
-                    'Current_Price': float(row['Current_Price']) if row['Current_Price'] else 0.0,
-                    'Image_URL': self._get_image_for_item(category, item_name),
-                    'Is_Veg': self._is_veg_item(item_name),
-                    'Item_Category': category,
-                    'Dietary_Type': 'Veg' if self._is_veg_item(item_name) else 'Non-Veg'
+                # B. CATEGORIES
+                categories = active_df['Item_Category'].unique()
+                for category in sorted(categories):
+                    if not category: continue
+                    cat_items = active_df[active_df['Item_Category'] == category]
+                    if not cat_items.empty:
+                        global_sections[category] = [format_item(row) for _, row in cat_items.iterrows()]
+                
+                base_data = {
+                    "menu_sections": global_sections,
+                    "total_items": len(active_df),
+                    "categories": list(global_sections.keys()),
+                    "active_df": active_df # Keep DF for user personalization
                 }
+                
+                # Update Cache
+                self._smart_menu_cache['GLOBAL'] = base_data
+                self._smart_menu_last_update = current_time
+                print("⚡ Updated Menu Cache")
 
-            # 1. YOUR FAVORITES
-            if email and not orders_df.empty and not order_items_df.empty:
+            # -------------------------------------------------
+            # 2. Personalize for User (Favorites)
+            # -------------------------------------------------
+            final_sections = base_data["menu_sections"].copy()
+            
+            if email:
                 try:
-                    # Filter Orders by Email (part of Customer_ID usually)
-                    matching_orders = orders_df[orders_df['Customer_ID'].str.contains(email.split('@')[0], case=False, na=False)]
-                    if not matching_orders.empty:
-                        past_items = order_items_df[order_items_df['Order_ID'].isin(matching_orders['Order_ID'])]['Item_Name'].unique()
-                        fav_items = active_df[active_df['Item_Name'].isin(past_items)]
-                        if not fav_items.empty:
-                            menu_sections["Your Favorites"] = [format_item(row) for _, row in fav_items.iterrows()]
+                    # Quick check for favorites
+                    orders_df = self.sheets_client.read_sheet("Orders")
+                    order_items_df = self.sheets_client.read_sheet("Order_Items")
+                    active_df = base_data["active_df"]
+                    
+                    if not orders_df.empty and not order_items_df.empty:
+                         matching_orders = orders_df[orders_df['Customer_ID'].str.contains(email.split('@')[0], case=False, na=False)]
+                         if not matching_orders.empty:
+                             past_items = order_items_df[order_items_df['Order_ID'].isin(matching_orders['Order_ID'])]['Item_Name'].unique()
+                             fav_items = active_df[active_df['Item_Name'].isin(past_items)]
+                             if not fav_items.empty:
+                                 # Format favorites
+                                 fav_list = []
+                                 for _, row in fav_items.iterrows():
+                                     # Re-use format logic (duplicated strictly locally or we can extract helper)
+                                     # For speed, we just do it here
+                                     item_name = str(row['Item_Name'])
+                                     category = str(row['Item_Category'])
+                                     fav_list.append({
+                                         'Item_ID': str(row['Item_ID']),
+                                         'Item_Name': item_name,
+                                         'Item_Description': self._get_item_description(category, item_name),
+                                         'Current_Price': float(row['Current_Price']) if row['Current_Price'] else 0.0,
+                                         'Image_URL': self._get_image_for_item(category, item_name),
+                                         'Is_Veg': self._is_veg_item(item_name),
+                                         'Item_Category': category,
+                                         'Dietary_Type': 'Veg' if self._is_veg_item(item_name) else 'Non-Veg'
+                                     })
+                                 final_sections = {"Your Favorites": fav_list, **final_sections}
                 except Exception as e:
-                    print(f"Stats Error (Favorites): {e}")
-
-            # 2. BESTSELLERS
-            if not order_items_df.empty:
-                try:
-                    popular_names = order_items_df['Item_Name'].value_counts().head(6).index
-                    bestsellers = active_df[active_df['Item_Name'].isin(popular_names)]
-                    if not bestsellers.empty:
-                        menu_sections["Bestseller"] = [format_item(row) for _, row in bestsellers.iterrows()]
-                except Exception as e:
-                    print(f"Stats Error (Bestsellers): {e}")
-
-            # 3. CHEF'S SPECIAL (Price Top 30%)
-            try:
-                active_df['Price_Float'] = pd.to_numeric(active_df['Current_Price'], errors='coerce').fillna(0)
-                sorted_by_price = active_df.sort_values(by='Price_Float', ascending=False)
-                chef_special = sorted_by_price.head(max(1, int(len(sorted_by_price) * 0.3))).head(8)
-                if not chef_special.empty:
-                    menu_sections["Chef Special"] = [format_item(row) for _, row in chef_special.iterrows()]
-            except Exception as e:
-                print(f"Stats Error (Chef Special): {e}")
-
-            # 4. CATEGORIES
-            categories = active_df['Item_Category'].unique()
-            for category in sorted(categories):
-                if not category: continue
-                cat_items = active_df[active_df['Item_Category'] == category]
-                if not cat_items.empty:
-                    menu_sections[category] = [format_item(row) for _, row in cat_items.iterrows()]
+                    print(f"Personalization Error: {e}")
 
             return {
                 "status": "success",
-                "menu_sections": menu_sections,
-                "total_items": len(active_df),
-                "categories": list(menu_sections.keys())
+                "menu_sections": final_sections,
+                "total_items": base_data["total_items"],
+                "categories": list(final_sections.keys())
             }
 
         except Exception as e:

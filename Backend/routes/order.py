@@ -57,6 +57,8 @@ class CartItem(BaseModel):
     Current_Price: Optional[float] = 0.0
     quantity: Optional[int] = 1
     category: Optional[str] = None
+    description: Optional[str] = None  # Added field
+    sub_items: Optional[List[Dict]] = None # Added field for explicit unpacking
 
 class PricingRequest(BaseModel):
     customer_email: str
@@ -69,6 +71,14 @@ class OrderRequest(BaseModel):
     final_total: float
     payment_method: str = "Cash"
     instructions: Optional[str] = None
+
+# ... (Endpoints detect deleted lines, ensuring I match context correctly) ...
+# I need to match the target content exactly or use line numbers accurately. 
+# Attempting to replace the Model definition AND the order logic in one go might be tricky if they are far apart.
+# Getting safe: I will split this into two `replace_file_content` if needed, OR just match the Model chunk first.
+
+# LET'S DO THE MODEL UPDATE FIRST.
+
 
 # ---------------------------------------------------------
 # Endpoints
@@ -155,64 +165,88 @@ async def place_order(req: OrderRequest):
         ]
         sheets_client.append_row(ORDERS_SHEET, order_row)
         
-        # 2. Save to Order_Items Sheet (Batch Insert & Optimized ID Gen)
+        # 2. Save to Order_Items Sheet (Optimized: No Read Required)
         try:
-            # Fetch the last ID once to minimize reads
-            # We need to know the last numeric part of "Ord_Item_XXXX"
-            # This is an optimization: instead of reading all rows for every item, we read once or trust the prefix logic?
-            # _get_next_sequential_id reads the whole sheet. 
-            # Let's read it ONCE here if we can, or just use a smarter approach.
-            
-            # Optimization: Read sheet once to find max ID
-            # But _get_next_sequential_id is robust. 
-            # Let's generate a batch of IDs based on the *first* call.
-            
-            # Better approach: Just use uuid for item IDs if speed is critical? 
-            # No, client might want sequential.
-            
-            # Let's do this: 
-            # 1. Read sheet rows ONCE to find max ID.
-            # 2. Increment locally.
-            
-            all_item_rows = sheets_client.read_sheet_rows(ORDER_ITEMS_SHEET)
-            
-            current_max_id = 0
-            for r in all_item_rows:
-                val = r.get("Order_Item_ID", "")
-                if val and "Ord_Item_" in val:
-                    try:
-                        num = int(val.split("_")[-1])
-                        if num > current_max_id:
-                            current_max_id = num
-                    except:
-                        pass
-            
+            # OPTIMIZATION: Unpack Combos & Use deterministic IDs
             new_item_rows = []
-            for i, item in enumerate(req.cart_items):
-                current_max_id += 1
-                order_item_id = f"Ord_Item_{str(current_max_id).zfill(4)}"
-                
-                # Use frontend names or fallbacks
-                item_id = item.Item_ID or item.id or "Unknown"
-                item_name = item.Item_Name or item.name or "Item"
-                item_price = item.Current_Price or item.price or 0.0
-                
+            
+            # Helper to add row
+            def add_row(order_id, idx, i_id, i_name, i_qty, i_price):
+                item_index = str(idx).zfill(2)
+                order_item_id = f"{order_id}_{item_index}"
                 new_item_rows.append([
                     order_item_id,
                     order_id,
-                    item_id,
-                    item_name,
-                    item.quantity,
-                    item_price
+                    i_id,
+                    i_name,
+                    i_qty,
+                    i_price
                 ])
+
+            item_counter = 1
+            
+            for item in req.cart_items:
+                i_name = item.Item_Name or item.name or "Item"
+                i_id = item.Item_ID or item.id or "Unknown"
+                i_qty = item.quantity or 1
+                i_price = item.Current_Price or item.price or 0.0
+                i_cat = getattr(item, 'category', "") or ""
+                i_desc = getattr(item, 'description', "") or ""
+                i_subs = getattr(item, 'sub_items', None)
+                i_combo_items = getattr(item, 'comboItems', None)
+
+                # CHECK 0: Explicit comboItems array (from frontend)
+                if i_combo_items and isinstance(i_combo_items, list) and len(i_combo_items) > 0:
+                    for combo_item in i_combo_items:
+                        combo_item_name = combo_item.get("name", "Unknown Item")
+                        combo_item_qty = combo_item.get("quantity", 1) * i_qty
+                        add_row(order_id, item_counter, i_id, combo_item_name, combo_item_qty, 0)
+                        item_counter += 1
+                    continue
+
+                # CHECK 1: Explicit Sub-Items (Future proofing)
+                if i_subs:
+                    for sub in i_subs:
+                        add_row(order_id, item_counter, "Sub_Item", sub.get("name"), i_qty, 0)
+                        item_counter += 1
+                    continue
+
+                # CHECK 2: AI Combo / Smart Combo Unpacking via Description
+                # If description format is "X + Y + Z" and it's a combo
+                if "combo" in str(i_cat).lower() or "combo" in str(i_name).lower():
+                    if " + " in str(i_desc):
+                        # "1 Butter Chicken + 2 Naan" -> Split it
+                        parts = i_desc.split(" + ")
+                        for part in parts:
+                            part = part.strip()
+                            # Try to extract quantity if starts with digit: "2 Naan"
+                            sub_qty = i_qty 
+                            sub_name = part
+                            
+                            try:
+                                first_word = part.split(' ')[0]
+                                if first_word.isdigit():
+                                    parsed_qty = int(first_word)
+                                    sub_qty = i_qty * parsed_qty
+                                    sub_name = " ".join(part.split(' ')[1:])
+                            except:
+                                pass
+                                
+                            add_row(order_id, item_counter, i_id, sub_name, sub_qty, 0)
+                            item_counter += 1
+                        continue
+
+                # Default: Save as single item
+                add_row(order_id, item_counter, i_id, i_name, i_qty, i_price)
+                item_counter += 1
                 
             # Batch Insert
             sheets_client.append_rows(ORDER_ITEMS_SHEET, new_item_rows)
             
         except Exception as e:
             print(f"⚠️ Error saving order items (Batch): {e}")
-            # Don't fail the whole order if items fail, but log it.
-            # Actually, if items fail, it's bad. But let's proceed to return success so client doesn't retry infinitely.
+            # Don't fail the order if items fail, but logic suggests we should.
+            # Proceeding to allow at least Order record to exist.
         
         # ===================================================================
         # 🤖 TRIGGER CATEGORIZATION AGENT
