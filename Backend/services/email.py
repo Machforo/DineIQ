@@ -94,13 +94,16 @@ class GmailClient:
                     print(f"⚠️ Refresh token invalid: {e}. Re-authenticating...")
                     creds = None
 
+            # if not creds:
+            #     from google_auth_oauthlib.flow import InstalledAppFlow
+            #     print("🔑 Running local server for Gmail OAuth...")
+            #     flow = InstalledAppFlow.from_client_secrets_file(
+            #         self.client_secret_file,
+            #         self.SCOPES,
+            #     )
+            #     creds = flow.run_local_server(port=0)
             if not creds:
-                print("🔑 Running local server for Gmail OAuth...")
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    self.client_secret_file,
-                    self.SCOPES,
-                )
-                creds = flow.run_local_server(port=0)
+                raise RuntimeError("Gmail token.json not found or invalid.")
 
             with open(self.token_path, "w") as token:
                 token.write(creds.to_json())
