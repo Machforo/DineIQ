@@ -121,28 +121,28 @@ async def place_order(req: OrderRequest):
         auth_rows = sheets_client.read_sheet_rows("Customer_Auth")
         target_email = req.customer_email.strip().lower()
         
-        with open("debug_order.log", "a") as f:
-            f.write(f"\n--- ORDER LOG {timestamp} ---\n")
-            f.write(f"DEBUG: Received customer_email: '{req.customer_email}'\n")
-            f.write(f"DEBUG: Normalized target_email: '{target_email}'\n")
+        # with open("debug_order.log", "a") as f:
+            # f.write(f"\n--- ORDER LOG {timestamp} ---\n")
+            # f.write(f"DEBUG: Received customer_email: '{req.customer_email}'\n")
+            # f.write(f"DEBUG: Normalized target_email: '{target_email}'\n")
             
-            user_row = None
-            for r in auth_rows:
-                row_email = str(r.get("Customer_Email", "")).strip().lower()
-                if row_email == target_email:
-                    user_row = r
-                    break
+        user_row = None
+        for r in auth_rows:
+            row_email = str(r.get("Customer_Email", "")).strip().lower()
+            if row_email == target_email:
+                user_row = r
+                break
+        
+            # if not user_row:
+            #     f.write(f"DEBUG: NO MATCH FOUND for '{target_email}'\n")
+            #     f.write(f"DEBUG: Available emails (first 10): {[str(r.get('Customer_Email')).strip().lower() for r in auth_rows[:10]]}\n")
+            # else:
+            #     f.write(f"DEBUG: MATCH FOUND: {user_row.get('Customer_ID')} - {user_row.get('Customer_Name')}\n")
             
-            if not user_row:
-                f.write(f"DEBUG: NO MATCH FOUND for '{target_email}'\n")
-                f.write(f"DEBUG: Available emails (first 10): {[str(r.get('Customer_Email')).strip().lower() for r in auth_rows[:10]]}\n")
-            else:
-                f.write(f"DEBUG: MATCH FOUND: {user_row.get('Customer_ID')} - {user_row.get('Customer_Name')}\n")
-            
-            customer_id = user_row.get("Customer_ID", "Unknown") if user_row else "Unknown"
-            customer_name = user_row.get("Customer_Name", "Unknown") if user_row else "Unknown"
-            f.write(f"DEBUG: Final IDs saved -> ID: {customer_id}, Name: {customer_name}\n")
-            f.write(f"--- END LOG ---\n")
+        customer_id = user_row.get("Customer_ID", "Unknown") if user_row else "Unknown"
+        customer_name = user_row.get("Customer_Name", "Unknown") if user_row else "Unknown"
+            # f.write(f"DEBUG: Final IDs saved -> ID: {customer_id}, Name: {customer_name}\n")
+            # f.write(f"--- END LOG ---\n")
 
         # 1. Save to Orders Sheet
         order_row = [
