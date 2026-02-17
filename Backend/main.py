@@ -4,7 +4,7 @@
 # ---------------------------------------------------------
 
 # CRITICAL: Import startup FIRST to decode credentials before any other imports
-import startup  # This decodes Base64 credentials if on Render
+# import startup  # This decodes Base64 credentials if on Render
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,7 +28,7 @@ app = FastAPI(title="DineIQ Backend API", version="2.0")
 # CORS Configuration
 # Allow both production (Vercel) and development (localhost) origins
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:8080").split(",")
-
+print("🚀 ALLOWED_ORIGINS LOADED:", allowed_origins)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
