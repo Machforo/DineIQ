@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 
@@ -7,6 +7,8 @@ import { useUser } from '@/contexts/UserContext';
 import { useCart } from '@/contexts/CartContext';
 import { api } from '@/api';
 import { toast } from 'sonner';
+import StripeDummyModal from '@/components/StripeDummyModal';
+import CashDummyModal from '@/components/CashDummyModal';
 
 const stripePromise = loadStripe('pk_test_YOUR_STRIPE_PUBLIC_KEY');
 
@@ -21,53 +23,62 @@ const Payment = () => {
 
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [loading, setLoading] = useState(false);
+  const [showStripeModal, setShowStripeModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [orderStatus, setOrderStatus] = useState<'idle' | 'processing' | 'success'>('idle');
 
   // Cash Payment Handler
   const handleCashPayment = async () => {
-    setLoading(true);
+    setShowStatusModal(true);
+    setOrderStatus('processing');
 
+    // Start backend call immediately
     const orderData = {
       customer_email: user?.email || "guest@dineiq.ai",
       cart_items: cartItems,
       final_total: totalAmount,
-      discount_amount: 0, // In reality, we should pass this from CartPage
+      discount_amount: 0,
       payment_method: 'CASH',
       instructions: instructions
     };
 
     try {
-      const response = await api.placeOrder(orderData);
+      // Parallelize: Wait at least 1s for processing animation (standardized)
+      const [response] = await Promise.all([
+        api.placeOrder(orderData),
+        new Promise(resolve => setTimeout(resolve, 1000))
+      ]);
 
       if (response && response.status === "success") {
-        toast.success("Order Placed Successfully!");
+        setOrderStatus('success');
         clearCart();
-        await refreshOrders(); // Refresh history immediately
+        refreshOrders(); // Non-blocking fetch
 
-        // Success page pe le jayein ya direct home, but user asked for pop-up then home.
-        // navigate('/order-success', { state: { orderId: response.order_id } });
-
-        // Redirection after a few seconds
-        setTimeout(() => {
-          navigate('/home');
-        }, 5000);
+        // Wait for 1s for success confirmation (standardized)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        navigate('/home');
       } else {
+        setShowStatusModal(false);
         toast.error(response?.message || "Failed to place order. Please try again.");
       }
     } catch (error) {
+      setShowStatusModal(false);
       console.error("Payment Error:", error);
       toast.error("Something went wrong. Please try again.");
     } finally {
-      setLoading(false);
+      setOrderStatus('idle');
     }
   };
 
   // Online (Stripe) Payment Handler (Mock Update)
   const handleOnlinePayment = async () => {
-    setLoading(true);
+    setShowStripeModal(true);
+  };
 
-    // Yahan hum dummy bank gateway feel dene ke liye ek notification dikhayenge
-    toast.info("Connecting to Secure Payment Gateway...");
+  const paymentPromiseRef = useRef<Promise<any> | null>(null);
 
+  // Triggered as soon as 'Pay' is clicked in Modal
+  const handlePaymentAttempt = () => {
     const orderData = {
       customer_email: user?.email || "guest@dineiq.ai",
       cart_items: cartItems,
@@ -76,29 +87,47 @@ const Payment = () => {
       payment_method: 'ONLINE',
       instructions: instructions
     };
+    // Start placing order in background immediately
+    paymentPromiseRef.current = api.placeOrder(orderData);
+  };
 
+  const handleStripeSuccess = async () => {
+    setLoading(true);
     try {
-      // Mock processing delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // If for some reason handlePaymentAttempt wasn't called (shouldn't happen with current UI)
+      if (!paymentPromiseRef.current) {
+        const orderData = {
+          customer_email: user?.email || "guest@dineiq.ai",
+          cart_items: cartItems,
+          final_total: totalAmount,
+          discount_amount: 0,
+          payment_method: 'ONLINE',
+          instructions: instructions
+        };
+        paymentPromiseRef.current = api.placeOrder(orderData);
+      }
 
-      const response = await api.placeOrder(orderData);
+      const response = await paymentPromiseRef.current;
 
       if (response && response.status === "success") {
-        toast.success("Online Payment Successful!");
         clearCart();
-        await refreshOrders();
+        refreshOrders();
 
-        setTimeout(() => {
-          navigate('/home');
-        }, 5000);
+        // Wait for 1 second so the user can see the "Success" checkmark
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        navigate('/home');
       } else {
+        setShowStripeModal(false);
         toast.error(response?.message || "Payment Failed. Please try again.");
       }
     } catch (error) {
+      setShowStripeModal(false);
       console.error("Online Payment Error:", error);
       toast.error("Something went wrong with the payment.");
     } finally {
       setLoading(false);
+      paymentPromiseRef.current = null;
     }
   };
 
@@ -169,6 +198,22 @@ const Payment = () => {
           {loading ? 'Processing...' : paymentMethod === 'cash' ? 'Place Order (Cash)' : 'Pay Now'}
         </button>
       </div>
+
+      {/* Stripe Dummy Modal */}
+      <StripeDummyModal
+        isOpen={showStripeModal}
+        onClose={() => setShowStripeModal(false)}
+        onSuccess={handleStripeSuccess}
+        onPaymentAttempt={handlePaymentAttempt}
+        amount={totalAmount}
+        userEmail={user?.email}
+        userName={user?.name}
+      />
+      {/* Cash Dummy Modal */}
+      <CashDummyModal
+        isOpen={showStatusModal}
+        status={orderStatus}
+      />
     </div>
   );
 };
