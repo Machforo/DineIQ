@@ -44,6 +44,31 @@ def signup(payload: dict):
         if not email or not name:
             raise HTTPException(status_code=400, detail="Invalid signup data")
 
+        # --- Check for conflicts ---
+        rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
+        email_normalized = str(email).strip().lower()
+        mobile_normalized = str(mobile).strip()
+
+        existing_email = next((r for r in rows if str(r.get("Customer_Email", "")).strip().lower() == email_normalized), None)
+        existing_phone = next((r for r in rows if str(r.get("Customer_Phone", "")).strip() == mobile_normalized), None)
+
+        if existing_phone and str(existing_phone.get("Customer_Email", "")).strip().lower() != email_normalized:
+            # Same phone, different email
+            assoc_email = existing_phone.get("Customer_Email")
+            return {"status": "error", "message": f"Another email {assoc_email} is already registered with phone {mobile_normalized}"}
+
+        if existing_email and str(existing_email.get("Customer_Phone", "")).strip() != mobile_normalized:
+            # Same email, different phone
+            assoc_phone = existing_email.get("Customer_Phone")
+            return {"status": "error", "message": f"Another phone {assoc_phone} is already registered with email {email_normalized}"}
+
+        if existing_email and existing_phone and existing_email == existing_phone:
+            # Both same, different name
+            if str(existing_email.get("Customer_Name", "")).strip() != str(name).strip():
+                assoc_name = existing_email.get("Customer_Name")
+                return {"status": "error", "message": f"Another customer {assoc_name} is already registered with {email_normalized} & {mobile_normalized}"}
+
+        # --- No conflicts, proceed ---
         otp = generate_otp()
         save_otp_for_email(email, otp, name=name, mobile=mobile)
         
