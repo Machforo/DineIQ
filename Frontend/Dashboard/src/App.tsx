@@ -11,9 +11,9 @@ import CustomerPreferencesPage from "@/pages/CustomerPreferencesPage";
 import CustomerInsightsPage from "@/pages/CustomerInsightsPage";
 import OrdersPage from "@/pages/OrdersPage";
 import OrderItemsPage from "@/pages/OrderItemsPage";
+import CustomerActivitiesPage from "@/pages/CustomerActivitiesPage";
 import ChatsPage from "@/pages/ChatsPage";
 import CampaignsPage from "@/pages/CampaignsPage";
-import SettingsPage from "@/pages/SettingsPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,9 +33,9 @@ const App = () => (
             <Route path="/customer-insights" element={<CustomerInsightsPage />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/order-items" element={<OrderItemsPage />} />
+            <Route path="/customer-activities" element={<CustomerActivitiesPage />} />
             <Route path="/chats" element={<ChatsPage />} />
             <Route path="/campaigns" element={<CampaignsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </DashboardLayout>

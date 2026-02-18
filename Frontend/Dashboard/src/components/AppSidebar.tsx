@@ -8,7 +8,7 @@ import {
   Package,
   MessageCircle,
   Megaphone,
-  Settings,
+  Activity,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -28,6 +28,7 @@ const mainItems = [
   { title: "Menu", url: "/menu", icon: UtensilsCrossed },
   { title: "Customer Auth", url: "/customer-auth", icon: Users },
   { title: "Customer Preferences", url: "/customer-preferences", icon: Heart },
+  { title: "Customer Activities", url: "/customer-activities", icon: Activity },
   { title: "Customer Insights", url: "/customer-insights", icon: Brain },
   { title: "Orders", url: "/orders", icon: ShoppingCart },
   { title: "Order Items", url: "/order-items", icon: Package },
@@ -70,22 +71,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="border-t border-sidebar-border">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <NavLink
-                to="/settings"
-                className="flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-                activeClassName="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary"
-              >
-                <Settings className="h-4 w-4" />
-                <span>Settings</span>
-              </NavLink>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
     </Sidebar>
   );
 }
