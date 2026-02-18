@@ -160,9 +160,9 @@ async def place_order(req: OrderRequest):
         sheets_client.append_row(ORDERS_SHEET, order_row)
         
         # 2. Save to Order_Items Sheet
-        for item in req.cart_items:
-            # Generate a unique sequential ID for each order item
-            order_item_id = _get_next_sequential_id(ORDER_ITEMS_SHEET, "Order_Item_ID", "Ord_Item")
+        for idx, item in enumerate(req.cart_items, 1):
+            # Generate a unique sequential ID for each order item within THIS order
+            order_item_id = f"Ord_Item_{str(idx).zfill(4)}"
             
             # Use frontend names or fallbacks
             item_id = item.Item_ID or item.id or "Unknown"
