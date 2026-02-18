@@ -87,6 +87,13 @@ def check_user(payload: dict):
         if not user:
             return {"status": "not_found"}
 
+        # Block login if user has never verified via OTP (no last_login date present)
+        if not user.get("last_login"):
+            return {
+                "status": "not_verified",
+                "message": "Your account is not verified. Please sign up first."
+            }
+
         # Update last login information
         update_last_login_by_phone(value)
 
@@ -96,7 +103,6 @@ def check_user(payload: dict):
             "name": user["name"],
             "mobile": user["mobile"],
             "email": user["email"],
-            # "message": "OTP sent to mobile"     # add real customer mobile number
         }
 
     raise HTTPException(status_code=400, detail="Invalid login method")
@@ -164,6 +170,7 @@ def find_user_by_email(email: str):
         "name": row.get("Customer_Name"),
         "email": row.get("Customer_Email"),
         "mobile": row.get("Customer_Phone"),
+        "last_login": row.get("Last_Login_DateTime"),
     }
 
 def find_user_by_phone(phone: str):
@@ -180,6 +187,7 @@ def find_user_by_phone(phone: str):
         "name": row.get("Customer_Name"),
         "email": row.get("Customer_Email"),
         "mobile": row.get("Customer_Phone"),
+        "last_login": row.get("Last_Login_DateTime"),
     }
 
 def update_last_login_by_phone(phone: str):

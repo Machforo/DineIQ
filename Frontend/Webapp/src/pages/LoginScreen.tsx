@@ -73,6 +73,9 @@ export default function LoginScreen() {
           );
           navigate("/home");
         }
+      } else if (data.status === "not_verified") {
+        toast.error(data.message || "Account not verified. Please Sign Up first.");
+        setActiveTab("register");
       } else {
         toast.error("Account not found. Please Sign Up first.");
         setActiveTab("register");
