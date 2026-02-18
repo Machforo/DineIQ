@@ -21,6 +21,7 @@ from agents.menu import menu_router
 from agents.recommendation import recommendation_router
 from agents.chatbot import chatbot_router
 from services.campaigns import campaigns_router
+from agents.monitoring import monitoring_router
 
 # Initialize App
 app = FastAPI(title="DineIQ Backend API", version="2.0")
@@ -59,6 +60,9 @@ app.include_router(chatbot_router, prefix="/chatbot", tags=["Chatbot"])
 
 # Campaigns: Marketing
 app.include_router(campaigns_router, prefix="/campaigns", tags=["Campaigns"])
+
+# Monitoring: Tracking logs & AI Insights
+app.include_router(monitoring_router, prefix="/activity", tags=["Monitoring"])
 
 
 # ---------------------------------------------------------

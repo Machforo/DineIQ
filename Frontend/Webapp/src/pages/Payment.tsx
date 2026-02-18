@@ -9,6 +9,7 @@ import { api } from '@/api';
 import { toast } from 'sonner';
 import StripeDummyModal from '@/components/StripeDummyModal';
 import CashDummyModal from '@/components/CashDummyModal';
+import { saveLog } from '@/utils/logger';
 
 const stripePromise = loadStripe('pk_test_YOUR_STRIPE_PUBLIC_KEY');
 
@@ -51,6 +52,14 @@ const Payment = () => {
 
       if (response && response.status === "success") {
         setOrderStatus('success');
+
+        // Log the successful order
+        saveLog(
+          user?.email || "Guest",
+          "ORDER_PLACED",
+          `Method: CASH, Total: ₹${totalAmount}`
+        );
+
         clearCart();
         refreshOrders(); // Non-blocking fetch
 
@@ -110,6 +119,13 @@ const Payment = () => {
       const response = await paymentPromiseRef.current;
 
       if (response && response.status === "success") {
+        // Log the successful order
+        saveLog(
+          user?.email || "Guest",
+          "ORDER_PLACED",
+          `Method: ONLINE, Total: ₹${totalAmount}`
+        );
+
         clearCart();
         refreshOrders();
 

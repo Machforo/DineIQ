@@ -19,6 +19,7 @@ import {
   Ticket,
   Star
 } from "lucide-react";
+import { saveLog } from "@/utils/logger";
 
 export default function CartPage() {
   const navigate = useNavigate();
@@ -94,21 +95,27 @@ export default function CartPage() {
     if (selectedCoupon && totalPrice < (selectedCoupon.minOrderValue || 0)) {
       setSelectedCoupon(null);
     }
-  }, [totalPrice, selectedCoupon]);
+    if (selectedCoupon) {
+      saveLog(user?.email || "Guest", "COUPON_APPLIED", `Coupon: ${selectedCoupon.code}`);
+    }
+  }, [totalPrice, selectedCoupon, user?.email]);
 
   const handleAddRecommendation = (rec: any) => {
+    // Log before adding
+    saveLog(user?.email || "Guest", "REC_OPTED", `Item: ${rec.Item_Name} (Price: ${rec.Current_Price})`);
+
     // Add to cart logic
     addItem({
       id: rec.Item_ID,
       name: rec.Item_Name,
       price: rec.Current_Price,
-      image: "https://images.unsplash.com/photo-1544145945-f90425340c7e", // Fallback image
-      isVeg: true, // simplified
+      image: rec.Image_URL || "https://images.unsplash.com/photo-1544145945-f90425340c7e", // Use image from rec if available
+      isVeg: rec.Is_Veg !== undefined ? rec.Is_Veg : true,
       category: rec.Category || "Add-ons",
-      description: "Delicious add-on",
+      description: rec.Item_Description || "Delicious add-on",
       rating: 4.5,
       ratingCount: 10
-    });
+    }, true);
   };
 
   const taxes = Math.round(totalPrice * 0.05);

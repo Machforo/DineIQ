@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { MenuItem } from "@/lib/data";
 import { useUser } from "./UserContext";
+import { saveLog } from "@/utils/logger";
 
 interface CartItem extends MenuItem {
   quantity: number;
@@ -8,9 +9,9 @@ interface CartItem extends MenuItem {
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (item: MenuItem) => void;
-  removeItem: (itemId: string) => void;
-  updateQuantity: (itemId: string, quantity: number) => void;
+  addItem: (item: MenuItem, silent?: boolean) => void;
+  removeItem: (itemId: string, silent?: boolean) => void;
+  updateQuantity: (itemId: string, quantity: number, silent?: boolean) => void;
   getItemQuantity: (itemId: string) => number;
   totalItems: number;
   totalPrice: number;
@@ -31,7 +32,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("dineiq_cart", JSON.stringify(items));
   }, [items]);
 
-  const addItem = (item: MenuItem) => {
+  const addItem = (item: MenuItem, silent: boolean = false) => {
     // If it's a combo, deconstruct it into individual items
     if (item.isCombo && item.comboItems && item.comboItems.length > 0) {
       item.comboItems.forEach(componentName => {
@@ -42,7 +43,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const matchedItem = fullMenu.find(m => m.name.toLowerCase() === cleanName);
 
         if (matchedItem) {
-          addItem(matchedItem); // Recursively add the individual item
+          addItem(matchedItem, true); // Keep silent while deconstructing combo
         } else {
           // Fallback: If not found in fullMenu, add it as a new standard item with a placeholder ID
           addItem({
@@ -52,14 +53,34 @@ export function CartProvider({ children }: { children: ReactNode }) {
             isCombo: false,
             comboItems: [],
             price: 0,
-          });
+          }, true);
         }
       });
-      return; // Stop here for the combo item itself
+
+      // Log combo addition once if not silent
+      if (!silent) {
+        saveLog(
+          useUser().user?.email || "Guest",
+          "CART_ADD",
+          `${item.name} (Combo)`
+        );
+      }
+      return;
     }
 
     setItems((prev) => {
       const existing = prev.find((i) => i.id === item.id);
+      const newQuantity = existing ? existing.quantity + 1 : 1;
+
+      // Log the addition if not silent
+      if (!silent) {
+        saveLog(
+          useUser().user?.email || "Guest",
+          "CART_ADD",
+          `${item.name} (Qty: ${newQuantity})`
+        );
+      }
+
       if (existing) {
         return prev.map((i) =>
           i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
@@ -69,10 +90,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const removeItem = (itemId: string) => {
+  const removeItem = (itemId: string, silent: boolean = false) => {
     setItems((prev) => {
       const existing = prev.find((i) => i.id === itemId);
-      if (existing && existing.quantity > 1) {
+      if (!existing) return prev;
+
+      const newQuantity = existing.quantity - 1;
+
+      // Log the removal if not silent
+      if (!silent) {
+        saveLog(
+          useUser().user?.email || "Guest",
+          "CART_REMOVE",
+          `${existing.name} (New Qty: ${newQuantity})`
+        );
+      }
+
+      if (existing.quantity > 1) {
         return prev.map((i) =>
           i.id === itemId ? { ...i, quantity: i.quantity - 1 } : i
         );
@@ -81,14 +115,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const updateQuantity = (itemId: string, quantity: number) => {
-    if (quantity <= 0) {
-      setItems((prev) => prev.filter((i) => i.id !== itemId));
-    } else {
-      setItems((prev) =>
-        prev.map((i) => (i.id === itemId ? { ...i, quantity } : i))
-      );
-    }
+  const updateQuantity = (itemId: string, quantity: number, silent: boolean = false) => {
+    setItems((prev) => {
+      const existing = prev.find((i) => i.id === itemId);
+      if (!existing) return prev;
+
+      if (quantity <= 0) {
+        return prev.filter((i) => i.id !== itemId);
+      }
+      return prev.map((i) => (i.id === itemId ? { ...i, quantity } : i));
+    });
   };
 
   const getItemQuantity = (itemId: string) => {

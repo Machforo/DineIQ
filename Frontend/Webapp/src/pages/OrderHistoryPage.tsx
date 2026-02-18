@@ -11,10 +11,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { saveLog } from "@/utils/logger";
 
 export default function OrderHistoryPage() {
   const navigate = useNavigate();
-  const { orders, rateOrder, fullMenu } = useUser();
+  const { user, orders, rateOrder, fullMenu } = useUser();
   const { addItem } = useCart();
   const [ratingModal, setRatingModal] = useState<{ open: boolean; orderId: string }>({
     open: false,
@@ -69,10 +70,18 @@ export default function OrderHistoryPage() {
 
       if (menuItem) {
         for (let i = 0; i < item.quantity; i++) {
-          addItem(menuItem);
+          addItem(menuItem, true);
         }
       }
     });
+
+    // Log the repeat order activity
+    saveLog(
+      user?.email || "Guest",
+      "REPEAT_ORDER",
+      `Original Order ID: ${order.id}`
+    );
+
     toast.success("Items added to cart!", {
       description: `${order.items.length} items from your previous order`,
     });
@@ -88,6 +97,14 @@ export default function OrderHistoryPage() {
   const submitRating = () => {
     if (selectedRating > 0) {
       rateOrder(ratingModal.orderId, selectedRating);
+
+      // Log the feedback
+      saveLog(
+        user?.email || "Guest",
+        "FEEDBACK_GIVEN",
+        `Order ID: ${ratingModal.orderId}, Stars: ${selectedRating}`
+      );
+
       toast.success("Thanks for your feedback!");
       setRatingModal({ open: false, orderId: "" });
     }

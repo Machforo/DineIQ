@@ -21,22 +21,90 @@
 # ---------------------------------------------------------
 # Library and Packages Import
 # ---------------------------------------------------------
-# import os
-# from dotenv import load_dotenv
+from pydantic import BaseModel
+from typing import Optional
+import os
+import datetime
 
-# from services.sheets import SheetsClient
+# import agents and services classes
+from services.sheets import SheetsClient
+sheets_client = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
+
+ACTIVITY_SHEET = "Customer_Activities"
 
 # ---------------------------------------------------------
-# Load environment variables
+# FastAPI router
 # ---------------------------------------------------------
-# load_dotenv()
+from fastapi import APIRouter
+monitoring_router = APIRouter()
 
 # ---------------------------------------------------------
-# Class definition for Menu related interactions
+# ACTIVITY LOG MODEL
+# ---------------------------------------------------------
+class ActivityLog(BaseModel):
+    customer_id: Optional[str] = "Unknown"
+    customer_name: Optional[str] = "Unknown"
+    customer_email: str
+    activity: str
+    details: Optional[str] = ""
+
+# ---------------------------------------------------------
+# ACTIVITY LOGGING ENDPOINT
+# ---------------------------------------------------------
+@monitoring_router.post("/log")
+async def log_activity(log: ActivityLog):
+    """
+    Logs customer activities to Google Sheets.
+    Managed by the Monitoring Agent.
+    Columns: [Customer_ID, Customer_Name, Customer_Email, Activities, Timestamp]
+    """
+    try:
+        customer_id = log.customer_id
+        customer_name = log.customer_name
+        
+        # Resolve customer details if missing
+        if customer_id == "Unknown" or customer_name == "Unknown":
+            auth_rows = sheets_client.read_sheet_rows("Customer_Auth")
+            target_email = log.customer_email.strip().lower()
+            
+            for r in auth_rows:
+                if str(r.get("Customer_Email", "")).strip().lower() == target_email:
+                    if customer_id == "Unknown": customer_id = r.get("Customer_ID", "Unknown")
+                    if customer_name == "Unknown": customer_name = r.get("Customer_Name", "Unknown")
+                    break
+
+        timestamp = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        full_activity = f"{log.activity}: {log.details}" if log.details else log.activity
+        
+        row = [
+            customer_id,
+            customer_name,
+            log.customer_email,
+            full_activity,
+            timestamp
+        ]
+        
+        sheets_client.append_row(ACTIVITY_SHEET, row)
+        
+        # Note: AI-based insights extraction logic will be added here later
+        
+        return {"status": "success", "message": "Activity logged by Monitoring Agent"}
+        
+    except Exception as e:
+        print(f"❌ Monitoring Agent Error: {e}")
+        return {"status": "error", "message": str(e)}
+
+# ---------------------------------------------------------
+# Class definition for Monitoring Agent
 # ---------------------------------------------------------
 class MonitoringAgent:
+    """
+    This class will be expanded later with AI logic to extract insights
+    from the logged activities.
+    """
     def __init__(self):
         self.activities = []
+        pass
 
     def log_activity(self, user, activity):
         # self.activities.append((user, activity))
@@ -94,6 +162,10 @@ class MonitoringAgent:
     def reorder_from_history(self, order_id):
         self.log_activity(f"Reorder from History: Order ID {order_id}")
 
+    async def generate_insights(self, customer_email: str):
+        # Placeholder for future AI logic
+        pass
+
 # Example usage
 # if __name__ == "__main__":
 #     monitor = MenuScreenActivityMonitor()
@@ -116,8 +188,3 @@ class MonitoringAgent:
 
 # Extract: items viewed/added/removed/ordered/filtered etc for each customer as a first level logging
 # Extract/Filter all relevant information to profile a customer and save the final information log
-
-
-
-
-
