@@ -12,6 +12,7 @@ export interface Order {
 }
 
 interface UserProfile {
+  id: string;
   name: string;
   phone: string;
   email: string;
@@ -30,7 +31,7 @@ interface UserContextType {
   orders: Order[];
   fullMenu: MenuItem[];
   setFullMenu: (menu: MenuItem[]) => void;
-  login: (tableNumber: string, guestCount: number, guestName?: string, phone?: string, email?: string) => void;
+  login: (tableNumber: string, guestCount: number, guestName?: string, phone?: string, email?: string, id?: string) => void;
   logout: () => void;
   refreshOrders: () => Promise<void>;
   toggleVegMode: () => void;
@@ -88,6 +89,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile>(() => {
     const saved = localStorage.getItem("dineiq_user");
     return saved ? JSON.parse(saved) : {
+      id: "",
       name: "",
       phone: "",
       email: "",
@@ -97,11 +99,40 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     localStorage.setItem("dineiq_user", JSON.stringify(profile));
-    // Profile change hone par basic states update karein
-    if (profile.name) setGuestName(profile.name);
-    if (profile.phone) setPhoneNumber(profile.phone);
-    if (profile.email) setIsLoggedIn(true);
+    // Update basic states when profile changes
+    if (profile.email) {
+      setGuestName(profile.name || "Guest");
+      setPhoneNumber(profile.phone || "");
+      setIsLoggedIn(true);
+    } else {
+      setGuestName("Guest");
+      setPhoneNumber("");
+      setIsLoggedIn(false);
+    }
   }, [profile]);
+
+  // Handle Dynamic Table Number from URL QR Code
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tableParam = params.get("table");
+
+    if (tableParam) {
+      const tableInt = parseInt(tableParam, 10);
+      // Validate: Must be a number between 1 and 10
+      if (!isNaN(tableInt) && tableInt >= 1 && tableInt <= 10) {
+        const tableStr = tableInt.toString();
+        console.log("📍 Valid Table Detected:", tableStr);
+        setTableNumber(tableStr);
+        localStorage.setItem("dineiq_table_number", tableStr);
+      } else {
+        console.warn("⚠️ Invalid Table Number in URL:", tableParam);
+      }
+    } else {
+      // Restore from storage if URL doesn't have it
+      const savedTable = localStorage.getItem("dineiq_table_number");
+      if (savedTable) setTableNumber(savedTable);
+    }
+  }, []);
 
   const [fullMenu, setFullMenuState] = useState<MenuItem[]>(() => {
     const saved = localStorage.getItem("dineiq_full_menu");
@@ -132,42 +163,32 @@ export function UserProvider({ children }: { children: ReactNode }) {
     await fetchOrders();
   };
 
-  // const login = (table: string, count: number, name?: string, phone?: string, email: string = "") => {
-  //   setTableNumber(table);
-  //   setGuestCount(count);
-  //   setGuestName(name || "Guest");
-  //   setPhoneNumber(phone || "");
-  //   setProfile((prev) => ({
-  //     ...prev,
-  //     name: name || prev.name,
-  //     phone: phone || prev.phone,
-  //   }));
-  //   setIsLoggedIn(true);
-  // };
-
-  const login = (table: string, count: number, name?: string, phone?: string, email: string = "") => {
+  const login = (table: string, count: number, name?: string, phone?: string, email: string = "", id: string = "") => {
     setTableNumber(table);
     setGuestCount(count);
-    setGuestName(name || "Guest");
-    setPhoneNumber(phone || "");
-    setProfile((prev) => ({
-      ...prev,
-      name: name || prev.name,
-      phone: phone || prev.phone,
-      email: email || prev.email, // Email ko yaha set kiya
-    }));
+    const newProfile = {
+      id: id,
+      name: name || "Guest",
+      phone: phone || "",
+      email: email,
+      dateOfBirth: profile.dateOfBirth,
+    };
+    setProfile(newProfile);
     setIsLoggedIn(true);
   };
-
-
-
 
   const logout = () => {
     setTableNumber("");
     setGuestCount(1);
-    setGuestName("Guest");
-    setPhoneNumber("");
+    setProfile({
+      id: "",
+      name: "",
+      phone: "",
+      email: "",
+      dateOfBirth: "",
+    });
     setIsLoggedIn(false);
+    localStorage.removeItem("dineiq_user");
   };
 
   const toggleVegMode = () => {

@@ -4,13 +4,14 @@
 # Library and Packages Import
 # ---------------------------------------------------------
 import os
-import re
+# import re
 from typing import List
 from datetime import datetime
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request
+# from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
-from config import REQUEST_DELAY
+# from config import REQUEST_DELAY
 
 # ---------------------------------------------------------
 # Load environment variables from .env file
@@ -50,6 +51,7 @@ class CampaignInternal(BaseModel):
 # Utilities
 # ---------------------------------------------------------
 def generate_campaign_id(existing_ids: list[str]) -> str:
+    import re
     pattern = re.compile(r"Cmp_(\d+)")
     nums = [
         int(pattern.search(cid).group(1))
@@ -249,6 +251,7 @@ async def add_campaign(request: Request):
     try:
         campaign = normalize_frontend_campaign(payload)
     except Exception as e:
+        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail=str(e))
 
     campaign_id, status = process_single_campaign(campaign)

@@ -1,18 +1,18 @@
 import os
 import traceback
-import logging
+# import logging
 from typing import List, Dict, Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
+# from fastapi import HTTPException
 from pydantic import BaseModel
 
 # Services
 from services.sheets import SheetsClient
 from services.llm import GeminiClient
-from services.llm import GeminiClient
-from agents.menu import MenuAgent, get_menu_agent
-from agents.menu import MenuAgent, get_menu_agent
-import random
-import json
+# from agents.menu import MenuAgent
+from agents.menu import get_menu_agent
+# import random
+# import json
 
 # ---------------------------------------------------------
 # Router Setup
@@ -201,6 +201,7 @@ class RecommendationAgent:
                 response = self.gemini_client.call_gemini_with_retry(prompt)
                 # Cleanup JSON
                 if response:
+                    import json
                     response = response.replace("```json", "").replace("```", "").strip()
                     if "[" in response and "]" in response:
                         start, end = response.find("["), response.rfind("]") + 1
@@ -239,6 +240,7 @@ class RecommendationAgent:
         price = round(total * (1 - discount_percent/100), 2)
         desc = " • ".join([i['Item_Name'] for i in items])
         
+        import random
         return {
             "Item_ID": f"combo_{random.randint(1000, 9999)}",
             "Item_Name": name,

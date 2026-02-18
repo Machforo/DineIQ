@@ -4,10 +4,10 @@
 # Library and Packages Import
 # ---------------------------------------------------------
 import os
-import time
+# import time
 import pandas as pd
-from google.oauth2.service_account import Credentials
-from googleapiclient.discovery import build
+# from google.oauth2.service_account import Credentials
+# from googleapiclient.discovery import build
 
 # ---------------------------------------------------------
 # Load environment variables from .env file
@@ -51,10 +51,12 @@ class SheetsClient:
     # 🔐 Init
     # -------------------------------------------------------------------
     def init_service(self):
+        from google.oauth2.service_account import Credentials
         credentials = Credentials.from_service_account_file(
             self.service_account_file,
             scopes=self.SCOPES,
         )
+        from googleapiclient.discovery import build
         service = build("sheets", "v4", credentials=credentials)
         return service.spreadsheets()
 
@@ -68,6 +70,7 @@ class SheetsClient:
                 return request.execute()
             except Exception as e:
                 # Catching general Exception but specifically looking for SSL/Connection errors in logs
+                import time
                 if i < retries - 1:
                     print(f"⚠️ Sheets API Error (Attempt {i+1}/{retries}): {e}. Retrying in {delay}s...")
                     time.sleep(delay)

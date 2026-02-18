@@ -4,9 +4,9 @@ This is used when deploying to Render with Base64-encoded JSON files.
 """
 
 import os
-import base64
-import json
-from pathlib import Path
+# import base64
+# import json
+# from pathlib import Path
 
 
 def decode_json_from_base64(env_var_name: str, output_filename: str) -> str:
@@ -26,13 +26,16 @@ def decode_json_from_base64(env_var_name: str, output_filename: str) -> str:
         raise ValueError(f"Environment variable {env_var_name} not found!")
     
     # Decode Base64 to JSON
+    import base64
     json_bytes = base64.b64decode(base64_json)
     json_str = json_bytes.decode('utf-8')
     
     # Validate JSON
+    import json
     json.loads(json_str)  # This will raise an error if invalid
     
     # Write to file
+    from pathlib import Path
     output_path = Path(output_filename)
     output_path.write_text(json_str)
     

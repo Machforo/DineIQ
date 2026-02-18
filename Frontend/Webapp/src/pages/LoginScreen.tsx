@@ -10,9 +10,15 @@ import { API_BASE_URL } from "@/config";
 
 export default function LoginScreen() {
   const navigate = useNavigate();
-  const { login } = useUser();
+  const { login, tableNumber } = useUser();
   // const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbziwt_310-tDnkzPTpgbgW89M6jxjDXQVbRIn7k-JzBiezCzoDcjhPjDDbZDjVrLf4N5w/exec";
 
+  // Helper to get table from context or direct URL (failsafe)
+  const getTable = () => {
+    if (tableNumber) return tableNumber;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("table") || "1";
+  };
 
 
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
@@ -58,11 +64,12 @@ export default function LoginScreen() {
           // Mobile number hone par direct login
           toast.success(`Welcome back, ${data.name}!`);
           login(
-            "1",         // tableNumber (not known yet)
+            getTable(),   // tableNumber (dynamic from context/URL)
             1,           // guestCount (default)
             data.name,   // guestName (from backend)
             data.mobile, // phoneNumber (from backend)
-            data.email   // email (from backend)
+            data.email,   // email (from backend)
+            data.id      // customer id (from backend)
           );
           navigate("/home");
         }
@@ -91,11 +98,12 @@ export default function LoginScreen() {
       if (data.status === "ok") {
         toast.success("Login Successful!");
         login(
-          "1",         // tableNumber (not known yet)
+          getTable(),   // tableNumber (dynamic from context/URL)
           1,           // guestCount (default)
           data.name,   // guestName (from backend)
           data.mobile, // phoneNumber (from backend)
-          data.email   // email (from backend)
+          data.email,   // email (from backend)
+          data.id      // customer id (from backend)
         );
         navigate("/home");
 
@@ -136,11 +144,12 @@ export default function LoginScreen() {
         if (data.status === "ok") {
           toast.success("Registration Successful!");
           login(
-            "1",         // tableNumber (not known yet)
+            getTable(),   // tableNumber (dynamic from context/URL)
             1,           // guestCount (default)
             name,        // guestName
             mobile,      // phoneNumber
-            email        // email
+            email,       // email
+            data.id      // customer id
           );
           // Email ko state mein pass karein taki Preference page use save kar sake
           navigate("/preferences", { state: { email, name, mobile } });

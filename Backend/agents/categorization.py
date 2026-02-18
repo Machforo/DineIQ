@@ -4,9 +4,9 @@
 # Library and Packages Import
 # ---------------------------------------------------------
 import os
-import re
-import time
-import json
+# import re
+# import time
+# import json
 import pandas as pd
 
 from config import BATCH_SIZE, REQUEST_DELAY
@@ -264,6 +264,7 @@ Chat Text:
     
     # fetch gemini model and generate response
     try:
+        import json, re
         response = gemini_client_2.call_gemini_with_retry(chat_prompt)
         # print("\nRaw response:", repr(response), "\n")
         result = json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", response.strip(), flags=re.DOTALL))
@@ -691,6 +692,7 @@ def categorize_customers():
 
         # Introduce a wait period for LLM calls handling
         print(f"waiting for: {REQUEST_DELAY} seconds")
+        import time
         time.sleep(REQUEST_DELAY)
 
     # Treat NaN values in customer insights before writing to google sheets

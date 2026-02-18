@@ -21,15 +21,15 @@
 # ---------------------------------------------------------
 # Library and Packages Import
 # ---------------------------------------------------------
-import os
-from dotenv import load_dotenv
+# import os
+# from dotenv import load_dotenv
 
-from services.sheets import SheetsClient
+# from services.sheets import SheetsClient
 
 # ---------------------------------------------------------
 # Load environment variables
 # ---------------------------------------------------------
-load_dotenv()
+# load_dotenv()
 
 # ---------------------------------------------------------
 # Class definition for Menu related interactions

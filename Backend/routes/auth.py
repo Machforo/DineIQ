@@ -4,8 +4,10 @@
 # Library and Packages Import
 # ---------------------------------------------------------
 from fastapi import APIRouter, HTTPException
-import random, hashlib, time
-import os, re
+# import random, hashlib
+import time
+import os
+# import re
 
 # -------------------------------------------------------------------
 # 🔧 SETUP KEYS and URLs
@@ -32,22 +34,26 @@ CUSTOMER_AUTH_SHEET = "Customer_Auth"       # Read-Write from Customer Frontend 
 # -----------------------------
 @auth_router.post("/signup")
 def signup(payload: dict):
-    print(">>> /auth/signup HIT", payload)
+    try:
+        print(">>> /auth/signup HIT", payload)
 
-    name = payload.get("name")
-    email = payload.get("email")
-    mobile = payload.get("mobile")
+        name = payload.get("name")
+        email = payload.get("email")
+        mobile = payload.get("mobile")
 
-    if not email or not name:
-        raise HTTPException(status_code=400, detail="Invalid signup data")
+        if not email or not name:
+            raise HTTPException(status_code=400, detail="Invalid signup data")
 
-    otp = generate_otp()
-    save_otp_for_email(email, otp, name=name, mobile=mobile)
-    
-    gmail_client = GmailClient()
-    gmail_client.send_otp_email(email, otp)
+        otp = generate_otp()
+        save_otp_for_email(email, otp, name=name, mobile=mobile)
+        
+        gmail_client = GmailClient()
+        gmail_client.send_otp_email(email, otp)
 
-    return {"status": "otp_sent"}
+        return {"status": "otp_sent"}
+    except Exception as e:
+        print("🔥 SIGNUP ERROR:", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 # -----------------------------
 # LOGIN (email OR phone)
@@ -70,9 +76,10 @@ def check_user(payload: dict):
 
         return {
             "status": "exists",
+            "id": user.get("id"),
             "name": user["name"],
             "email": user["email"],
-            # "message": "OTP sent to email"     # add real customer email address
+            "mobile": user.get("mobile"),
         }
 
     if method == "phone":
@@ -85,6 +92,7 @@ def check_user(payload: dict):
 
         return {
             "status": "exists",
+            "id": user.get("id"),
             "name": user["name"],
             "mobile": user["mobile"],
             "email": user["email"],
@@ -107,6 +115,7 @@ def verify_otp(payload: dict):
 
     return {
         "status": "ok",
+        "id": result.get("id"),
         "name": result["name"],
         "mobile": result["mobile"],
         "email": email,
@@ -120,10 +129,12 @@ def verify_otp(payload: dict):
 # ------------------------------------------------------------------
 def generate_otp():
     print(">>> Generating OTP")
+    import random
     return str(random.randint(100000, 999999))
 
 def sha256(value: str) -> str:
     print(">>> Generating OTP hash")
+    import hashlib
     return hashlib.sha256(value.encode()).hexdigest()
 
 def find_row_by_email(rows: list[dict], email: str):
@@ -149,6 +160,7 @@ def find_user_by_email(email: str):
         return None
 
     return {
+        "id": row.get("Customer_ID"),
         "name": row.get("Customer_Name"),
         "email": row.get("Customer_Email"),
         "mobile": row.get("Customer_Phone"),
@@ -164,6 +176,7 @@ def find_user_by_phone(phone: str):
         return None
 
     return {
+        "id": row.get("Customer_ID"),
         "name": row.get("Customer_Name"),
         "email": row.get("Customer_Email"),
         "mobile": row.get("Customer_Phone"),
@@ -184,6 +197,7 @@ def update_last_login_by_phone(phone: str):
     )
 
 def generate_next_customer_id(rows: list[dict]) -> str:
+    import re
     max_num = 0
     pattern = re.compile(r"Cust_(\d+)")
 
@@ -269,9 +283,7 @@ def verify_otp_for_email(email, otp):
 
     return {
         "ok": True,
+        "id": row.get("Customer_ID"),
         "name": row.get("Customer_Name"),
         "mobile": row.get("Customer_Phone"),
     }
-
-
-

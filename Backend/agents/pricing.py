@@ -1,5 +1,5 @@
 from typing import List, Dict
-import traceback
+# import traceback
 
 class PricingAgent:
     def __init__(self):
@@ -70,6 +70,7 @@ class PricingAgent:
                 }
             }
         except Exception as e:
+            import traceback
             traceback.print_exc()
             return {"pricing": {"subtotal": subtotal, "final_total": subtotal, "error": str(e)}}
 

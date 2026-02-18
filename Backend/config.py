@@ -1,11 +1,11 @@
 # =======================
 # Configuration File
 # =======================
-from dotenv import load_dotenv
-import os
+# from dotenv import load_dotenv
+# import os
 
 # Load .env file
-load_dotenv()
+# load_dotenv()
 
 # --- Batching & Rate Limiting ---
 BATCH_SIZE = 5

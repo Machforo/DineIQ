@@ -5,9 +5,9 @@
 # ---------------------------------------------------------
 import os
 import time
-import google.generativeai as genai
-from openai import OpenAI
-import anthropic
+# import google.generativeai as genai
+# from openai import OpenAI
+# import anthropic
 
 # ---------------------------------------------------------
 # Load environment variables from .env file
@@ -51,6 +51,7 @@ class GeminiClient:
     # 🔧 Gemini LLM Init
     # -------------------------------------------------------------------
     def init_gemini(self):
+        import google.generativeai as genai
         genai.configure(api_key=self.api_key)
         return genai.GenerativeModel(self.model_name)
 
@@ -148,6 +149,7 @@ class GrokClient:
     # 🔧 Grok Init
     # -------------------------------------------------------------------
     def init_grok(self):
+        from openai import OpenAI
         return OpenAI(
             api_key=self.api_key,
             base_url="https://api.x.ai/v1",
@@ -206,6 +208,7 @@ class ClaudeClient:
     # 🔧 Claude Init
     # -------------------------------------------------------------------
     def init_claude(self):
+        import anthropic
         return anthropic.Anthropic(api_key=self.api_key)
 
     # -------------------------------------------------------------------
@@ -273,6 +276,7 @@ class GeminiClient_2:
     # 🔧 Gemini LLM Init
     # -------------------------------------------------------------------
     def init_gemini(self):
+        import google.generativeai as genai
         genai.configure(api_key=self.api_key)
         return genai.GenerativeModel(self.model_name)
 

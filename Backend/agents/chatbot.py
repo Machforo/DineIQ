@@ -3,10 +3,11 @@
 # ---------------------------------------------------------
 # Library and Packages Import
 # ---------------------------------------------------------
-import os, re
+import os
+# import re
 from fastapi import APIRouter
 from pydantic import BaseModel
-from datetime import datetime, timezone
+# from datetime import datetime, timezone
 
 # -------------------------------------------------------------------
 # 🔧 SETUP KEYS and URLs
@@ -54,6 +55,9 @@ class ChatRequest(BaseModel):
     chatHistory: list[FrontendChatItem]
     userMessage: str
     clientName: str | None = "Guest"
+    clientId: str | None = None
+    clientEmail: str | None = None
+    clientPhone: str | None = None
 
 class ChatResponse(BaseModel):
     response: str
@@ -71,45 +75,51 @@ class ChatSession(BaseModel):
 # ---------------------------------------------------------
 # SYSTEM PROMPT
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# SYSTEM PROMPT
+# ---------------------------------------------------------
 SYSTEM_PROMPT = """
-You are a highly professional restaurant concierge AI assistant
+You are a highly professional restaurant concierge AI assistant for DineIQ.
 
-Your objectives:
+Your Objectives:
 - Respond politely, warmly, and naturally.
-- Always address the client by their name (if provided).
+- Always address the client by their name (if known).
 - Maintain memory of previous chat messages.
-- Tone: friendly, concise, human-like, professional.
-- Provide accurate and helpful information.
-- Ask for Name, Email or Phone if not yet provided, but not for registration or signup.
+- Tone: Friendly, concise, human-like, professional.
+- Provide accurate and helpful information based on the menu.
+- Ask for Name, Email, or Phone if not yet provided, to help identify the customer.
 
-Rules:
+Strict Rules for User Status:
+1. LOGGED IN USER:
+   - Address them by name immediately.
+   - Treat them as a valued returning customer.
+   - Do NOT ask them to LOGIN or SIGNUP.
+
+2. RECOGNIZED BUT NOT LOGGED IN (Identified by Email/Phone):
+   - Address them by name.
+   - You MUST politely ask them to LOGIN to access their full profile and personalized offers.
+   - Do NOT suggest SIGNUP or REGISTRATION, as they already have an account.
+   - Assure them that this chat IS being saved to their account.
+
+3. GUEST (Unregistered):
+   - ONLY if the user is not found in the database, politely suggest they SIGN UP.
+   - Warn them strictly that "Chat history is NOT saved for guests".
+   - If they refuse, help them normally but remind them occasionally.
+
+General Rules:
 - Use menu data if provided.
 - Do NOT invent menu items or prices.
-- Do NOT mention being an AI.
-- You are not here to take any orders or reservation requests.
-- If customer not registered, suggest registration politely.
+- You are not here to take orders (redirect to "Place Order" page).
 - Return ONLY the reply message (no JSON, no metadata).
-
-For any Any other queries such as Reservations, Tables information, Cancellations, you can politely inform the customer about your limitation.
-
 """
 
 # ---------------------------------------------------------
 # MENU INTENT DETECTION
 # ---------------------------------------------------------
 MENU_KEYWORDS = [
-    "menu",
-    "dish",
-    "food",
-    "eat",
-    "price",
-    "cost",
-    "veg",
-    "non veg",
-    "vegetarian",
-    "recommend",
-    "order",
-    "special",
+    "menu", "dish", "food", "eat", "price", "cost", 
+    "veg", "non veg", "vegetarian", "recommend", 
+    "order", "special", "hungry", "diet", "cuisine"
 ]
 
 def is_menu_query(message: str) -> bool:
@@ -119,22 +129,41 @@ def is_menu_query(message: str) -> bool:
 # ---------------------------------------------------------
 # Helper: Find customer in Customer_Auth
 # ---------------------------------------------------------
-def find_customer_id(email: str, phone: str):
+def get_customer_details(email: str | None, phone: str | None, client_id: str | None):
     """
-    Returns Customer_ID if email or phone matches.
+    Returns full customer dict if found (Name, Email, Phone, ID).
     Otherwise returns None.
     """
-    rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
+    if not email and not phone and not client_id:
+        return None
 
-    for r in rows:
-        sheet_email = (r.get("Customer_Email") or "").strip().lower()
-        sheet_phone = (r.get("Customer_Phone") or "").strip()
+    try:
+        rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
+    except Exception as e:
+        print(f"⚠️ Error reading Customer_Auth: {e}")
+        return None
 
-        if email and email.lower() == sheet_email:
-            return r.get("Customer_ID")
+    search_email = email.strip().lower() if email else None
+    search_phone = str(phone).strip() if phone else None
+    search_id = str(client_id).strip() if client_id else None
 
-        if phone and phone == sheet_phone:
-            return r.get("Customer_ID")
+    # Priority 1: ID Match
+    if search_id:
+        for r in rows:
+            if str(r.get("Customer_ID") or "").strip() == search_id:
+                return r
+    
+    # Priority 2: Email Match
+    if search_email:
+        for r in rows:
+            if (r.get("Customer_Email") or "").strip().lower() == search_email:
+                return r
+
+    # Priority 3: Phone Match
+    if search_phone:
+        for r in rows:
+            if str(r.get("Customer_Phone") or "").strip() == search_phone:
+                return r
 
     return None
 
@@ -178,26 +207,60 @@ async def llm_chat(req: ChatRequest):
     print("\n🔥 /llm-chat endpoint HIT")
 
     try:
-        # 1️⃣ Check if customer exists
-        # customer_id = find_customer_id(
-        #     req.clientEmail,
-        #     req.clientPhone
-        # )
+        # 1️⃣ Check if customer exists based on provided details
+        customer = get_customer_details(req.clientEmail, req.clientPhone, req.clientId)
+        
+        # Determine User State
+        user_context_instruction = ""
+        
+        # Default name if guest
+        real_client_name = req.clientName if req.clientName and req.clientName.lower() != "guest" else "Guest"
+
+        if customer:
+            # --- USER IS REGISTERED ---
+            db_name = customer.get("Customer_Name", "Valued Customer")
+            db_email = customer.get("Customer_Email", "")
+            db_id = customer.get("Customer_ID", "")
+            
+            # Use DB name if we have it
+            if db_name:
+                real_client_name = db_name
+
+            if req.clientId:
+                # 🟢 LOGGED IN
+                print(f"✅ User Logged In: {real_client_name}")
+                user_context_instruction = (
+                    f"User STATUS: LOGGED IN.\n"
+                    f"Name: {real_client_name}.\n"
+                    f"INSTRUCTION: Address them warmly by name. Do NOT ask for login/signup."
+                )
+            else:
+                # 🟡 RECOGNIZED BUT NOT LOGGED IN
+                print(f"⚠️ User Registered but NOT Logged In: {real_client_name}")
+                user_context_instruction = (
+                    f"User STATUS: REGISTERED BUT NOT LOGGED IN.\n"
+                    f"Name: {real_client_name}.\n"
+                    f"Email Matches: {db_email}.\n"
+                    f"INSTRUCTION: Address them by name. You MUST politely ask them to LOGIN for the best experience. "
+                    f"Assure them that this chat IS being saved to their account."
+                )
+        else:
+            # 🔴 NOT REGISTERED / GUEST
+             print("❌ User NOT Registered / Guest")
+             user_context_instruction = (
+                 f"User STATUS: GUEST (Unregistered).\n"
+                 f"Name provided: {real_client_name}.\n"
+                 f"INSTRUCTION: You MUST politely suggest they SIGN UP. "
+                 f"Warn them that 'Chat history is NOT saved for guests'. "
+                 f"Reference the Sign Up page."
+             )
 
         # 2️⃣ Detect menu intent
         menu_context = ""
 
         if is_menu_query(req.userMessage):
             print("🍽️ Menu query detected")
-
-            # if customer_id:
-            #     menu = menu_agent.get_customized_menu(customer_id)
-            # else:
-                # menu = menu_agent.get_menu()
             menu = menu_agent.get_menu()
-
-            # Limit size
-            # menu = menu[:20]
 
             menu_lines = []
             for item in menu:
@@ -208,10 +271,13 @@ async def llm_chat(req: ChatRequest):
             menu_context = "\n".join(menu_lines)
 
         # 3️⃣ Build final prompt
+        # Append logic instruction to system prompt
+        enhanced_system_prompt = f"{SYSTEM_PROMPT}\n\nCURRENT USER CONTEXT:\n{user_context_instruction}"
+
         prompt = build_prompt(
             req.chatHistory,
-            SYSTEM_PROMPT,
-            req.clientName or "Guest",
+            enhanced_system_prompt,
+            real_client_name,
             req.userMessage,
             menu_context
         )
@@ -226,7 +292,7 @@ async def llm_chat(req: ChatRequest):
 
     except Exception as e:
         print("❌ LLM error:", e)
-        return ChatResponse(response="Sorry, something went wrong.")
+        return ChatResponse(response="Sorry, I'm having trouble connecting right now.")
 
 # ---------------------------------------------------------
 # Helper: Generate next Chat ID
@@ -240,6 +306,7 @@ def generate_next_chat_id():
     max_num = 0
 
     for r in rows:
+        import re
         chat_id = r.get("Chat_ID", "")
         match = re.search(r"Chat_(\d+)", chat_id)
         if match:
@@ -259,27 +326,24 @@ async def save_chat(session: ChatSession):
     customer exists in Customer_Auth sheet.
     """
     print("\n🔥 /save-chat endpoint HIT")
-    print("📥 Received chat session:", session.model_dump())
+    # print("📥 Received chat session:", session.model_dump())
 
     try:
-        # 1️⃣ Find existing customer
-        customer_id = find_customer_id(
-            session.clientEmail,
-            session.clientPhone
-        )
+        # 1️⃣ Find existing customer (Try ID first, then email, then phone)
+        customer = get_customer_details(session.clientEmail, session.clientPhone, session.clientId)
+        
+        customer_id = customer.get("Customer_ID") if customer else None
+        customer_name = customer.get("Customer_Name") if customer else session.clientName
 
-        # test
-        print("Client ID: ", session.clientId)
-        print("Client Name: ", session.clientName)
-        print("Client Email: ", session.clientEmail)
-        print("Client Phone: ", session.clientPhone)
-
-        if not customer_id:
-            print("⚠️ Customer not found. Chat not saved.")
+        if not customer:
+            print(f"⚠️ Guest Chat: Not registered. Chat NOT saved. (Name: {session.clientName})")
             return {
                 "status": "ignored",
                 "message": "Customer not registered. Chat not saved."
             }
+
+        # If found, but session didn't have ID, we now know the ID
+        print(f"✅ Customer Identified: {customer_name} ({customer_id})")
 
         # 2️⃣ Generate next Chat ID
         chat_id = generate_next_chat_id()
@@ -287,15 +351,17 @@ async def save_chat(session: ChatSession):
         # 3️⃣ Ensure timestamp
         chat_datetime = session.date
         if not chat_datetime:
-            chat_datetime = datetime.now(timezone.utc).isoformat()
+            from datetime import datetime
+            chat_datetime = datetime.now().isoformat()
 
         # 4️⃣ Prepare row
+        # Schema: Chat_ID, Customer_ID, Customer_Name, Customer_Phone, Customer_Email, Date_Time, Transcript
         row = [
             chat_id,
             customer_id,
-            session.clientName or "",
-            session.clientPhone or "",
-            session.clientEmail or "",
+            customer_name or "",
+            customer.get("Customer_Phone") or session.clientPhone or "",
+            customer.get("Customer_Email") or session.clientEmail or "",
             chat_datetime,
             session.transcriptText or "",
         ]
@@ -303,7 +369,7 @@ async def save_chat(session: ChatSession):
         # 5️⃣ Save
         sheets_client.append_row(CHATS_SHEET, row)
 
-        print("✅ Chat session saved:", chat_id)
+        print(f"💾 Chat saved successfully: {chat_id}")
 
         return {
             "status": "success",

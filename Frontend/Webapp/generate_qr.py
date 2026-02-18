@@ -1,12 +1,16 @@
 import qrcode
 import os
+from dotenv import load_dotenv
+
+# Load variables from .env file
+load_dotenv()
 
 # 1. Folder banayein jahan images save hongi
 if not os.path.exists("table_qrs"):
     os.makedirs("table_qrs")
 
-# 2. Aapka Updated Base URL (Port 8080 ke saath)
-BASE_URL = "http://10.122.228.81:8080" 
+# 2. Get URL from environment or fallback to local dev
+BASE_URL = os.getenv("VITE_API_URL", "http://localhost:8080") 
 
 print(f"Generating QR Codes for: {BASE_URL}...\n")
 
@@ -27,9 +31,12 @@ for i in range(1, 11):
 
     img = qr.make_image(fill_color="black", back_color="white")
     
-    # Save Image
-    filename = f"table_qrs/Table_{i}.png"
+    # Save Image for local host
+    filename = f"table_qrs/localhost/LocalHost_Table_{i}.png"
+    # Save Image for vercel hosted URL
+    # filename = f"table_qrs/vercel/Vercel_Table_{i}.png"
+
     img.save(filename)
     print(f"✅ Generated: {filename} -> Points to: {data}")
 
-print("\n🎉 All 10 QR Codes generated in 'table_qrs' folder!")
+print("\n🎉 All 10 QR Codes generated !")

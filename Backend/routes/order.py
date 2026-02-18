@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
+# from fastapi import HTTPException
 from pydantic import BaseModel
-from typing import List, Dict, Optional
+from typing import List, Optional
+# from typing import Dict
 import os
-import uuid
-import datetime
+# import uuid
+# import datetime
 
 # Services & Agents
 from services.sheets import SheetsClient
@@ -43,6 +45,7 @@ def _get_next_sequential_id(sheet_name: str, id_column: str, prefix: str, paddin
     except Exception as e:
         print(f"ID Generation Error for {sheet_name}: {e}")
         # Fallback to random-ish if lookup fails to avoid crash, but try to stay sequential
+        import uuid
         return f"{prefix}_{uuid.uuid4().hex[:padding]}"
 
 # ---------------------------------------------------------
@@ -114,6 +117,7 @@ async def place_order(req: OrderRequest):
     """
     # 0. Generate Sequential Order ID
     order_id = _get_next_sequential_id(ORDERS_SHEET, "Order_ID", "Ord")
+    import datetime
     timestamp = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     
     try:
@@ -203,6 +207,7 @@ async def place_order(req: OrderRequest):
         print(f"Order Placement Error: {e}")
         import traceback
         traceback.print_exc()
+        from fastapi import HTTPException
         raise HTTPException(status_code=500, detail="Failed to place order")
 
 @order_router.get("/order-history/{email}")

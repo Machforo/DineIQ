@@ -7,6 +7,7 @@ export interface ChatMessage {
 }
 
 export interface ClientInfo {
+  id?: string;
   name: string;
   email: string;
   phone: string;
@@ -47,7 +48,7 @@ export function createSessionObject(
   clientInfo: ClientInfo,
   sessionStartTime: Date
 ): ChatSession {
-  const clientId = "";
+  const clientId = clientInfo.id || "";
   const chatId = "";
 
   const date = sessionStartTime.toLocaleDateString('en-US', {

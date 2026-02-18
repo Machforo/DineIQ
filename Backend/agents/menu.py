@@ -4,8 +4,8 @@
 # Library and Packages Import
 # ---------------------------------------------------------
 import os
-import json
-import pandas as pd
+# import json
+# import pandas as pd
 
 # import agents and services classes
 from services.sheets import SheetsClient
@@ -327,7 +327,7 @@ class MenuAgent:
             return []
 
         item_names = [item["name"] for item in menu_items]
-
+        import json
         prompt = f"""
     You are a restaurant menu personalization assistant.
 
@@ -433,6 +433,7 @@ class MenuAgent:
         return descriptions.get(category, f'Delicious {category}')
 
     def get_smart_menu(self, email: str = None) -> dict:
+        import pandas as pd
         """
         Get menu organized smartly for DineIQ frontend (Sections: Favorites, Bestsellers, etc.)
         Reads Orders and Order_Items from Sheets for history.
