@@ -162,7 +162,8 @@ async def place_order(req: OrderRequest):
         # 2. Save to Order_Items Sheet
         for idx, item in enumerate(req.cart_items, 1):
             # Generate a unique sequential ID for each order item within THIS order
-            order_item_id = f"Ord_Item_{str(idx).zfill(4)}"
+            # Format: Ord_<Order ID>_Item_<Item sequence ID>
+            order_item_id = f"{order_id}_Item_{str(idx).zfill(4)}"
             
             # Use frontend names or fallbacks
             item_id = item.Item_ID or item.id or "Unknown"
