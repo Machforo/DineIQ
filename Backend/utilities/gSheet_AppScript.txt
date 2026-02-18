@@ -491,237 +491,237 @@ function main_campaign_runner() {
 // ==================== OTP Logic Starts ====================
 
 // ----- Helper: SHA-256 Hash -----
-function sha256(text) {
-  return Utilities.computeDigest(
-    Utilities.DigestAlgorithm.SHA_256,
-    text
-  ).map(b => ('0' + (b & 0xFF).toString(16)).slice(-2)).join('');
-}
+// function sha256(text) {
+//   return Utilities.computeDigest(
+//     Utilities.DigestAlgorithm.SHA_256,
+//     text
+//   ).map(b => ('0' + (b & 0xFF).toString(16)).slice(-2)).join('');
+// }
 
 // ----- Helper: Get next customer id -----
-function getNextCustomerId(sheet) {
-  // Plz dont delete this test code ---
-  // console.log("🔥 getNextCustomerId STARTED");
-  // const ss = SpreadsheetApp.getActive();
-  // const sheet = ss.getSheetByName("Customer_Auth");
+// function getNextCustomerId(sheet) {
+//   // Plz dont delete this test code ---
+//   // console.log("🔥 getNextCustomerId STARTED");
+//   // const ss = SpreadsheetApp.getActive();
+//   // const sheet = ss.getSheetByName("Customer_Auth");
 
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) {
-    // console.log("Only header found. Returning Cust_0001");
-    return "Cust_0001";
-  }
+//   const lastRow = sheet.getLastRow();
+//   if (lastRow < 2) {
+//     // console.log("Only header found. Returning Cust_0001");
+//     return "Cust_0001";
+//   }
 
-  const ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat();
+//   const ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat();
 
-  let maxNum = 0;
-  ids.forEach(id => {
-    if (id && typeof id === "string" && id.startsWith("Cust_")) {
-      const num = parseInt(id.replace("Cust_", ""), 10);
-      if (!isNaN(num)) maxNum = Math.max(maxNum, num);
-    }
-  });
+//   let maxNum = 0;
+//   ids.forEach(id => {
+//     if (id && typeof id === "string" && id.startsWith("Cust_")) {
+//       const num = parseInt(id.replace("Cust_", ""), 10);
+//       if (!isNaN(num)) maxNum = Math.max(maxNum, num);
+//     }
+//   });
 
-  const nextId = `Cust_${String(maxNum + 1).padStart(4, "0")}`;
-  // console.log("Next Customer ID =", nextId);
+//   const nextId = `Cust_${String(maxNum + 1).padStart(4, "0")}`;
+//   // console.log("Next Customer ID =", nextId);
 
-  return nextId;
-}
+//   return nextId;
+// }
 
 // ----- Send OTP -----
-function handleSendOtp(name, mobile, email) {
-  // Plz dont delete this test code ---
-  // name="Umang";
-  // mobile="9876543210";
-  // email="Umang.Malhotra@webisdom.com"
+// function handleSendOtp(name, mobile, email) {
+//   // Plz dont delete this test code ---
+//   // name="Umang";
+//   // mobile="9876543210";
+//   // email="Umang.Malhotra@webisdom.com"
   
-  const ss = SpreadsheetApp.getActive();
-  const sheet = ss.getSheetByName("Customer_Auth");
-  if (!sheet) throw new Error("Customer_Auth sheet not found");
+//   const ss = SpreadsheetApp.getActive();
+//   const sheet = ss.getSheetByName("Customer_Auth");
+//   if (!sheet) throw new Error("Customer_Auth sheet not found");
 
-  const data = sheet.getDataRange().getValues();
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const otpHash = sha256(otp);
-  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 min
+//   const data = sheet.getDataRange().getValues();
+//   const otp = Math.floor(100000 + Math.random() * 900000).toString();
+//   const otpHash = sha256(otp);
+//   const expiresAt = Date.now() + 5 * 60 * 1000; // 5 min
 
-  let rowFound = false;
+//   let rowFound = false;
 
-  for (let i = 1; i < data.length; i++) {
-    // Column C = index 2 (Customer_Email)
-    if (data[i][2] === email) {
-      // fill otp, hash and expiry values
-      sheet.getRange(i + 1, 5).setValue(otpHash);      // Column E = OTP_Hash
-      sheet.getRange(i + 1, 6).setValue(expiresAt);    // Column F = OTP_Expires_At
-      sheet.getRange(i + 1, 7).setValue(new Date());   // Column G = Creation_DateTime
-      rowFound = true;
-      // console.log("email matched in the sheet");
-      break;
-    }
-  }
+//   for (let i = 1; i < data.length; i++) {
+//     // Column C = index 2 (Customer_Email)
+//     if (data[i][2] === email) {
+//       // fill otp, hash and expiry values
+//       sheet.getRange(i + 1, 5).setValue(otpHash);      // Column E = OTP_Hash
+//       sheet.getRange(i + 1, 6).setValue(expiresAt);    // Column F = OTP_Expires_At
+//       sheet.getRange(i + 1, 7).setValue(new Date());   // Column G = Creation_DateTime
+//       rowFound = true;
+//       // console.log("email matched in the sheet");
+//       break;
+//     }
+//   }
 
-  // no existing customer with this email id
-  if (!rowFound) {
-    // generate next customer id
-    const customerId = getNextCustomerId(sheet);
-    // console.log("Next Customer ID =", customerId);
-    // SpreadsheetApp.getUi().alert("Customer ID ->" + customerId + "<-" + "email ->" + email + "<-");
-    sheet.appendRow([
-      customerId,  // Customer_ID
-      name,        // Customer_Name
-      email,       // Customer_Email
-      mobile,      // Customer_Phone
-      otpHash,     // OTP_Hash
-      expiresAt,   // OTP_Expires_At
-      new Date(),  // Creation_DateTime
-      ""           // Last_Login_DateTime
-    ]);
+//   // no existing customer with this email id
+//   if (!rowFound) {
+//     // generate next customer id
+//     const customerId = getNextCustomerId(sheet);
+//     // console.log("Next Customer ID =", customerId);
+//     // SpreadsheetApp.getUi().alert("Customer ID ->" + customerId + "<-" + "email ->" + email + "<-");
+//     sheet.appendRow([
+//       customerId,  // Customer_ID
+//       name,        // Customer_Name
+//       email,       // Customer_Email
+//       mobile,      // Customer_Phone
+//       otpHash,     // OTP_Hash
+//       expiresAt,   // OTP_Expires_At
+//       new Date(),  // Creation_DateTime
+//       ""           // Last_Login_DateTime
+//     ]);
 
-  }
+//   }
 
-  // prepare data for email
-  msg_from  = EMAIL_MSG_FROM;
-  msg_to    = email;
-  msg_sub   = "Your Login OTP";
-  msg_text  = `"Your OTP is ${otp}. Valid for 5 minutes.`;
+//   // prepare data for email
+//   msg_from  = EMAIL_MSG_FROM;
+//   msg_to    = email;
+//   msg_sub   = "Your Login OTP";
+//   msg_text  = `"Your OTP is ${otp}. Valid for 5 minutes.`;
 
-  // send OTP email to customer
-  trigger_email(msg_from, msg_to, msg_sub, msg_text);
+//   // send OTP email to customer
+//   trigger_email(msg_from, msg_to, msg_sub, msg_text);
   
-  // Plz dont delete this test code ---
-  // MailApp.sendEmail({
-  //   from: EMAIL_MSG_FROM,
-  //   to: email,
-  //   subject: "Your Login OTP",
-  //   htmlBody: `<p>Your OTP is <b>${otp}</b>. Valid for 5 minutes.</p>`
-  // });
+//   // Plz dont delete this test code ---
+//   // MailApp.sendEmail({
+//   //   from: EMAIL_MSG_FROM,
+//   //   to: email,
+//   //   subject: "Your Login OTP",
+//   //   htmlBody: `<p>Your OTP is <b>${otp}</b>. Valid for 5 minutes.</p>`
+//   // });
 
-  return { status: "ok" };
-}
+//   return { status: "ok" };
+// }
 
 // ----- Verify OTP -----
-function handleVerifyOtp(email, otp) {
-  const ss = SpreadsheetApp.getActive();
-  const sheet = ss.getSheetByName("Customer_Auth");
-  const data = sheet.getDataRange().getValues();
+// function handleVerifyOtp(email, otp) {
+//   const ss = SpreadsheetApp.getActive();
+//   const sheet = ss.getSheetByName("Customer_Auth");
+//   const data = sheet.getDataRange().getValues();
 
-  const enteredHash = sha256(otp);
+//   const enteredHash = sha256(otp);
 
-  for (let i = 1; i < data.length; i++) {
-    const rowEmail = data[i][2];     // Column C
-    const storedHash = data[i][4];   // Column E
-    const expiresAt = data[i][5];    // Column F
+//   for (let i = 1; i < data.length; i++) {
+//     const rowEmail = data[i][2];     // Column C
+//     const storedHash = data[i][4];   // Column E
+//     const expiresAt = data[i][5];    // Column F
 
-    if (rowEmail === email) {
-      if (!storedHash) {
-        return { status: "error", message: "OTP not generated" };
-      }
+//     if (rowEmail === email) {
+//       if (!storedHash) {
+//         return { status: "error", message: "OTP not generated" };
+//       }
 
-      if (Date.now() > expiresAt) {
-        return { status: "error", message: "OTP expired" };
-      }
+//       if (Date.now() > expiresAt) {
+//         return { status: "error", message: "OTP expired" };
+//       }
 
-      if (storedHash === enteredHash) {
-        // Clear OTP after success
-        // sheet.getRange(i + 1, 5).clearContent(); // Column E
-        // sheet.getRange(i + 1, 6).clearContent(); // Column F
-        sheet.getRange(i + 1, 8).setValue(new Date()); // Column H = Last_Login_DateTime
+//       if (storedHash === enteredHash) {
+//         // Clear OTP after success
+//         // sheet.getRange(i + 1, 5).clearContent(); // Column E
+//         // sheet.getRange(i + 1, 6).clearContent(); // Column F
+//         sheet.getRange(i + 1, 8).setValue(new Date()); // Column H = Last_Login_DateTime
 
-        return { status: "ok", authenticated: true };
-      }
+//         return { status: "ok", authenticated: true };
+//       }
 
-      return { status: "error", message: "Invalid OTP" };
-    }
-  }
+//       return { status: "error", message: "Invalid OTP" };
+//     }
+//   }
 
-  return { status: "error", message: "Email not found" };
-}
+//   return { status: "error", message: "Email not found" };
+// }
 
 // ==================== OTP Logic Ends ====================
 
 // -----------------------------------------------------------
 // Helper: Save customer insights data to "Customer_Insights" sheet
 // -----------------------------------------------------------
-function saveCustomerInsights(customers) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("Customer_Insights");
-  if (!sheet) throw new Error("Customer_Insights sheet not found");
+// function saveCustomerInsights(customers) {
+//   const ss = SpreadsheetApp.getActiveSpreadsheet();
+//   const sheet = ss.getSheetByName("Customer_Insights");
+//   if (!sheet) throw new Error("Customer_Insights sheet not found");
 
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+//   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
 
-  const colIndex = {};
-  headers.forEach((h, i) => {
-    if (typeof h === "string") colIndex[h.trim()] = i;
-  });
+//   const colIndex = {};
+//   headers.forEach((h, i) => {
+//     if (typeof h === "string") colIndex[h.trim()] = i;
+//   });
 
-  const rows = customers.map(c => {
-    const row = new Array(headers.length).fill("");
+//   const rows = customers.map(c => {
+//     const row = new Array(headers.length).fill("");
 
-    if (colIndex["Customer_Name"] !== undefined)
-      row[colIndex["Customer_Name"]] = c.name || "";
+//     if (colIndex["Customer_Name"] !== undefined)
+//       row[colIndex["Customer_Name"]] = c.name || "";
 
-    if (colIndex["Dietary_Preferences"] !== undefined)
-      row[colIndex["Dietary_Preferences"]] = c.dietary || "";
+//     if (colIndex["Dietary_Preferences"] !== undefined)
+//       row[colIndex["Dietary_Preferences"]] = c.dietary || "";
 
-    if (colIndex["Average_Order_Value"] !== undefined)
-      row[colIndex["Average_Order_Value"]] = c.aov || "";
+//     if (colIndex["Average_Order_Value"] !== undefined)
+//       row[colIndex["Average_Order_Value"]] = c.aov || "";
 
-    if (colIndex["Visit_Frequency_Categories"] !== undefined)
-      row[colIndex["Visit_Frequency_Categories"]] = c.frequency || "";
+//     if (colIndex["Visit_Frequency_Categories"] !== undefined)
+//       row[colIndex["Visit_Frequency_Categories"]] = c.frequency || "";
 
-    if (colIndex["Order_Attitude_Categories"] !== undefined)
-      row[colIndex["Order_Attitude_Categories"]] = c.attitude || "";
+//     if (colIndex["Order_Attitude_Categories"] !== undefined)
+//       row[colIndex["Order_Attitude_Categories"]] = c.attitude || "";
 
-    return row;
-  });
+//     return row;
+//   });
 
-  sheet.getRange(
-    sheet.getLastRow() + 1,
-    1,
-    rows.length,
-    headers.length
-  ).setValues(rows);
+//   sheet.getRange(
+//     sheet.getLastRow() + 1,
+//     1,
+//     rows.length,
+//     headers.length
+//   ).setValues(rows);
 
-  return rows.length;
-}
+//   return rows.length;
+// }
 
 // -----------------------------------------------------------
 // Helper: Checks if Message Template/Timing columns exist in Campaigns sheet
 // -----------------------------------------------------------
-function ensureCampaignColumns(count) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("Campaigns");
-  if (!sheet) return;
+// function ensureCampaignColumns(count) {
+//   const ss = SpreadsheetApp.getActiveSpreadsheet();
+//   const sheet = ss.getSheetByName("Campaigns");
+//   if (!sheet) return;
 
-  // Normalize existing headers
-  const headerRange = sheet.getRange(1, 1, 1, sheet.getLastColumn());
-  let headers = headerRange.getValues()[0].map(h =>
-    typeof h === "string" ? h.toString().trim().replace(/\s+/g, " ") : ""
-  );
+//   // Normalize existing headers
+//   const headerRange = sheet.getRange(1, 1, 1, sheet.getLastColumn());
+//   let headers = headerRange.getValues()[0].map(h =>
+//     typeof h === "string" ? h.toString().trim().replace(/\s+/g, " ") : ""
+//   );
 
-  let lastCol = sheet.getLastColumn();
+//   let lastCol = sheet.getLastColumn();
 
-  for (let i = 1; i <= count; i++) {
-    const tempHeader = `Message_Template #${i}`;
-    const timeHeader = `Message_Send_Timing #${i}`;
+//   for (let i = 1; i <= count; i++) {
+//     const tempHeader = `Message_Template #${i}`;
+//     const timeHeader = `Message_Send_Timing #${i}`;
 
-    // Check case-insensitive, trimmed
-    const tempExists = headers.some(h => h.toLowerCase() === tempHeader.toLowerCase());
-    const timeExists = headers.some(h => h.toLowerCase() === timeHeader.toLowerCase());
+//     // Check case-insensitive, trimmed
+//     const tempExists = headers.some(h => h.toLowerCase() === tempHeader.toLowerCase());
+//     const timeExists = headers.some(h => h.toLowerCase() === timeHeader.toLowerCase());
 
-    if (!tempExists) {
-      sheet.insertColumnAfter(lastCol);
-      lastCol++;
-      sheet.getRange(1, lastCol).setValue(tempHeader);
-      headers.push(tempHeader);
-    }
+//     if (!tempExists) {
+//       sheet.insertColumnAfter(lastCol);
+//       lastCol++;
+//       sheet.getRange(1, lastCol).setValue(tempHeader);
+//       headers.push(tempHeader);
+//     }
 
-    if (!timeExists) {
-      sheet.insertColumnAfter(lastCol);
-      lastCol++;
-      sheet.getRange(1, lastCol).setValue(timeHeader);
-      headers.push(timeHeader);
-    }
-  }
-}
+//     if (!timeExists) {
+//       sheet.insertColumnAfter(lastCol);
+//       lastCol++;
+//       sheet.getRange(1, lastCol).setValue(timeHeader);
+//       headers.push(timeHeader);
+//     }
+//   }
+// }
 
 // -----------------------------------------------------------
 // Helper: Save chat session to "Chats" sheet
@@ -870,25 +870,25 @@ function doGet(e) {
 /**
  * Web app endpoint for React frontend to add new Campaigns
  */
-function doPost(e) {
-  try {
-    // ----------------------------------------------
-    // [0] Validate POST data
-    // ----------------------------------------------
-    if (!e || !e.postData || !e.postData.contents) {
-      return jsonResponse({ status: "error", message: "No POST data received" });
-    }
+// function doPost(e) {
+//   try {
+//     // ----------------------------------------------
+//     // [0] Validate POST data
+//     // ----------------------------------------------
+//     if (!e || !e.postData || !e.postData.contents) {
+//       return jsonResponse({ status: "error", message: "No POST data received" });
+//     }
 
-    let data = {};
-    try {
-      if (e.postData.type === "application/json") {
-        data = JSON.parse(e.postData.contents);
-      } else {
-        data = JSON.parse(e.postData.contents || '{}');
-      }
-    } catch (err) {
-      return jsonResponse({ status: "error", message: "Invalid JSON: " + err.message });
-    }
+//     let data = {};
+//     try {
+//       if (e.postData.type === "application/json") {
+//         data = JSON.parse(e.postData.contents);
+//       } else {
+//         data = JSON.parse(e.postData.contents || '{}');
+//       }
+//     } catch (err) {
+//       return jsonResponse({ status: "error", message: "Invalid JSON: " + err.message });
+//     }
 
     // ----------------------------------------------
     // [1] Handle auth actions
@@ -1012,30 +1012,30 @@ function doPost(e) {
     // [4] Customer Activity Logging
     // ----------------------------------------------
     // doPost function ke andar check_user ya save_preferences ke baad ise add karein
-    if (data.action === "save_app_log") {
-      try {
-        var ss = SpreadsheetApp.getActiveSpreadsheet();
-        // Sheet ko dhoondna ya nayi banana agar exist nahi karti
-        var logSheet = ss.getSheetByName("App_Logs") || ss.insertSheet("App_Logs");
+    // if (data.action === "save_app_log") {
+    //   try {
+    //     var ss = SpreadsheetApp.getActiveSpreadsheet();
+    //     // Sheet ko dhoondna ya nayi banana agar exist nahi karti
+    //     var logSheet = ss.getSheetByName("App_Logs") || ss.insertSheet("App_Logs");
       
-        // Headers set karna agar sheet ekdum nayi hai
-        if (logSheet.getLastRow() === 0) {
-          logSheet.appendRow(["Timestamp", "User_Email", "Action", "Details"]);
-        }
+    //     // Headers set karna agar sheet ekdum nayi hai
+    //     if (logSheet.getLastRow() === 0) {
+    //       logSheet.appendRow(["Timestamp", "User_Email", "Action", "Details"]);
+    //     }
 
-        // Row append karna: [Waqt, User, Kaam, Details]
-        logSheet.appendRow([
-          new Date(),       // Column A
-          data.email,      // Column B
-          data.activity,   // Column C
-          data.details     // Column D
-        ]);
+    //     // Row append karna: [Waqt, User, Kaam, Details]
+    //     logSheet.appendRow([
+    //       new Date(),       // Column A
+    //       data.email,      // Column B
+    //       data.activity,   // Column C
+    //       data.details     // Column D
+    //     ]);
       
-        return jsonResponse({ "status": "ok", "message": "Log saved" });
-      } catch (err) {
-        return jsonResponse({ "status": "error", "message": err.toString() });
-      }
-    }
+    //     return jsonResponse({ "status": "ok", "message": "Log saved" });
+    //   } catch (err) {
+    //     return jsonResponse({ "status": "error", "message": err.toString() });
+    //   }
+    // }
 
     // ----------------------------------------------
     // [5] Handle chat sessions
@@ -1051,21 +1051,21 @@ function doPost(e) {
     // saveCampaignToSheet(data);
     // return jsonResponse({ status: "success", message: "Campaign saved" });
 
-  } catch (err) {
-    // ----------------------------------------------
-    // 4️⃣ Global catch — always JSON
-    // ----------------------------------------------
-    return jsonResponse({ status: "error", message: err.message });
-  }
-}
+//   } catch (err) {
+//     // ----------------------------------------------
+//     // 4️⃣ Global catch — always JSON
+//     // ----------------------------------------------
+//     return jsonResponse({ status: "error", message: err.message });
+//   }
+// }
 
 /* ============================================================
    JSON RESPONSE HELPER
 ============================================================ */
-function jsonResponse(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+// function jsonResponse(obj) {
+//   return ContentService.createTextOutput(JSON.stringify(obj))
+//     .setMimeType(ContentService.MimeType.JSON);
+// }
 
 
 
