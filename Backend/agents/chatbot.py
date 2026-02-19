@@ -10,7 +10,7 @@
 #                       final user-friendly reply.
 # ─────────────────────────────────────────────────────────────────────────────
 
-import os, re, json
+import os, re, json, asyncio, time
 from fastapi import APIRouter
 from pydantic import BaseModel
 from datetime import datetime, timezone
@@ -23,14 +23,29 @@ from agents.menu import MenuAgent
 from services.llm import GroqClient
 from services.sheets import SheetsClient
 
-menu_agent   = MenuAgent()
-groq_client  = GroqClient()
+menu_agent    = MenuAgent()
+groq_client   = GroqClient()
 sheets_client = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
 
 CHATS_SHEET         = "Chats"
 CUSTOMER_AUTH_SHEET = "Customer_Auth"
 
 chatbot_router = APIRouter()
+
+# ── Menu cache (avoids repeated Google Sheets round-trips) ───────────────────
+_menu_cache: list[dict] = []
+_menu_cache_ts: float   = 0.0
+MENU_CACHE_TTL: int     = 300   # seconds (5 minutes)
+
+def get_cached_menu() -> list[dict]:
+    global _menu_cache, _menu_cache_ts
+    if _menu_cache and (time.time() - _menu_cache_ts) < MENU_CACHE_TTL:
+        print(f"✅ Menu from cache ({len(_menu_cache)} items)")
+        return _menu_cache
+    print("🔄 Fetching fresh menu from Sheets...")
+    _menu_cache    = menu_agent.get_menu()
+    _menu_cache_ts = time.time()
+    return _menu_cache
 
 # ─── Request / Response models ────────────────────────────────────────────────
 class FrontendChatItem(BaseModel):
@@ -122,14 +137,10 @@ JSON:"""
 # STEP 2 — TOOL: Fetch and filter menu from Google Sheets
 # ─────────────────────────────────────────────────────────────────────────────
 def fetch_filtered_menu(filters: list[str], veg_only: bool) -> list[dict]:
-    """Fetch full menu and apply intent filters."""
-    try:
-        menu = menu_agent.get_menu()
-    except Exception as e:
-        print(f"⚠️ Menu fetch failed: {e}")
-        return []
+    """Return filtered menu — from cache, Google Sheets only hit once per 5 min."""
+    menu = get_cached_menu()
 
-    # ── Drop items with no valid price ───────────────────────────────────────
+    # Drop zero-price items
     menu = [item for item in menu if item.get("price") and float(item.get("price", 0)) > 0]
 
     # Apply veg filter
@@ -146,7 +157,6 @@ def fetch_filtered_menu(filters: list[str], veg_only: bool) -> list[dict]:
                 for kw in filter_lower
             )
         ]
-        # Fall back to full menu if filters are too narrow
         menu = filtered if filtered else menu
 
     return menu
@@ -335,32 +345,44 @@ async def llm_chat(req: ChatRequest):
 
         print(f"✅ Intent: action={action}, filters={filters}, veg_only={veg_only}")
 
-        # ── STEP 2: Fetch menu if needed ──────────────────────────────────────
+        # ── STEP 2: Get filtered menu from cache (fast) ──────────────────────
+        menu      = []
         menu_text = ""
         if action in ("suggest_items", "suggest_combos"):
-            menu = fetch_filtered_menu(filters, veg_only)
+            menu      = fetch_filtered_menu(filters, veg_only)
             menu_text = format_menu_for_llm(menu)
-            print(f"🍽️ Menu items available for LLM: {len(menu)}")
+            print(f"🍽️ {len(menu)} menu items ready for LLM")
 
-        # ── STEP 3a: Generate structured combo data (parallel intent) ───────────
-        structured_combos = []
-        if action == "suggest_combos" and menu_text:
-            structured_combos = generate_structured_combos(menu, menu_text, req.userMessage)
-            print(f"✅ Generated {len(structured_combos)} structured combos")
-
-        # ── STEP 3b: Generate conversational reply ───────────────────────────
-        prompt = build_response_prompt(
+        reply_prompt = build_response_prompt(
             intent       = intent,
             menu_text    = menu_text,
             history      = req.chatHistory,
             user_message = req.userMessage,
             client_name  = req.clientName or "Guest",
         )
-        ai_reply = groq_client.call_groq_with_retry(prompt)
-        if not ai_reply:
-            raise Exception("Empty response from Groq")
 
-        print("✅ Reply generated")
+        # ── STEP 3: Parallel Groq calls ───────────────────────────────────────
+        # For combos: combo JSON + conversational reply run simultaneously
+        loop = asyncio.get_event_loop()
+
+        if action == "suggest_combos" and menu_text:
+            combo_task = loop.run_in_executor(
+                None, generate_structured_combos, menu, menu_text, req.userMessage
+            )
+            reply_task = loop.run_in_executor(
+                None, groq_client.call_groq_with_retry, reply_prompt
+            )
+            structured_combos, ai_reply = await asyncio.gather(combo_task, reply_task)
+            print(f"✅ Parallel done: {len(structured_combos)} combos + reply")
+        else:
+            structured_combos = []
+            ai_reply = await loop.run_in_executor(
+                None, groq_client.call_groq_with_retry, reply_prompt
+            )
+
+        if not ai_reply:
+            raise Exception("Empty Groq response")
+
         return ChatResponse(
             response = ai_reply,
             combos   = [ComboData(**c) for c in structured_combos] if structured_combos else []
