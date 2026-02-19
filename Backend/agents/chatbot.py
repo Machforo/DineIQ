@@ -354,6 +354,7 @@ async def llm_chat(req: ChatRequest):
 
     try:
         # ── STEP 1: Classify intent with Groq ────────────────────────────────
+        print("🔍 Classifying intent...")
         intent = classify_intent(req.userMessage, req.chatHistory)
         action  = intent.get("action", "general")
         filters = intent.get("filters", [])
@@ -365,9 +366,12 @@ async def llm_chat(req: ChatRequest):
         menu      = []
         menu_text = ""
         if action in ("suggest_items", "suggest_combos"):
-            menu      = fetch_filtered_menu(filters, veg_only)
-            menu_text = format_menu_for_llm(menu)
-            print(f"🍽️ {len(menu)} menu items ready for LLM")
+            try:
+                menu = fetch_filtered_menu(filters, veg_only)
+                menu_text = format_menu_for_llm(menu)
+                print(f"🍽️ {len(menu)} menu items ready for LLM")
+            except Exception as e:
+                print(f"❌ Menu fetch error: {e}")
 
         reply_prompt = build_response_prompt(
             intent       = intent,
@@ -378,9 +382,13 @@ async def llm_chat(req: ChatRequest):
         )
 
         # ── STEP 3: Parallel Groq calls ───────────────────────────────────────
-        # For combos: combo JSON + conversational reply run simultaneously
-        loop = asyncio.get_event_loop()
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
 
+        print("🚀 Starting parallel Groq calls...")
         if action == "suggest_combos" and menu_text:
             combo_task = loop.run_in_executor(
                 None, generate_structured_combos, menu, menu_text, req.userMessage
@@ -405,7 +413,9 @@ async def llm_chat(req: ChatRequest):
         )
 
     except Exception as e:
-        print(f"❌ Agent error: {e}")
+        print(f"❌ Agent error in llm_chat: {e}")
+        import traceback
+        traceback.print_exc()
         return ChatResponse(response="Sorry, I'm having trouble right now. Please try again in a moment!")
 
 
