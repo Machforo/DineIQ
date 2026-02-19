@@ -3,6 +3,7 @@
 export interface ComboIngredient {
   name: string;
   price: number;
+  itemId?: string;    // real Item_ID from Google Sheets Menu
 }
 
 export interface ChatCombo {

@@ -182,80 +182,48 @@ async def place_order(req: OrderRequest):
         try:
             # OPTIMIZATION: Unpack Combos & Use deterministic IDs
             new_item_rows = []
-            
-            # Helper to add row
-            def add_row(order_id, idx, i_id, i_name, i_qty, i_price):
-                item_index = str(idx).zfill(2)
-                order_item_id = f"{order_id}_{item_index}"
+
+            def add_row(o_id, item_id, item_name, i_qty, i_price):
+                """Save one Order_Items row in the correct format: Ord_XXXX_Item_YYYY"""
+                order_item_id = f"{o_id}_{item_id}" if item_id else f"{o_id}_{uuid.uuid4().hex[:6].upper()}"
                 new_item_rows.append([
-                    order_item_id,
-                    order_id,
-                    i_id,
-                    i_name,
-                    i_qty,
-                    i_price
+                    order_item_id,   # Ord_0007_Item_0006
+                    o_id,            # Ord_0007
+                    item_id,         # Item_0006
+                    item_name,       # Butter Kulcha
+                    i_qty,           # 1
+                    i_price          # 22
                 ])
 
-            item_counter = 1
-            
             for item in req.cart_items:
-                i_name = item.Item_Name or item.name or "Item"
-                i_id = item.Item_ID or item.id or "Unknown"
-                i_qty = item.quantity or 1
+                i_name  = item.Item_Name or item.name or "Item"
+                i_id    = item.Item_ID or item.id or ""
+                i_qty   = item.quantity or 1
                 i_price = item.Current_Price or item.price or 0.0
-                i_cat = getattr(item, 'category', "") or ""
-                i_desc = getattr(item, 'description', "") or ""
-                i_subs = getattr(item, 'sub_items', None)
+                i_subs  = getattr(item, 'sub_items', None)
                 i_combo_items = getattr(item, 'comboItems', None)
 
-                # CHECK 0: Explicit comboItems array (from frontend)
-                # DISABLED: Saving Combo Name as single item per user request
-                # if i_combo_items and isinstance(i_combo_items, list) and len(i_combo_items) > 0:
-                #     for combo_item in i_combo_items:
-                #         combo_item_name = combo_item.get("name", "Unknown Item")
-                #         combo_item_qty = combo_item.get("quantity", 1) * i_qty
-                #         add_row(order_id, item_counter, i_id, combo_item_name, combo_item_qty, 0)
-                #         item_counter += 1
-                #     continue
+                # ── AI Combo: comboItems encoded as "ItemID||ItemName||Price" ──────
+                if i_combo_items and isinstance(i_combo_items, list) and len(i_combo_items) > 0:
+                    first = i_combo_items[0] if i_combo_items else ""
+                    if "||" in str(first):
+                        # This is an AI chatbot combo — unpack each ingredient
+                        for entry in i_combo_items:
+                            try:
+                                parts = str(entry).split("||")
+                                ing_id    = parts[0].strip() if len(parts) > 0 else ""
+                                ing_name  = parts[1].strip() if len(parts) > 1 else str(entry)
+                                ing_price = float(parts[2].strip()) if len(parts) > 2 else 0.0
+                                add_row(order_id, ing_id or i_id, ing_name, i_qty, ing_price)
+                            except Exception as parse_err:
+                                print(f"⚠️ Combo ingredient parse error: {parse_err}")
+                                add_row(order_id, i_id, str(entry), i_qty, 0.0)
+                        continue   # don't save the combo header itself
 
-                # CHECK 1: Explicit Sub-Items (Future proofing)
-                # if i_subs:
-                #     for sub in i_subs:
-                #         add_row(order_id, item_counter, "Sub_Item", sub.get("name"), i_qty, 0)
-                #         item_counter += 1
-                #     continue
+                # ── Regular item ─────────────────────────────────────────────────
+                add_row(order_id, i_id, i_name, i_qty, i_price)
 
-                # CHECK 2: AI Combo / Smart Combo Unpacking via Description
-                # If description format is "X + Y + Z" and it's a combo
-                # DISABLED: Saving Combo Name as single item per user request
-                # if "combo" in str(i_cat).lower() or "combo" in str(i_name).lower():
-                #     if " + " in str(i_desc):
-                #         # "1 Butter Chicken + 2 Naan" -> Split it
-                #         parts = i_desc.split(" + ")
-                #         for part in parts:
-                #             part = part.strip()
-                #             # Try to extract quantity if starts with digit: "2 Naan"
-                #             sub_qty = i_qty 
-                #             sub_name = part
-                #             
-                #             try:
-                #                 first_word = part.split(' ')[0]
-                #                 if first_word.isdigit():
-                #                     parsed_qty = int(first_word)
-                #                     sub_qty = i_qty * parsed_qty
-                #                     sub_name = " ".join(part.split(' ')[1:])
-                #             except:
-                #                 pass
-                #                 
-                #             add_row(order_id, item_counter, i_id, sub_name, sub_qty, 0)
-                #             item_counter += 1
-                #         continue
-
-                # Default: Save as single item
-                add_row(order_id, item_counter, i_id, i_name, i_qty, i_price)
-                item_counter += 1
-                
-            # Batch Insert
+            # Batch insert to Order_Items sheet
             sheets_client.append_rows(ORDER_ITEMS_SHEET, new_item_rows)
             
         except Exception as e:

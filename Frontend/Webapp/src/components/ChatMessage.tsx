@@ -131,6 +131,8 @@ function ComboCard({ combo }: { combo: ChatCombo }) {
       isVeg: true,
       category: "Combos",
       isCombo: true,
+      // Encode each ingredient: "ItemID||ItemName||Price" — order.py decodes this
+      comboItems: combo.items.map(i => `${i.itemId || ""}||${i.name}||${i.price}`),
       rating: 4.8,
       ratingCount: 100,
     });

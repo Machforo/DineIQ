@@ -40,6 +40,7 @@ class FrontendChatItem(BaseModel):
 class ComboIngredient(BaseModel):
     name: str
     price: float
+    item_id: str = ""    # real Item_ID from Google Sheets Menu
 
 class ComboData(BaseModel):
     id: str
@@ -256,19 +257,55 @@ RULES:
 - Return valid JSON array only, no markdown, no explanation.
 """
 
-def generate_structured_combos(menu_text: str, user_request: str) -> list[dict]:
-    """Ask Groq to return structured combo JSON from the real menu."""
+def generate_structured_combos(menu: list[dict], menu_text: str, user_request: str) -> list[dict]:
+    """Ask Groq to return structured combo JSON from the real menu, then enrich with real Item_IDs."""
     prompt = f"{COMBO_JSON_PROMPT}\n\nUser requested: {user_request}\n\nMENU:\n{menu_text}\n\nJSON:"
     raw = groq_client.call_groq_with_retry(prompt)
     print(f"🧩 Raw combo JSON: {raw[:300] if raw else 'None'}...")
+
+    # Build a name → {id, price} lookup from real menu for post-processing
+    name_lookup: dict[str, dict] = {}
+    for item in menu:
+        clean = item.get("name", "").strip().lower()
+        name_lookup[clean] = {"id": item.get("id", ""), "price": float(item.get("price") or 0)}
+
+    def find_item(item_name: str) -> dict:
+        """Fuzzy-match item name against real menu entries."""
+        key = item_name.strip().lower()
+        if key in name_lookup:
+            return name_lookup[key]
+        # Partial match fallback
+        for menu_key, info in name_lookup.items():
+            if key in menu_key or menu_key in key:
+                return info
+        return {"id": "", "price": 0}
+
     try:
         clean = re.sub(r"```(?:json)?", "", raw or "").strip().strip("`")
-        # Find array boundaries
         start = clean.find("[")
         end   = clean.rfind("]") + 1
         if start == -1 or end == 0:
             return []
-        return json.loads(clean[start:end])
+        combos = json.loads(clean[start:end])
+
+        # Enrich each ingredient with real item_id and real price from Sheets
+        for combo in combos:
+            enriched_items = []
+            total = 0.0
+            for ing in combo.get("items", []):
+                info = find_item(ing.get("name", ""))
+                real_price = info["price"] if info["price"] > 0 else float(ing.get("price", 0))
+                item_id    = info["id"] or ""
+                enriched_items.append({
+                    "name":    ing.get("name"),
+                    "price":   real_price,
+                    "item_id": item_id,
+                })
+                total += real_price
+            combo["items"]      = enriched_items
+            combo["totalPrice"] = round(total, 2)
+
+        return combos
     except Exception as e:
         print(f"⚠️ Combo JSON parse error: {e}")
         return []
@@ -308,7 +345,7 @@ async def llm_chat(req: ChatRequest):
         # ── STEP 3a: Generate structured combo data (parallel intent) ───────────
         structured_combos = []
         if action == "suggest_combos" and menu_text:
-            structured_combos = generate_structured_combos(menu_text, req.userMessage)
+            structured_combos = generate_structured_combos(menu, menu_text, req.userMessage)
             print(f"✅ Generated {len(structured_combos)} structured combos")
 
         # ── STEP 3b: Generate conversational reply ───────────────────────────

@@ -93,10 +93,11 @@ class MenuAgent:
         # Shape response for frontend
         return [
             {
-                "name": row["Item_Name"],
-                "price": float(row["Current_Price"]) if row["Current_Price"] != "" else None,
+                "id":       row["Item_ID"],
+                "name":     row["Item_Name"],
+                "price":    float(row["Current_Price"]) if row["Current_Price"] != "" else None,
                 "category": row.get("Item_Category", ""),
-                "isVeg": str(row.get("Is_Veg", "")).strip().lower() in ["1", "yes", "true", "veg"],
+                "isVeg":    str(row.get("Is_Veg", "")).strip().lower() in ["1", "yes", "true", "veg"],
             }
             for _, row in df.iterrows()
         ]
