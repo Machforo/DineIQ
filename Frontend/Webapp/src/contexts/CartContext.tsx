@@ -35,6 +35,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // If it's a combo, deconstruct it into individual items
     if (item.isCombo && item.comboItems && item.comboItems.length > 0) {
       item.comboItems.forEach(componentName => {
+        // ── Check if this is an AI-encoded combo item: "ItemID||Name||Price" ──
+        if (componentName.includes('||')) {
+          const parts = componentName.split('||');
+          const itemId = parts[0]?.trim();
+          const itemName = parts[1]?.trim();
+          const itemPrice = parseFloat(parts[2]?.trim() || "0");
+
+          addItem({
+            ...item,
+            id: itemId || `ind-${Date.now()}-${Math.random()}`,
+            name: itemName || componentName,
+            price: itemPrice,
+            isCombo: false,
+            comboItems: [],
+            category: "General", // Default category for unpacked items
+          });
+          return;
+        }
+
+        // ── Standard logic: Clean name and look up in fullMenu ────────────────
         // Clean the component name (remove multipliers like "2x", "2 ")
         const cleanName = componentName.replace(/^\d+x?\s+/, '').trim().toLowerCase();
 
