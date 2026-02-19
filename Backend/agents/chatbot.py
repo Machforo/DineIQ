@@ -281,13 +281,29 @@ def generate_structured_combos(menu: list[dict], menu_text: str, user_request: s
 
     def find_item(item_name: str) -> dict:
         """Fuzzy-match item name against real menu entries."""
-        key = item_name.strip().lower()
-        if key in name_lookup:
-            return name_lookup[key]
-        # Partial match fallback
+        # Clean: "2x Butter Naan" -> "butter naan"
+        clean_name = re.sub(r"^\d+x?\s*|x?\d+\s*$", "", item_name).strip().lower()
+        
+        # 1. Exact match
+        if clean_name in name_lookup:
+            return name_lookup[clean_name]
+            
+        # 2. Contains match (robust)
+        best_match = None
+        max_len = 0
+        
         for menu_key, info in name_lookup.items():
-            if key in menu_key or menu_key in key:
-                return info
+            # "butter naan" in "2 butter naan" or vice versa
+            if clean_name in menu_key or menu_key in clean_name:
+                # Prefer the longer match (more specific)
+                if len(menu_key) > max_len:
+                    best_match = info
+                    max_len = len(menu_key)
+        
+        if best_match:
+            return best_match
+            
+        print(f"⚠️ Item ID lookup failed for: '{item_name}' (cleaned: '{clean_name}')")
         return {"id": "", "price": 0}
 
     try:
