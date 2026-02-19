@@ -64,7 +64,7 @@ const StripeDummyModal: React.FC<StripeDummyModalProps> = ({ isOpen, onClose, on
                                 <span className="font-bold text-xl text-blue-600">Stripe</span>
                                 <span className="bg-gray-100 text-gray-500 text-[10px] px-1 rounded ml-1">TEST MODE</span>
                             </div>
-                            <DialogTitle className="text-2xl font-bold">Pay ₹{amount}</DialogTitle>
+                            <DialogTitle className="text-2xl font-bold">Pay KSh {amount}</DialogTitle>
                             <DialogDescription>
                                 Enter your card details to complete the payment securely.
                             </DialogDescription>
@@ -121,7 +121,7 @@ const StripeDummyModal: React.FC<StripeDummyModalProps> = ({ isOpen, onClose, on
                                         Processing...
                                     </div>
                                 ) : (
-                                    `Pay ₹${amount}`
+                                    `Pay KSh ${amount}`
                                 )}
                             </Button>
                         </form>

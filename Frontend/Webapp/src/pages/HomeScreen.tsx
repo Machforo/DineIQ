@@ -27,8 +27,8 @@ export default function HomeScreen() {
   const coupons = [
     {
       code: "DINE50",
-      title: "Flat ₹50 OFF",
-      subtitle: "On orders above ₹299",
+      title: "Flat KSh 50 OFF",
+      subtitle: "On orders above KSh 299",
       icon: Ticket,
       color: "from-orange-500 to-red-500"
     },
@@ -41,7 +41,7 @@ export default function HomeScreen() {
     },
     {
       code: "FIRST100",
-      title: "₹100 OFF",
+      title: "KSh 100 OFF",
       subtitle: "First order bonus",
       icon: Gift,
       color: "from-purple-500 to-pink-500"
@@ -79,7 +79,7 @@ export default function HomeScreen() {
                 id: String(item.Item_ID || item.id || ''),
                 name: item.Item_Name || item.name || 'Unknown Item',
                 description: item.Item_Description || item.description || item.Item_Category || '',
-                price: parseFloat(String(item.Current_Price || item.price || 0)),
+                price: parseFloat(String(item.Current_Price || item.price || 0).replace(/,/g, "")),
                 image: item.Image_URL || item.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c",
                 isVeg: Boolean(item.Is_Veg || item.isVeg),
                 category: item.Item_Category || category || 'Other',

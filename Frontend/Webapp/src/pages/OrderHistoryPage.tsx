@@ -170,7 +170,7 @@ export default function OrderHistoryPage() {
                   {order.items.map((item) => `${item.quantity}x ${item.name}`).join(", ")}
                 </p>
                 <p className="text-lg font-bold text-foreground mt-1">
-                  ₹{order.total}
+                  KSh {order.total}
                 </p>
               </div>
 

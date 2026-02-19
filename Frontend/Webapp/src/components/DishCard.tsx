@@ -52,17 +52,17 @@ export default function DishCard({ item, compact = false }: DishCardProps) {
           {/* Price Section */}
           <div className="mt-1">
             <div className="flex items-baseline gap-2">
-              <span className="text-[15px] font-bold text-gray-900">₹{item.price}</span>
+              <span className="text-[15px] font-bold text-gray-900">KSh {item.price}</span>
               {item.originalPrice && (
                 <span className="text-xs text-gray-400 font-medium line-through">
-                  ₹{item.originalPrice}
+                  KSh {item.originalPrice}
                 </span>
               )}
             </div>
             {item.goldPrice && (
               <div className="flex items-center gap-1 mt-0.5">
                 <img src="https://cdn-icons-png.flaticon.com/512/3081/3081840.png" className="w-3 h-3 opacity-80" alt="Gold" />
-                <span className="text-[10px] font-bold text-yellow-700">₹{item.goldPrice} for Gold Members</span>
+                <span className="text-[10px] font-bold text-yellow-700">KSh {item.goldPrice} for Gold Members</span>
               </div>
             )}
           </div>

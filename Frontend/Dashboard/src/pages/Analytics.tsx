@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { RefreshCcw } from "lucide-react";
-import { parseGVizJson } from "@/utils/parseGVizJson";
+import { parseGVizJson, parsePrice } from "@/utils/parseGVizJson";
 
 export default function Analytics() {
   const SPREADSHEET_ID = import.meta.env.VITE_SPREADSHEET_ID;
@@ -60,10 +60,10 @@ export default function Analytics() {
   const totalCustomers = customers.length;
   const activeOrders = orders.filter(o => ["Preparing", "Pending"].includes(o.Order_Status)).length;
   const avgOrderValue = orders.length
-    ? Math.round(orders.reduce((sum, o) => sum + Number(o.Order_Price || 0), 0) / orders.length)
+    ? Math.round(orders.reduce((sum, o) => sum + parsePrice(o.Order_Price), 0) / orders.length)
     : 0;
   const avgScore = insights.length
-    ? Math.round(insights.reduce((sum, i) => sum + Number(i.Customer_Score || 0), 0) / insights.length)
+    ? Math.round(insights.reduce((sum, i) => sum + parsePrice(i.Customer_Score), 0) / insights.length)
     : 0;
   const activeCampaigns = campaigns.filter(c => c.Campaign_Status === "Active").length;
   const chatVolume = chats.length;
@@ -72,7 +72,7 @@ export default function Analytics() {
   const ordersByDate = orders.map(o => ({
     date: o.Order_Created_DateTime ? new Date(o.Order_Created_DateTime).toLocaleDateString() : "",
     orders: 1,
-    revenue: Number(o.Order_Price || 0),
+    revenue: parsePrice(o.Order_Price),
   })).reduce((acc: any[], cur) => {
     const existing = acc.find(a => a.date === cur.date);
     if (existing) {
@@ -84,7 +84,7 @@ export default function Analytics() {
 
   const revenueByCategory = menu.map(m => ({
     category: m.Item_Category || "Other",
-    revenue: Number(m.Current_Price || 0),
+    revenue: parsePrice(m.Current_Price),
   })).reduce((acc: any[], cur) => {
     const existing = acc.find(a => a.category === cur.category);
     if (existing) existing.revenue += cur.revenue;
@@ -118,7 +118,7 @@ export default function Analytics() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <KPICard title="Total Customers" value={totalCustomers} icon={Users} />
         <KPICard title="Active Orders" value={activeOrders} icon={ShoppingCart} />
-        <KPICard title="Avg Order Value" value={`₹${avgOrderValue}`} icon={DollarSign} />
+        <KPICard title="Avg Order Value" value={`KSh ${avgOrderValue}`} icon={DollarSign} />
         <KPICard title="Avg Customer Score" value={avgScore} icon={Star} subtitle="/100" />
         <KPICard title="Active Campaigns" value={activeCampaigns} icon={Megaphone} />
         <KPICard title="Chat Volume" value={chatVolume} icon={MessageCircle} />

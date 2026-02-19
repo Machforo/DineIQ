@@ -73,7 +73,7 @@ export default function TrackOrderPage() {
             <p className="text-foreground font-medium">
               {activeOrder.items.map((item) => `${item.quantity}x ${item.name}`).join(", ")}
             </p>
-            <p className="text-lg font-bold text-foreground mt-2">₹{activeOrder.total}</p>
+            <p className="text-lg font-bold text-foreground mt-2">KSh {activeOrder.total}</p>
           </div>
 
           {/* Timeline */}
@@ -90,19 +90,17 @@ export default function TrackOrderPage() {
                     {/* Line and Circle */}
                     <div className="flex flex-col items-center">
                       <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                          isCompleted || isCurrent
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isCompleted || isCurrent
                             ? "bg-veg text-white"
                             : "bg-secondary text-muted-foreground"
-                        }`}
+                          }`}
                       >
                         <StepIcon className="w-5 h-5" />
                       </div>
                       {index < steps.length - 1 && (
                         <div
-                          className={`w-0.5 h-12 transition-colors ${
-                            isCompleted ? "bg-veg" : "bg-secondary"
-                          }`}
+                          className={`w-0.5 h-12 transition-colors ${isCompleted ? "bg-veg" : "bg-secondary"
+                            }`}
                         />
                       )}
                     </div>
@@ -110,11 +108,10 @@ export default function TrackOrderPage() {
                     {/* Content */}
                     <div className="flex-1 pt-2">
                       <p
-                        className={`font-medium ${
-                          isCompleted || isCurrent
+                        className={`font-medium ${isCompleted || isCurrent
                             ? "text-foreground"
                             : "text-muted-foreground"
-                        }`}
+                          }`}
                       >
                         {step.label}
                       </p>

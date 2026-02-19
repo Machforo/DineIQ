@@ -4,8 +4,10 @@
 # Library and Packages Import
 # ---------------------------------------------------------
 import os
-# import json
-# import pandas as pd
+import json
+import pandas as pd
+import requests
+import re
 
 # import agents and services classes
 from services.sheets import SheetsClient
@@ -30,6 +32,7 @@ class MenuAgent:
     def __init__(self):
         self.spreadsheet_id = os.getenv("SPREADSHEET_ID")
         self.menu_sheet_name = "Menu"
+        self.external_menu_url = os.getenv("EXTERNAL_MENU_URL")
 
         if not self.spreadsheet_id:
             raise ValueError("SPREADSHEET_ID is not set in environment variables")
@@ -37,6 +40,7 @@ class MenuAgent:
         self.sheets_client = SheetsClient(
             spreadsheet_id=self.spreadsheet_id
         )
+        self.gemini_client = GeminiClient()
 
         # Helper Data (Migrated from menu_agent.py)
         self.category_images = {
@@ -56,6 +60,211 @@ class MenuAgent:
                             'veg', 'vegetable', 'bhindi', 'palak', 'matar', 'raita',
                             'lassi', 'juice', 'smoothie', 'salad']
 
+    def sync_external_menu(self) -> dict:
+        """
+        Scrape external menu, parse with Gemini, and sync with Google Sheets.
+        """
+        if not self.external_menu_url:
+            raise ValueError("EXTERNAL_MENU_URL is not set")
+
+        print(f"🌐 Scraping menu from: {self.external_menu_url}")
+        
+        # 1. Scrape Content
+        try:
+            response = requests.get(self.external_menu_url, timeout=15)
+            response.raise_for_status()
+            html = response.text
+
+            # Surgical Scraping: Extract data by category blocks
+            # 1. Surgical Scraping: Extract by category blocks
+            
+            # Find all panel start indices
+            panel_matches = list(re.finditer(r'role="tabpanel"\s+aria-label="([^"]+)"', html))
+            
+            extracted_blocks = []
+            for i in range(len(panel_matches)):
+                category = panel_matches[i].group(1)
+                start = panel_matches[i].end()
+                # End is the start of the next panel, or the end of the string
+                end = panel_matches[i+1].start() if i + 1 < len(panel_matches) else len(html)
+                panel_html = html[start:end]
+                
+                # Now find items in this panel
+                # We look for all <div class="menu-item"> blocks and take everything until the next one
+                item_matches = list(re.finditer(r'<div class="menu-item">', panel_html))
+                for j in range(len(item_matches)):
+                    i_start = item_matches[j].end()
+                    i_end = item_matches[j+1].start() if j + 1 < len(item_matches) else len(panel_html)
+                    item_html = panel_html[i_start:i_end]
+                    
+                    # Extract fields
+                    t_match = re.search(r'<div class="menu-item-title">([^<]+)</div>', item_html)
+                    d_match = re.search(r'<div class="menu-item-description">([^<]+)</div>', item_html)
+                    # Some have price in Top, some in Bottom. Usually <span class="currency-sign"></span>PRICE
+                    p_match = re.search(r'<span class="currency-sign"></span>\s*([\d,.]+)', item_html)
+                    
+                    title = t_match.group(1).strip() if t_match else "N/A"
+                    desc = d_match.group(1).strip() if d_match else ""
+                    price = p_match.group(1).strip() if p_match else ""
+                    
+                    if title != "N/A":
+                        extracted_blocks.append(f"CAT: {category} | ITEM: {title} | DESC: {desc} | PRICE: {price}")
+            
+            raw_text = "\n".join(extracted_blocks)
+            if not raw_text:
+                # Fallback to plain text if regex fails
+                raw_text = re.sub(r'<[^>]+>', ' ', html)
+                raw_text = re.sub(r'\s+', ' ', raw_text).strip()
+        except Exception as e:
+            print(f"⚠️ Scraping refinement failed, using fallback: {e}")
+            raw_text = re.sub(r'<[^>]+>', ' ', html)
+            raw_text = re.sub(r'\s+', ' ', raw_text).strip()
+
+        # 2. AI Parsing with Gemini
+        print("🤖 Parsing menu with Gemini...")
+        truncated_text = raw_text[:15000]  # Safety limit
+        prompt = f"""
+        Convert the following restaurant menu text into a structured JSON list.
+        Each object MUST have:
+        - "Item_Name": The name of the dish.
+        - "Item_Category": Strictly one of [FROM THE GARDEN, SOUP, STARTERS FROM THE SEA, STARTERS FROM THE LAND, STEAMED BAO BUNS, BURGERS & SANDWICHES, PASTA, MAINS FROM THE LAND, MAINS FROM THE SEA, GRILLS, SIDES, CHILDREN'S MENU, DESSERTS]
+        - "Current_Price": Numerical value only (remove commas).
+        - "Item_Description": The contents or description of the dish.
+
+        Raw Text:
+        {truncated_text}
+
+        Output format (STRICT JSON ONLY):
+        [
+          {{"Item_Name": "...", "Item_Category": "...", "Current_Price": 1200, "Item_Description": "..."}}
+        ]
+        
+        CRITICAL: Ensure all strings are correctly JSON-escaped. Escape any newlines within descriptions as "\\n". 
+        Do not include any other text or markdown decorators.
+        """
+        
+        ai_response = self.gemini_client.call_gemini_with_retry(prompt)
+        
+        if not ai_response:
+            raise ValueError("AI failed to parse the menu")
+
+        try:
+            # Clean possible markdown block
+            clean_json = re.sub(r'```json|```', '', ai_response).strip()
+            results = json.loads(clean_json, strict=False)
+        except Exception as e:
+            print(f"❌ Failed to parse Gemini response: {e}")
+            return {"status": "ERROR", "message": "AI parsing failed"}
+
+        # 3. Sync with Sheets
+        print(f"📊 Syncing {len(results)} items with Google Sheets...")
+        
+        current_data = self.sheets_client.read_sheet(self.menu_sheet_name).to_dict('records')
+        new_items_count = 0
+        updated_count = 0
+        deactivated_count = 0
+        skipped_count = 0
+
+        # Helper to get max ID
+        def get_next_id(data_list):
+            ids = []
+            for row in data_list:
+                val = str(row.get('Item_ID', ''))
+                if val.startswith('Item_'):
+                    match = re.search(r'(\d+)', val)
+                    if match:
+                        ids.append(int(match.group(1)))
+            next_num = max(ids) + 1 if ids else 1
+            return f"Item_{str(next_num).zfill(4)}"
+
+        # 4. Compare and Update existing
+        external_items_lookup = {str(item.get('Item_Name', '')).lower().strip(): item for item in results if item.get('Item_Name')}
+        
+        updated_data = []
+        processed_names = set()
+
+        for existing_row in current_data:
+            name = str(existing_row.get('Item_Name', '')).lower().strip()
+            if not name:
+                updated_data.append(existing_row)
+                continue
+                
+            if name in external_items_lookup:
+                ext_item = external_items_lookup[name]
+                processed_names.add(name)
+                
+                is_changed = False
+                new_price = str(ext_item.get('Current_Price', '')).replace(",", "")
+                new_desc = str(ext_item.get('Item_Description', '')).strip()
+                new_cat = str(ext_item.get('Item_Category', '')).strip()
+                
+                # Check for updates - only Base_Price as requested
+                if str(existing_row.get('Base_Price')) != new_price:
+                    existing_row['Base_Price'] = new_price
+                    is_changed = True
+                
+                if str(existing_row.get('Item_Description', '')).strip() != new_desc:
+                    existing_row['Item_Description'] = new_desc
+                    is_changed = True
+                
+                if str(existing_row.get('Item_Category', '')).strip() != new_cat:
+                    existing_row['Item_Category'] = new_cat
+                    is_changed = True
+                
+                # Matched items remain/become ACTIVE
+                if str(existing_row.get('Is_Active')).upper() != "ACTIVE":
+                    existing_row['Is_Active'] = "ACTIVE"
+                    is_changed = True
+                
+                if is_changed:
+                    updated_count += 1
+                else:
+                    skipped_count += 1
+                
+                updated_data.append(existing_row)
+            else:
+                # Unmatched items become INACTIVE
+                if str(existing_row.get('Is_Active')).upper() != "INACTIVE":
+                    existing_row['Is_Active'] = "INACTIVE"
+                    deactivated_count += 1
+                    updated_data.append(existing_row)
+                else:
+                    updated_data.append(existing_row)
+
+        # 5. Add NEW items at the end
+        for name_lower, ext_item in external_items_lookup.items():
+            if name_lower not in processed_names:
+                new_price = str(ext_item.get('Current_Price', '')).replace(",", "")
+                new_item = {
+                    "Item_ID": get_next_id(updated_data),
+                    "Item_Name": ext_item.get('Item_Name'),
+                    "Item_Category": ext_item.get('Item_Category'),
+                    "Base_Price": new_price,
+                    "Low_Cap_Price": new_price,
+                    "High_Cap_Price": new_price,
+                    "Current_Price": new_price,
+                    "Item_Description": ext_item.get('Item_Description', ''),
+                    "Is_Active": "ACTIVE"
+                }
+                updated_data.append(new_item)
+                new_items_count += 1
+
+        # 6. Save if changes
+        if new_items_count > 0 or updated_count > 0 or deactivated_count > 0:
+            new_df = pd.DataFrame(updated_data).fillna("")
+            cols = new_df.columns.tolist()
+            self.sheets_client.update_sheet(self.menu_sheet_name, new_df, columns_to_update=cols)
+            status = "SUCCESS"
+        else:
+            status = "NO_CHANGE"
+
+        return {
+            "status": status,
+            "new_items": new_items_count,
+            "updated": updated_count,
+            "deactivated": deactivated_count,
+            "skipped": skipped_count
+        }
     # -------------------------------------------------------------------
     # 🍽️ Public API
     # -------------------------------------------------------------------
@@ -68,35 +277,42 @@ class MenuAgent:
         df = self.sheets_client.read_sheet(self.menu_sheet_name)
 
         # Defensive column check
-        # Item_ID	Item_Name	Item_Category	Base_Price	Low_Cap_Price	High_Cap_Price	Current_Price	Is_Active
-        required_columns = {"Item_ID", "Item_Name", "Item_Category", "Base_Price", "Low_Cap_Price", "High_Cap_Price", "Current_Price", "Is_Active"}
+        # Item_ID	Item_Name	Item_Category	Base_Price	Low_Cap_Price	High_Cap_Price	Current_Price   Item_Description	Is_Active
+        required_columns = {"Item_ID", "Item_Name", "Item_Category", "Base_Price", "Low_Cap_Price", "High_Cap_Price", "Current_Price", "Item_Description", "Is_Active"}
         missing = required_columns - set(df.columns)
         if missing:
             raise ValueError(f"Missing columns in Menu sheet: {missing}")
 
         # Normalize Is_Active
-        df["Is_Active"] = (
+        df["Is_Active_Parsed"] = (
             df["Is_Active"]
             .astype(str)
             .str.strip()
-            .str.lower()
-            .isin(["active", "1", "yes", "true"])
+            .str.upper()
+            .isin(["ACTIVE", "TRUE", "1", "YES"])
         )
 
         # Filter active items
-        df = df[df["Is_Active"]]
+        df = df[df["Is_Active_Parsed"]]
 
         # Shape response for frontend
-        return [
-            {
-                # "id": row["Item_ID"],
-                "name": row["Item_Name"],
-                # "category": row["Item_Category"],
-                "price": float(row["Current_Price"]) if row["Current_Price"] != "" else None,
-                # "active?": row["Is_Active"]
-            }
-            for _, row in df.iterrows()
-        ]
+        results = []
+        for _, row in df.iterrows():
+            try:
+                price_val = row.get("Current_Price")
+                price = float(price_val) if price_val and str(price_val).strip() != "" else None
+                results.append({
+                    "name": str(row.get("Item_Name", "")),
+                    "price": price,
+                    "description": str(row.get("Item_Description", ""))
+                })
+            except (ValueError, TypeError):
+                results.append({
+                    "name": str(row.get("Item_Name", "")),
+                    "price": None,
+                    "description": str(row.get("Item_Description", ""))
+                })
+        return results
 
     # -------------------------------------------------------------------
     # 🔹 Format menu for frontend (simplified)
@@ -145,6 +361,7 @@ class MenuAgent:
                     if row.get("Current_Price") not in (None, "")
                     else None
                 ),
+                "description": row.get("Item_Description", ""),
                 "matching": matches if matches else None,
                 "rank": int(_ + 1)  # 🔍 TEST ONLY — safe to remove
 
@@ -432,7 +649,7 @@ class MenuAgent:
         }
         return descriptions.get(category, f'Delicious {category}')
 
-    def get_smart_menu(self, email: str = None) -> dict:
+    def get_smart_menu(self, email: str | None = None) -> dict:
         import pandas as pd
         """
         Get menu organized smartly for DineIQ frontend (Sections: Favorites, Bestsellers, etc.)
@@ -562,7 +779,7 @@ def fetch_custom_menu(
     return agent.get_customized_menu(customer_id)
 
 @menu_router.post("")
-def get_smart_menu(
+def get_smart_menu_endpoint(
     dataset: dict, 
     agent: MenuAgent = Depends(get_menu_agent)
 ):
@@ -571,4 +788,19 @@ def get_smart_menu(
     """
     email = dataset.get("email") # Can be None
     return agent.get_smart_menu(email)
+
+
+@menu_router.post("/sync-external")
+async def sync_external_menu(agent: MenuAgent = Depends(get_menu_agent)):
+    """
+    Sync menu from harvestkenya.com/menu using AI extraction.
+    """
+    try:
+        result = agent.sync_external_menu()
+        return result
+    except Exception as e:
+        from fastapi import HTTPException
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 

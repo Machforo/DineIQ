@@ -23,7 +23,7 @@ export default function ComboCard({ item }: ComboCardProps) {
         {/* Savings badge */}
         {savings > 0 && (
           <div className="absolute top-3 left-3 gradient-primary text-white text-xs font-bold px-2 py-1 rounded-lg shadow-md">
-            Save ₹{savings}
+            Save KSh {savings}
           </div>
         )}
         {/* AI badge */}
@@ -59,17 +59,17 @@ export default function ComboCard({ item }: ComboCardProps) {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-baseline gap-2">
-            <span className="text-lg font-bold text-foreground">₹{item.price}</span>
+            <span className="text-lg font-bold text-foreground">KSh {item.price}</span>
             {item.originalPrice && (
               <span className="text-sm text-muted-foreground line-through">
-                ₹{item.originalPrice}
+                KSh {item.originalPrice}
               </span>
             )}
           </div>
           {item.goldPrice && (
             <div className="flex items-center gap-1 mt-0.5">
               <span className="badge-gold text-[10px]">GOLD</span>
-              <span className="text-xs font-semibold text-gold">₹{item.goldPrice}</span>
+              <span className="text-xs font-semibold text-gold">KSh {item.goldPrice}</span>
             </div>
           )}
         </div>

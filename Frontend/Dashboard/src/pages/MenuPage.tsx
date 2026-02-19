@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, UtensilsCrossed, CheckCircle, XCircle, RefreshCcw } from "lucide-react";
-import { parseGVizJson } from "@/utils/parseGVizJson";
+import { parseGVizJson, parsePrice } from "@/utils/parseGVizJson";
 
 // Spreadsheet ID from your .env file
 const SPREADSHEET_ID = import.meta.env.VITE_SPREADSHEET_ID;
@@ -57,10 +57,10 @@ export default function MenuPage() {
       // Normalize Is_Active to uppercase string "ACTIVE"/"INACTIVE"
       const normalizedData: MenuItem[] = rows.map((i: any) => ({
         ...i,
-        Base_Price: Number(i.Base_Price || 0),
-        Low_Cap_Price: Number(i.Low_Cap_Price || 0),
-        High_Cap_Price: Number(i.High_Cap_Price || 0),
-        Current_Price: Number(i.Current_Price || 0),
+        Base_Price: parsePrice(i.Base_Price),
+        Low_Cap_Price: parsePrice(i.Low_Cap_Price),
+        High_Cap_Price: parsePrice(i.High_Cap_Price),
+        Current_Price: parsePrice(i.Current_Price),
         Is_Active:
           i.Is_Active !== undefined && i.Is_Active !== null
             ? String(i.Is_Active).toUpperCase()
@@ -75,12 +75,47 @@ export default function MenuPage() {
     setLoading(false);
   };
 
+  const handleSyncHarvest = async () => {
+    setLoading(true);
+    toast({ title: "Syncing...", description: "Extracting menu from Harvest Kenya website..." });
+    try {
+      const response = await fetch("http://localhost:8000/menu/sync-external", {
+        method: "POST"
+      });
+      const result = await response.json();
+
+      if (result.status === "SUCCESS") {
+        toast({
+          title: "Sync Success",
+          description: `Added: ${result.new_items}, Updated: ${result.updated_prices}, Deactivated: ${result.deactivated}`
+        });
+        fetchMenu();
+      } else if (result.status === "NO_CHANGE") {
+        toast({ title: "No Changes", description: "Menu is already up to date." });
+      } else {
+        toast({ title: "Error", description: result.detail || "Failed to sync menu", variant: "destructive" });
+      }
+    } catch (err) {
+      console.error("Error syncing menu:", err);
+      toast({ title: "Error", description: "Backend server connection failed", variant: "destructive" });
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
     fetchMenu();
   }, []);
 
   const openAdd = () => {
-    setEditItem({ ...emptyItem, Item_ID: `M${String(data.length + 1).padStart(3, "0")}` });
+    // Generate next ID in format Item_0001
+    const ids = data.map(i => {
+      const match = i.Item_ID.match(/\d+/);
+      return match ? parseInt(match[0]) : 0;
+    });
+    const nextId = Math.max(0, ...ids) + 1;
+    const formattedId = `Item_${String(nextId).padStart(4, "0")}`;
+
+    setEditItem({ ...emptyItem, Item_ID: formattedId });
     setIsNew(true);
     setDialogOpen(true);
   };
@@ -111,10 +146,10 @@ export default function MenuPage() {
     { key: "Item_ID", label: "ID" },
     { key: "Item_Name", label: "Name" },
     { key: "Item_Category", label: "Category" },
-    { key: "Base_Price", label: "Base Price", render: (v: number) => `₹${v}` },
-    { key: "Low_Cap_Price", label: "Low Cap", render: (v: number) => `₹${v}` },
-    { key: "High_Cap_Price", label: "High Cap", render: (v: number) => `₹${v}` },
-    { key: "Current_Price", label: "Current", render: (v: number) => <span className="font-semibold">₹{v}</span> },
+    { key: "Base_Price", label: "Base Price", render: (v: number) => `KSh ${v}` },
+    { key: "Low_Cap_Price", label: "Low Cap", render: (v: number) => `KSh ${v}` },
+    { key: "High_Cap_Price", label: "High Cap", render: (v: number) => `KSh ${v}` },
+    { key: "Current_Price", label: "Current", render: (v: number) => <span className="font-semibold">KSh {v}</span> },
     {
       key: "Is_Active",
       label: "Active",
@@ -146,6 +181,14 @@ export default function MenuPage() {
           <p className="text-muted-foreground">Manage your restaurant menu items</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            onClick={handleSyncHarvest}
+            disabled={loading}
+            className="flex items-center gap-2 bg-orange-500 text-white hover:bg-orange-600"
+          >
+            <RefreshCcw size={18} className={loading ? "animate-spin" : ""} />
+            {loading ? "Syncing..." : "Sync from Harvest"}
+          </Button>
           <Button onClick={openAdd}>
             <Plus className="h-4 w-4 mr-1" /> Add Item
           </Button>

@@ -4,7 +4,7 @@ import { KPICard } from "@/components/KPICard";
 import { ShoppingCart, Clock, CheckCircle, RefreshCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { parseGVizJson } from "@/utils/parseGVizJson";
+import { parseGVizJson, parsePrice } from "@/utils/parseGVizJson";
 
 type Order = {
   Order_ID: string;
@@ -42,7 +42,7 @@ export default function OrdersPage() {
         Order_Created_DateTime: r.Order_Created_DateTime
           ? new Date(r.Order_Created_DateTime).toLocaleString()
           : "",
-        Order_Price: Number(r.Order_Price) || 0,
+        Order_Price: parsePrice(r.Order_Price),
       }));
 
       setData(rows);
@@ -63,7 +63,7 @@ export default function OrdersPage() {
   const avgOrderValue =
     totalOrders > 0
       ? Math.round(
-        data.reduce((sum, o) => sum + Number(o.Order_Price || 0), 0) / totalOrders
+        data.reduce((sum, o) => sum + parsePrice(o.Order_Price), 0) / totalOrders
       )
       : 0;
 
@@ -71,7 +71,7 @@ export default function OrdersPage() {
     { key: "Order_ID", label: "Order ID" },
     { key: "Customer_ID", label: "Customer ID" },
     { key: "Customer_Name", label: "Customer" },
-    { key: "Order_Price", label: "Price", render: (v: number) => `₹${v}` },
+    { key: "Order_Price", label: "Price", render: (v: number) => `KSh ${v}` },
     { key: "Order_Created_DateTime", label: "Created" },
     {
       key: "Order_Status",
@@ -103,7 +103,7 @@ export default function OrdersPage() {
           value={pendingOrders}
           icon={Clock}
         />
-        <KPICard title="Avg Order Value" value={`₹${avgOrderValue}`} icon={CheckCircle} />
+        <KPICard title="Avg Order Value" value={`KSh ${avgOrderValue}`} icon={CheckCircle} />
       </div>
 
       <DataTable

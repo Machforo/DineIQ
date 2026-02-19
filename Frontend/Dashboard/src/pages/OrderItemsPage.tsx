@@ -4,7 +4,7 @@ import { KPICard } from "@/components/KPICard";
 import { ShoppingCart, Clock, CheckCircle, RefreshCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { parseGVizJson } from "@/utils/parseGVizJson";
+import { parseGVizJson, parsePrice } from "@/utils/parseGVizJson";
 
 type OrderItem = {
   Order_Item_ID: string;
@@ -30,8 +30,8 @@ export default function OrderItemsPage() {
       const json = JSON.parse(text.substr(47).slice(0, -2));
       const rows: OrderItem[] = parseGVizJson(json, "Order_Items").map((r: any) => ({
         ...r,
-        Item_Quantity: r.Item_Quantity ? Number(r.Item_Quantity) : 0,
-        Item_Price: r.Item_Price ? Number(r.Item_Price) : 0,
+        Item_Quantity: parsePrice(r.Item_Quantity),
+        Item_Price: parsePrice(r.Item_Price),
       }));
       setData(rows);
     } catch (err) {
@@ -54,8 +54,8 @@ export default function OrderItemsPage() {
     { key: "Item_ID", label: "Menu Item ID" },
     { key: "Item_Name", label: "Name" },
     { key: "Item_Quantity", label: "Quantity" },
-    { key: "Item_Price", label: "Price", render: (v: number) => `₹${v}` },
-    { key: "Total", label: "Total", render: (_: any, row: OrderItem) => `₹${row.Item_Price * row.Item_Quantity}` },
+    { key: "Item_Price", label: "Price", render: (v: number) => `KSh ${v}` },
+    { key: "Total", label: "Total", render: (_: any, row: OrderItem) => `KSh ${row.Item_Price * row.Item_Quantity}` },
   ];
 
   return (
@@ -73,7 +73,7 @@ export default function OrderItemsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KPICard title="Total Items" value={totalItems} icon={ShoppingCart} />
         <KPICard title="Total Quantity" value={totalQuantity} icon={Clock} />
-        <KPICard title="Total Revenue" value={`₹${totalRevenue}`} icon={CheckCircle} />
+        <KPICard title="Total Revenue" value={`KSh ${totalRevenue}`} icon={CheckCircle} />
       </div>
 
       <DataTable data={data} columns={columns} searchPlaceholder="Search order items..." />

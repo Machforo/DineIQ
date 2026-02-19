@@ -218,7 +218,7 @@ export default function CartPage() {
                     <h3 className="font-semibold text-foreground">{item.name}</h3>
                   </div>
                   <p className="text-lg font-bold text-foreground mt-1">
-                    ₹{item.price * item.quantity}
+                    KSh {item.price * item.quantity}
                   </p>
                 </div>
                 <button
@@ -285,8 +285,7 @@ export default function CartPage() {
                     </button>
                   </div>
                   <div className="mt-4">
-                    <p className="font-medium text-xs text-gray-700 line-clamp-1">{rec.Item_Name}</p>
-                    <p className="text-xs text-gray-500">₹{rec.Current_Price}</p>
+                    <p className="text-xs text-gray-500">KSh {rec.Current_Price}</p>
                   </div>
                 </div>
               ))}
@@ -310,8 +309,7 @@ export default function CartPage() {
                     </button>
                   </div>
                   <div className="mt-4">
-                    <p className="font-medium text-xs text-gray-700 line-clamp-1">{rec.Item_Name}</p>
-                    <p className="text-xs text-gray-500">₹{rec.Current_Price}</p>
+                    <p className="text-xs text-gray-500">KSh {rec.Current_Price}</p>
                   </div>
                 </div>
               ))}
@@ -365,7 +363,7 @@ export default function CartPage() {
             return (
               <div className="mt-3 px-1 animate-fade-in">
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-gray-600">Add <b>₹{diff}</b> for <b>{nextTier.discountPercent}% OFF</b></span>
+                  <span className="text-gray-600">Add <b>KSh {diff}</b> for <b>{nextTier.discountPercent}% OFF</b></span>
                   <span className="text-gray-400">{Math.round(progress)}%</span>
                 </div>
                 <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
@@ -425,7 +423,7 @@ export default function CartPage() {
                       </div>
 
                       {isLocked ? (
-                        <span className="text-[10px] text-gray-400 font-medium">Add ₹{(coupon.minOrderValue || 0) - totalPrice}</span>
+                        <span className="text-[10px] text-gray-400 font-medium">Add KSh {(coupon.minOrderValue || 0) - totalPrice}</span>
                       ) : (
                         <Button
                           variant="ghost"
@@ -484,7 +482,7 @@ export default function CartPage() {
                     {/* Savings badge - Update to customized text if needed */}
                     {combo.Savings > 0 && (
                       <div className="absolute top-3 left-3 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded-lg shadow-md">
-                        {isCustomized ? 'Custom 3% OFF' : `Save ₹${combo.Savings}`}
+                        {isCustomized ? 'Custom 3% OFF' : `Save KSh ${combo.Savings}`}
                       </div>
                     )}
                     {/* AI badge */}
@@ -520,16 +518,16 @@ export default function CartPage() {
                       {isCustomized ? (
                         <div className="flex flex-col">
                           <span className="text-[10px] text-gray-500">
-                            ₹{combo.Original_Price} - 3%
+                            KSh {combo.Original_Price} - 3%
                           </span>
                           <span className="text-lg font-bold text-foreground">
-                            ₹{combo.Current_Price}
+                            KSh {combo.Current_Price}
                           </span>
                         </div>
                       ) : (
                         <div className="flex flex-col">
-                          <span className="text-xs text-gray-400 line-through">₹{combo.Original_Price}</span>
-                          <span className="text-lg font-bold text-foreground">₹{combo.Current_Price}</span>
+                          <span className="text-xs text-gray-400 line-through">KSh {combo.Original_Price}</span>
+                          <span className="text-lg font-bold text-foreground">KSh {combo.Current_Price}</span>
                         </div>
                       )}
                     </div>
@@ -595,16 +593,16 @@ export default function CartPage() {
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Item Total</span>
-              <span className="font-medium text-foreground">₹{totalPrice}</span>
+              <span className="font-medium text-foreground">KSh {totalPrice}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">GST & Taxes (5%)</span>
-              <span className="font-medium text-foreground">₹{taxes}</span>
+              <span className="font-medium text-foreground">KSh {taxes}</span>
             </div>
             {selectedCoupon && (
               <div className="flex justify-between animate-fade-in text-green-600">
                 <span className="font-medium">Coupon ({selectedCoupon.code})</span>
-                <span className="font-bold">-₹{discountValue}</span>
+                <span className="font-bold">-KSh {discountValue}</span>
               </div>
             )}
             <div className="flex justify-between">
@@ -614,8 +612,8 @@ export default function CartPage() {
             <div className="border-t border-border pt-3 flex justify-between items-center">
               <span className="font-bold text-lg text-foreground">Grand Total</span>
               <div className="text-right">
-                {selectedCoupon && <span className="text-xs text-gray-400 line-through mr-2">₹{grandTotal}</span>}
-                <span className="font-bold text-xl text-primary">₹{finalTotal}</span>
+                {selectedCoupon && <span className="text-xs text-gray-400 line-through mr-2">KSh {grandTotal}</span>}
+                <span className="font-bold text-xl text-primary">KSh {finalTotal}</span>
               </div>
             </div>
           </div>
@@ -627,7 +625,7 @@ export default function CartPage() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-sm text-muted-foreground">Total Amount</p>
-            <p className="text-2xl font-bold text-foreground">₹{grandTotal}</p>
+            <p className="text-2xl font-bold text-foreground">KSh {grandTotal}</p>
           </div>
           <p className="text-xs text-muted-foreground text-right">
             Delivery to Table #{tableNumber}

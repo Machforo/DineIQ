@@ -57,7 +57,7 @@ const Payment = () => {
         saveLog(
           user?.email || "Guest",
           "ORDER_PLACED",
-          `Method: CASH, Total: ₹${totalAmount}`
+          `Method: CASH, Total: KSh ${totalAmount}`
         );
 
         clearCart();
@@ -123,7 +123,7 @@ const Payment = () => {
         saveLog(
           user?.email || "Guest",
           "ORDER_PLACED",
-          `Method: ONLINE, Total: ₹${totalAmount}`
+          `Method: ONLINE, Total: KSh ${totalAmount}`
         );
 
         clearCart();
@@ -159,7 +159,7 @@ const Payment = () => {
       <div className="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
         <div className="flex justify-between items-center mb-2">
           <span className="text-gray-600">Total to Pay</span>
-          <span className="text-2xl font-bold text-gray-800">₹{totalAmount}</span>
+          <span className="text-2xl font-bold text-gray-800">KSh {totalAmount}</span>
         </div>
       </div>
 
