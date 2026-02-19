@@ -106,11 +106,24 @@ async def get_pricing_strategy(req: PricingRequest):
         cart_items_normalized.append(normalized)
 
     subtotal = sum(i["Current_Price"] * i["quantity"] for i in cart_items_normalized)
-    order_count = 0 
     
-    # TODO: Fetch real order count from Sheets for Loyalty logic
-    # rows = sheets_client.read_sheet(ORDERS_SHEET)
-    # filter by email...
+    # Fetch real order count from Sheets for accurate coupon eligibility
+    order_count = 0
+    try:
+        # Get customer ID from email
+        auth_rows = sheets_client.read_sheet_rows("Customer_Auth")
+        target_email = req.customer_email.strip().lower()
+        user_row = next((r for r in auth_rows if str(r.get("Customer_Email", "")).strip().lower() == target_email), None)
+        
+        if user_row:
+            customer_id = user_row.get("Customer_ID")
+            # Count existing orders for this customer
+            all_orders = sheets_client.read_sheet_rows(ORDERS_SHEET)
+            order_count = sum(1 for o in all_orders if o.get("Customer_ID") == customer_id)
+            print(f">>> Customer {customer_id} has {order_count} previous orders")
+    except Exception as e:
+        print(f">>> Error fetching order count: {e}")
+        order_count = 0
     
     return pricing_agent.get_pricing_strategy(subtotal, order_count, cart_items_normalized)
 
@@ -196,45 +209,47 @@ async def place_order(req: OrderRequest):
                 i_combo_items = getattr(item, 'comboItems', None)
 
                 # CHECK 0: Explicit comboItems array (from frontend)
-                if i_combo_items and isinstance(i_combo_items, list) and len(i_combo_items) > 0:
-                    for combo_item in i_combo_items:
-                        combo_item_name = combo_item.get("name", "Unknown Item")
-                        combo_item_qty = combo_item.get("quantity", 1) * i_qty
-                        add_row(order_id, item_counter, i_id, combo_item_name, combo_item_qty, 0)
-                        item_counter += 1
-                    continue
+                # DISABLED: Saving Combo Name as single item per user request
+                # if i_combo_items and isinstance(i_combo_items, list) and len(i_combo_items) > 0:
+                #     for combo_item in i_combo_items:
+                #         combo_item_name = combo_item.get("name", "Unknown Item")
+                #         combo_item_qty = combo_item.get("quantity", 1) * i_qty
+                #         add_row(order_id, item_counter, i_id, combo_item_name, combo_item_qty, 0)
+                #         item_counter += 1
+                #     continue
 
                 # CHECK 1: Explicit Sub-Items (Future proofing)
-                if i_subs:
-                    for sub in i_subs:
-                        add_row(order_id, item_counter, "Sub_Item", sub.get("name"), i_qty, 0)
-                        item_counter += 1
-                    continue
+                # if i_subs:
+                #     for sub in i_subs:
+                #         add_row(order_id, item_counter, "Sub_Item", sub.get("name"), i_qty, 0)
+                #         item_counter += 1
+                #     continue
 
                 # CHECK 2: AI Combo / Smart Combo Unpacking via Description
                 # If description format is "X + Y + Z" and it's a combo
-                if "combo" in str(i_cat).lower() or "combo" in str(i_name).lower():
-                    if " + " in str(i_desc):
-                        # "1 Butter Chicken + 2 Naan" -> Split it
-                        parts = i_desc.split(" + ")
-                        for part in parts:
-                            part = part.strip()
-                            # Try to extract quantity if starts with digit: "2 Naan"
-                            sub_qty = i_qty 
-                            sub_name = part
-                            
-                            try:
-                                first_word = part.split(' ')[0]
-                                if first_word.isdigit():
-                                    parsed_qty = int(first_word)
-                                    sub_qty = i_qty * parsed_qty
-                                    sub_name = " ".join(part.split(' ')[1:])
-                            except:
-                                pass
-                                
-                            add_row(order_id, item_counter, i_id, sub_name, sub_qty, 0)
-                            item_counter += 1
-                        continue
+                # DISABLED: Saving Combo Name as single item per user request
+                # if "combo" in str(i_cat).lower() or "combo" in str(i_name).lower():
+                #     if " + " in str(i_desc):
+                #         # "1 Butter Chicken + 2 Naan" -> Split it
+                #         parts = i_desc.split(" + ")
+                #         for part in parts:
+                #             part = part.strip()
+                #             # Try to extract quantity if starts with digit: "2 Naan"
+                #             sub_qty = i_qty 
+                #             sub_name = part
+                #             
+                #             try:
+                #                 first_word = part.split(' ')[0]
+                #                 if first_word.isdigit():
+                #                     parsed_qty = int(first_word)
+                #                     sub_qty = i_qty * parsed_qty
+                #                     sub_name = " ".join(part.split(' ')[1:])
+                #             except:
+                #                 pass
+                #                 
+                #             add_row(order_id, item_counter, i_id, sub_name, sub_qty, 0)
+                #             item_counter += 1
+                #         continue
 
                 # Default: Save as single item
                 add_row(order_id, item_counter, i_id, i_name, i_qty, i_price)

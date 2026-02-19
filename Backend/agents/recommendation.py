@@ -609,8 +609,8 @@ CRITICAL:
                     "discount": "",
                     "discountPercent": 0,
                     "minOrderValue": 0,
-                    "bgColor": "gradient-primary",
-                    "image": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=200&fit=crop",
+                    "bgColor": "#FF5722",
+                    "image": "",
                     "type": "campaign"
                 },
                 {
@@ -621,8 +621,8 @@ CRITICAL:
                     "discount": "",
                     "discountPercent": 0,
                     "minOrderValue": 0,
-                    "bgColor": "gradient-gold",
-                    "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=200&fit=crop",
+                    "bgColor": "#E23744",
+                    "image": "",
                     "type": "campaign"
                 }
             ]

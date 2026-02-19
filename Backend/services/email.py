@@ -4,13 +4,10 @@
 # Library and Packages Import
 # ---------------------------------------------------------
 import os
-import base64
+import smtplib
+import ssl
 from email.mime.text import MIMEText
-
-from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
+from email.mime.multipart import MIMEMultipart
 
 # ---------------------------------------------------------
 # Load environment variables from .env file
@@ -25,104 +22,25 @@ load_dotenv()
 class GmailClient:
 
     # -------------------------------------------------------------------
-    # 🔧 SETUP: Gmail API (OAuth)
+    # 🔧 SETUP: Gmail SMTP (App Password)
     # 
-    # Enabled Gmail API for 'DineIQ Project' in Google Cloud Account:
-    #   DineIQ Project -> APIs & Services -> Library -> Gmail API -> Enable
-    # Configure OAuth Consent Screen:
-    #   DineIQ Project -> APIs & Services → OAuth consent screen -> Branding:
-    #       App Name: DineIQ_App
-    #       User Support Email: UmangMalhotra1980@gmail.com
-    # Add Audience:
-    #   DineIQ Project -> APIs & Services → OAuth consent screen -> Audience:
-    #       User Type: External
-    #       Test User: UmangMalhotra1980@gmail.com (gmail ID to send emails)
-    # Add OAuth Client ID:
-    #   DineIQ Project -> APIs & Services → OAuth consent screen -> Client:
-    #       Application Type: Desktop App
-    #       Name: DineIQ_Gmail_Sender
-    # Add Scopes:
-    #   DineIQ Project -> APIs & Services → OAuth consent screen -> Data Access:
-    #       Select Scope option: https://www.googleapis.com/auth/gmail.send
-    # Download JSON:
-    #   Key 'dineIQ_gmail_OAuth_Credentials.json' is downloaded, move it to project folder.
-    #   Added [GMAIL_OAUTH_CRENTIALS = "dineIQ_gmail_OAuth_Credentials.json"] in .env file.
-    #
-    # First run will open browser for consent and generate token.json
+    # Instead of OAuth, we use an App Password which works reliably on servers.
+    # 1. Go to Google Account -> Security -> 2-Step Verification
+    # 2. Scrolls to bottom -> App Passwords
+    # 3. Create new app name "DineIQ" -> Copy the 16-char password
+    # 4. Update .env with:
+    #    GMAIL_USER="your-email@gmail.com"  <-- We are using SMTP_EMAIL from existing env
+    #    GMAIL_APP_PASSWORD="xxxx xxxx"     <-- We are using SMTP_PASSWORD from existing env
     # -------------------------------------------------------------------
-    SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
 
-    def __init__(
-        self,
-        client_secret_file: str | None = None,
-        token_path: str | None = None,
-    ):
+    def __init__(self):
         """
-        :param client_secret_file: OAuth client secret JSON
-                                   Defaults to GMAIL_OAUTH_CLIENT_SECRET env var
-        :param token_path: Path to token.json
+        Initialize GmailClient with credentials from environment variables.
         """
-        self.client_secret_file = (
-            client_secret_file or os.getenv("GMAIL_OAUTH_CLIENT_SECRET")
-        )
+        # Adapted to use existing SMTP_* variables if GMAIL_* are not set
+        self.gmail_user = os.getenv("GMAIL_USER") or os.getenv("SMTP_EMAIL")
+        self.gmail_app_password = os.getenv("GMAIL_APP_PASSWORD") or os.getenv("SMTP_PASSWORD")
 
-        if not self.client_secret_file:
-            raise ValueError("GMAIL_OAUTH_CLIENT_SECRET is not set")
-
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.token_path = token_path or os.path.join(base_dir, "token.json")
-
-        self._service = self.init_service()
-
-    # -------------------------------------------------------------------
-    # 🔐 Init
-    # -------------------------------------------------------------------
-    def init_service(self):
-        creds = None
-
-        if os.path.exists(self.token_path):
-            creds = Credentials.from_authorized_user_file(
-                self.token_path, self.SCOPES
-            )
-
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                try:
-                    print("🔄 Refreshing Gmail access token...")
-                    creds.refresh(Request())
-                except Exception as e:
-                    print(f"⚠️ Refresh token invalid: {e}. Re-authenticating...")
-                    creds = None
-
-            if not creds:
-                print("🔑 Running local server for Gmail OAuth...")
-                # This will BLOCK/HANG if no browser interaction is possible
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    self.client_secret_file,
-                    self.SCOPES,
-                )
-                creds = flow.run_local_server(port=0)
-
-            with open(self.token_path, "w") as token:
-                token.write(creds.to_json())
-
-        service = build("gmail", "v1", credentials=creds)
-        return service.users()
-    
-    # -------------------------------------------------------------------
-    # Mock Service Class
-    # -------------------------------------------------------------------
-    class MockService:
-        def messages(self):
-            return self
-
-        def send(self, userId, body):
-            return self
-            
-        def execute(self):
-            print(f">>> [MOCK EMAIL SENT] (Auth not verified)")
-            return {"id": "mock_id", "labelIds": ["SENT"]}
-    
     # -------------------------------------------------------------------
     # ✉️ Send Email
     # -------------------------------------------------------------------
@@ -133,18 +51,35 @@ class GmailClient:
         body: str,
     ):
         """
-        Send a plain-text email using Gmail API.
+        Send a plain-text email using Gmail SMTP.
         """
-        message = MIMEText(body)
-        message["to"] = to_email
-        message["subject"] = subject
+        if not self.gmail_user or not self.gmail_app_password:
+            print("❌ GMAIL_USER (or SMTP_EMAIL) or GMAIL_APP_PASSWORD (or SMTP_PASSWORD) not set in .env")
+            raise ValueError("Gmail credentials not configured.")
 
-        raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
+        # Create message container
+        msg = MIMEMultipart()
+        msg['From'] = self.gmail_user
+        msg['To'] = to_email
+        msg['Subject'] = subject
 
-        self._service.messages().send(
-            userId="me",
-            body={"raw": raw},
-        ).execute()
+        # Attach body
+        msg.attach(MIMEText(body, 'plain'))
+
+        try:
+            # Create secure SSL context
+            context = ssl.create_default_context()
+            
+            # Connect to Gmail SMTP server
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+                server.login(self.gmail_user, self.gmail_app_password)
+                server.sendmail(self.gmail_user, to_email, msg.as_string())
+                
+            print(f"✅ Email sent to {to_email}")
+            
+        except Exception as e:
+            print(f"🔥 Failed to send email: {e}")
+            raise e
 
     # -------------------------------------------------------------------
     # 🔐 Send OTP (thin wrapper)
@@ -164,6 +99,3 @@ class GmailClient:
 #     self.init_service()
 
 #     self.send_otp_email(to_email="UmangHere@gmail.com", otp='123456')
-
-    
-

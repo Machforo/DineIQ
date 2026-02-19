@@ -1,5 +1,5 @@
 import { useCart } from "@/contexts/CartContext";
-import { Plus, Minus, Star } from "lucide-react";
+import { Plus, Minus, Star, Clock, Flame } from "lucide-react";
 import { MenuItem } from "@/lib/data";
 
 interface DishCardProps {
@@ -11,72 +11,78 @@ export default function DishCard({ item, compact = false }: DishCardProps) {
   const { addItem, removeItem, getItemQuantity } = useCart();
   const quantity = getItemQuantity(item.id);
 
+  // Veg/NonVeg Indicator (FSSAI style)
+  const VegBadge = ({ size = "sm" }: { size?: "sm" | "lg" }) => {
+    const sz = size === "sm" ? "w-4 h-4" : "w-5 h-5";
+    return (
+      <div className={`${sz} border-2 rounded-sm flex items-center justify-center p-[2px] bg-white shadow-sm ${item.isVeg ? 'border-green-600' : 'border-red-600'}`}>
+        <div className={`w-full h-full rounded-full ${item.isVeg ? 'bg-green-600' : 'bg-red-600'}`} />
+      </div>
+    );
+  };
+
   if (compact) {
     return (
-      <div className="group bg-white rounded-2xl p-4 flex gap-4 border border-gray-100 hover:shadow-xl hover:border-gray-200 transition-all duration-300 hover:-translate-y-1">
+      <div className="group bg-white rounded-2xl flex gap-3 overflow-hidden border border-gray-100/80 hover:shadow-md hover:border-gray-200 transition-all duration-200 active:scale-[0.99]">
         {/* Image */}
-        <div className="relative w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent z-10" />
+        <div className="relative w-28 h-28 flex-shrink-0 bg-gray-100">
           <img
             src={item.image}
             alt={item.name}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
-          {/* Veg Badge */}
-          <div className="absolute top-2 left-2 z-20">
-            <div className={`w-4 h-4 border-[2.5px] rounded-sm flex items-center justify-center p-[1.5px] ${item.isVeg ? 'border-green-600' : 'border-red-600'}`}>
-              {item.isVeg ? (
-                <div className="w-full h-full rounded-full bg-green-600" />
-              ) : (
-                <div className="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-b-[5px] border-b-red-600" />
-              )}
-            </div>
+          <div className="absolute top-2 left-2">
+            <VegBadge size="sm" />
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 flex flex-col justify-between min-w-0">
+        <div className="flex-1 flex flex-col justify-between py-3 pr-3 min-w-0">
           <div>
-            <h3 className="font-bold text-gray-900 text-base leading-tight line-clamp-1 mb-1">
+            <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-1 mb-1">
               {item.name}
             </h3>
-            <p className="text-xs text-gray-500 line-clamp-1 mb-2">
-              {item.description}
-            </p>
+            {item.description && (
+              <p className="text-[11px] text-gray-400 line-clamp-1 leading-snug">
+                {item.description}
+              </p>
+            )}
             {item.rating && (
-              <div className="flex items-center gap-1.5">
-                <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-                <span className="text-xs font-semibold text-gray-700">{item.rating}</span>
-                <span className="text-xs text-gray-400">({item.ratingCount})</span>
+              <div className="flex items-center gap-1 mt-1.5">
+                <div className="flex items-center gap-0.5 bg-green-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
+                  <Star className="w-2.5 h-2.5 fill-white" strokeWidth={0} />
+                  {item.rating}
+                </div>
+                <span className="text-[10px] text-gray-400">({item.ratingCount})</span>
               </div>
             )}
           </div>
 
           <div className="flex items-center justify-between mt-2">
-            <span className="text-lg font-black text-gray-900">₹{item.price}</span>
+            <div>
+              <span className="text-base font-black text-gray-900">₹{item.price}</span>
+            </div>
             {quantity === 0 ? (
               <button
                 onClick={() => addItem(item)}
-                className="bg-red-50 border-2 border-red-100 text-red-600 font-bold px-5 py-1.5 rounded-lg hover:bg-red-600 hover:text-white transition-all text-xs uppercase tracking-wide"
+                className="text-[#E23744] border-2 border-[#E23744] font-black text-xs px-4 py-1.5 rounded-lg hover:bg-[#E23744] hover:text-white transition-all duration-200 uppercase tracking-wider active:scale-95"
               >
                 ADD
               </button>
             ) : (
-              <div className="flex items-center bg-red-600 rounded-lg overflow-hidden h-8 shadow-md">
+              <div className="flex items-center gap-1 bg-[#E23744] rounded-lg overflow-hidden h-8 shadow-md">
                 <button
                   onClick={() => removeItem(item.id)}
-                  className="w-8 h-full flex items-center justify-center text-white hover:bg-black/10"
+                  className="w-8 h-full flex items-center justify-center text-white hover:bg-black/10 transition-colors"
                 >
-                  <Minus className="w-4 h-4" />
+                  <Minus className="w-3.5 h-3.5" />
                 </button>
-                <span className="text-white font-bold min-w-[24px] text-center text-sm">
-                  {quantity}
-                </span>
+                <span className="text-white font-black min-w-[22px] text-center text-sm">{quantity}</span>
                 <button
                   onClick={() => addItem(item)}
-                  className="w-8 h-full flex items-center justify-center text-white hover:bg-black/10"
+                  className="w-8 h-full flex items-center justify-center text-white hover:bg-black/10 transition-colors"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
             )}
@@ -86,81 +92,80 @@ export default function DishCard({ item, compact = false }: DishCardProps) {
     );
   }
 
-  // Full Card (for Chef's Special, etc.)
+  // Full Card
   return (
-    <div className="group relative bg-white rounded-3xl overflow-hidden border border-gray-100 hover:shadow-2xl hover:border-gray-200 transition-all duration-500 hover:-translate-y-2">
-      {/* Premium Image */}
-      <div className="relative h-48 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent z-10" />
+    <div className="group relative bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-300 hover:-translate-y-1">
+      {/* Image */}
+      <div className="relative h-44 overflow-hidden bg-gray-100">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent z-10" />
         <img
           src={item.image}
           alt={item.name}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
         />
 
-        {/* Veg Badge */}
-        <div className="absolute top-4 left-4 z-20">
-          <div className={`w-5 h-5 border-[2.5px] rounded-sm flex items-center justify-center p-[2px] bg-white/95 backdrop-blur-sm shadow-lg ${item.isVeg ? 'border-green-600' : 'border-red-600'}`}>
-            {item.isVeg ? (
-              <div className="w-full h-full rounded-full bg-green-600" />
-            ) : (
-              <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-b-[6px] border-b-red-600" />
-            )}
-          </div>
+        {/* Veg/Non-veg badge */}
+        <div className="absolute top-3 left-3 z-20">
+          <VegBadge size="lg" />
         </div>
 
-        {/* Rating Badge */}
+        {/* Rating */}
         {item.rating && (
-          <div className="absolute top-4 right-4 z-20 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1">
-            <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-            <span className="text-xs font-bold text-gray-900">{item.rating}</span>
+          <div className="absolute top-3 right-3 z-20 bg-green-600 text-white text-[11px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 shadow-md">
+            <Star className="w-2.5 h-2.5 fill-white" strokeWidth={0} />
+            {item.rating}
           </div>
         )}
+
+        {/* Price badge on image */}
+        <div className="absolute bottom-3 left-3 z-20">
+          <span className="text-2xl font-black text-white drop-shadow-lg">₹{item.price}</span>
+        </div>
       </div>
 
       {/* Content */}
-      <div className="p-5">
-        <h3 className="font-bold text-gray-900 text-xl leading-tight line-clamp-2 mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+      <div className="p-4">
+        <h3 className="font-bold text-gray-900 text-base leading-tight line-clamp-2 mb-1">
           {item.name}
         </h3>
-        <p className="text-sm text-gray-600 line-clamp-2 mb-4 leading-relaxed">
-          {item.description}
-        </p>
+        {item.description && (
+          <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed mb-3">
+            {item.description}
+          </p>
+        )}
 
-        {/* Price & Action */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-          <span className="text-2xl font-black text-gray-900">₹{item.price}</span>
+        {/* Action */}
+        <div className="flex items-center justify-between pt-3 border-t border-gray-50">
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <Clock className="w-3 h-3" />
+            <span>20-25 min</span>
+          </div>
           {quantity === 0 ? (
             <button
               onClick={() => addItem(item)}
-              className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-sm uppercase tracking-wider transform hover:scale-105 active:scale-95"
+              className="text-[#E23744] border-2 border-[#E23744] font-black text-xs px-5 py-2 rounded-xl hover:bg-[#E23744] hover:text-white transition-all duration-200 uppercase tracking-wider active:scale-95 shadow-sm hover:shadow-md"
             >
               ADD
             </button>
           ) : (
-            <div className="flex items-center bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg overflow-hidden h-11">
+            <div className="flex items-center gap-1 bg-[#E23744] rounded-xl shadow-md overflow-hidden h-9">
               <button
                 onClick={() => removeItem(item.id)}
-                className="w-10 h-full flex items-center justify-center text-white hover:bg-black/10"
+                className="w-9 h-full flex items-center justify-center text-white hover:bg-black/10 transition-colors"
               >
-                <Minus className="w-5 h-5" />
+                <Minus className="w-4 h-4" />
               </button>
-              <span className="text-white font-bold min-w-[32px] text-center text-base">
-                {quantity}
-              </span>
+              <span className="text-white font-black min-w-[28px] text-center text-sm">{quantity}</span>
               <button
                 onClick={() => addItem(item)}
-                className="w-10 h-full flex items-center justify-center text-white hover:bg-black/10"
+                className="w-9 h-full flex items-center justify-center text-white hover:bg-black/10 transition-colors"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4" />
               </button>
             </div>
           )}
         </div>
       </div>
-
-      {/* Shine Effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
     </div>
   );
 }

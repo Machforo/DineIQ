@@ -85,15 +85,18 @@ class MenuAgent:
 
         # Filter active items
         df = df[df["Is_Active"]]
+        
+        # DEDUPLICATION: Remove duplicate items based on Item_Name
+        df = df.drop_duplicates(subset=["Item_Name"], keep="first")
+        print(f">>> Menu: {len(df)} unique active items after deduplication")
 
         # Shape response for frontend
         return [
             {
-                # "id": row["Item_ID"],
                 "name": row["Item_Name"],
-                # "category": row["Item_Category"],
                 "price": float(row["Current_Price"]) if row["Current_Price"] != "" else None,
-                # "active?": row["Is_Active"]
+                "category": row.get("Item_Category", ""),
+                "isVeg": str(row.get("Is_Veg", "")).strip().lower() in ["1", "yes", "true", "veg"],
             }
             for _, row in df.iterrows()
         ]
@@ -490,6 +493,8 @@ class MenuAgent:
                     if not order_items_df.empty:
                         popular_names = order_items_df['Item_Name'].value_counts().head(6).index
                         bestsellers = active_df[active_df['Item_Name'].isin(popular_names)]
+                        # DEDUPLICATION: Remove duplicates from bestsellers
+                        bestsellers = bestsellers.drop_duplicates(subset=['Item_Name'], keep='first')
                         if not bestsellers.empty:
                             global_sections["Bestseller"] = [format_item(row) for _, row in bestsellers.iterrows()]
 
@@ -497,6 +502,8 @@ class MenuAgent:
                     active_df['Price_Float'] = pd.to_numeric(active_df['Current_Price'], errors='coerce').fillna(0)
                     sorted_by_price = active_df.sort_values(by='Price_Float', ascending=False)
                     chef_special = sorted_by_price.head(max(1, int(len(sorted_by_price) * 0.3))).head(8)
+                    # DEDUPLICATION: Remove duplicates from chef special
+                    chef_special = chef_special.drop_duplicates(subset=['Item_Name'], keep='first')
                     if not chef_special.empty:
                         global_sections["Chef Special"] = [format_item(row) for _, row in chef_special.iterrows()]
                         

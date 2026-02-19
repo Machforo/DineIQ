@@ -52,52 +52,39 @@ export default function MenuSection({ title, subtitle, items, type }: MenuSectio
   const isHorizontal = type === "combos" || type === "chef";
 
   return (
-    <section className={`py-8 ${sectionStyles[type]} transition-all duration-300`}>
-      {/* Premium Header */}
-      <div className="px-4 mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {/* Accent Bar */}
-          <div className={`w-1.5 h-14 rounded-full ${type === "combos" ? "bg-gradient-to-b from-orange-500 to-red-500" :
-            type === "chef" ? "bg-gradient-to-b from-amber-500 to-orange-500" :
-              "bg-gray-300"
-            } shadow-lg`} />
-
-          {/* Icon */}
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${iconStyles[type]} transform transition-transform hover:scale-110`}>
-            <Icon className="w-6 h-6" />
+    <section className={`py-5 ${sectionStyles[type]} transition-all duration-300`}>
+      {/* Clean Header — only shown when title is provided */}
+      {title && (
+        <div className="px-4 mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-1 h-7 rounded-full ${type === "combos" ? "bg-[#E23744]" : type === "chef" ? "bg-[#E23744]" : "bg-[#E23744]"}`} />
+            <div>
+              <h2 className="text-xl font-black text-gray-900">{title}</h2>
+              {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+            </div>
           </div>
 
-          {/* Text */}
-          <div>
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>
-              {title}
-            </h2>
-            {subtitle && (
-              <p className="text-sm md:text-base text-gray-600 mt-1 font-medium">{subtitle}</p>
-            )}
-          </div>
+          {/* Scroll Arrows for horizontal sections */}
+          {isHorizontal && (
+            <div className="hidden md:flex gap-2">
+              <button
+                onClick={() => scroll("left")}
+                className="w-8 h-8 flex items-center justify-center rounded-xl bg-white border border-gray-200 shadow-sm hover:border-gray-300 transition-all active:scale-95"
+                aria-label="Scroll Left"
+              >
+                <ChevronLeft className="w-4 h-4 text-gray-600" />
+              </button>
+              <button
+                onClick={() => scroll("right")}
+                className="w-8 h-8 flex items-center justify-center rounded-xl bg-white border border-gray-200 shadow-sm hover:border-gray-300 transition-all active:scale-95"
+                aria-label="Scroll Right"
+              >
+                <ChevronRight className="w-4 h-4 text-gray-600" />
+              </button>
+            </div>
+          )}
         </div>
-
-        {/* Premium Scroll Arrows */}
-        {isHorizontal && (
-          <div className="hidden md:flex gap-2">
-            <button
-              onClick={() => scroll("left")}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border-2 border-gray-200 shadow-md hover:shadow-lg hover:border-gray-300 hover:bg-gray-50 transition-all active:scale-95"
-              aria-label="Scroll Left"
-            >
-              <ChevronLeft className="w-5 h-5 text-gray-700" />
-            </button>
-            <button
-              onClick={() => scroll("right")}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border-2 border-gray-200 shadow-md hover:shadow-lg hover:border-gray-300 hover:bg-gray-50 transition-all active:scale-95"
-              aria-label="Scroll Right"
-            >
-              <ChevronRight className="w-5 h-5 text-gray-700" />
-            </button>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Items */}
       <div className="relative">

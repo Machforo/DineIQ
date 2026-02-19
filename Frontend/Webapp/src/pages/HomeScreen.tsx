@@ -313,19 +313,7 @@ export default function HomeScreen() {
   if (!isLoggedIn) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-yellow-50 pb-24 relative overflow-x-hidden">
-      {/* Vibrant Background Pattern */}
-      <div className="fixed inset-0 opacity-30 pointer-events-none" style={{
-        backgroundImage: `radial-gradient(circle at 20% 50%, rgba(244, 67, 54, 0.08) 0%, transparent 50%),
-                          radial-gradient(circle at 80% 80%, rgba(255, 193, 7, 0.08) 0%, transparent 50%),
-                          radial-gradient(circle at 40% 20%, rgba(33, 150, 243, 0.06) 0%, transparent 50%)`
-      }} />
-
-      {/* Decorative Dots Pattern */}
-      <div className="fixed inset-0 opacity-20 pointer-events-none" style={{
-        backgroundImage: `radial-gradient(circle at 2px 2px, rgba(244, 67, 54, 0.15) 1px, transparent 0)`,
-        backgroundSize: '48px 48px'
-      }} />
+    <div className="min-h-screen bg-gray-50 pb-28 relative overflow-x-hidden">
 
       <HomeHeader ref={headerRef} onSearch={handleSearch} searchQuery={searchQuery} />
 
@@ -341,7 +329,7 @@ export default function HomeScreen() {
             }} />
 
             {/* 2. Offers (Discount Cards) */}
-            <div className="px-0 relative -mt-4 z-10">
+            <div className="px-0 -mt-2">
               <OfferCarousel offers={offers} onBannerClick={handleBannerClick} />
             </div>
 
@@ -355,15 +343,15 @@ export default function HomeScreen() {
                     <div className="mb-6">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-1 h-10 bg-gradient-to-b from-purple-500 via-pink-500 to-orange-500 rounded-full shadow-lg" />
+                          <div className="w-1 h-8 bg-[#E23744] rounded-full" />
                           <div>
-                            <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 bg-clip-text text-transparent flex items-center gap-2">
-                              <Sparkles className="w-7 h-7 text-purple-500 animate-pulse" />
+                            <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
+                              <Sparkles className="w-5 h-5 text-[#E23744]" />
                               AI-Crafted Combos
                             </h2>
-                            <p className="text-sm text-gray-600 mt-1.5 flex items-center gap-2">
-                              <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                              Personalized just for you • Save up to 15%
+                            <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
+                              <span className="inline-block w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                              Personalized for you • Save up to 15%
                             </p>
                           </div>
                         </div>
@@ -373,10 +361,10 @@ export default function HomeScreen() {
                           disabled={isLoadingAICombos}
                           variant="outline"
                           size="sm"
-                          className="border-purple-200 hover:border-purple-400 hover:bg-purple-50 transition-all shadow-sm hover:shadow-md"
+                          className="border-gray-200 text-gray-600 hover:border-[#E23744] hover:text-[#E23744] transition-all text-xs"
                         >
-                          <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingAICombos ? 'animate-spin' : ''}`} />
-                          {isLoadingAICombos ? 'Generating...' : 'Refresh'}
+                          <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isLoadingAICombos ? 'animate-spin' : ''}`} />
+                          {isLoadingAICombos ? 'Loading...' : 'Refresh'}
                         </Button>
                       </div>
                     </div>
@@ -456,15 +444,11 @@ export default function HomeScreen() {
         {/* Chef's Recommendations */}
         {!isLoading && chefSpecials.length > 0 && !selectedCategory && !searchQuery && (
           <div id="chef-recs" className="px-4 scroll-mt-24">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-1 h-10 bg-gradient-to-b from-amber-500 to-orange-600 rounded-full shadow-md" />
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-1 h-7 bg-[#E23744] rounded-full" />
               <div>
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
-                  ⭐ Chef's Signature Selection
-                </h2>
-                <p className="text-sm text-gray-600 mt-1.5">
-                  Masterfully crafted premium dishes
-                </p>
+                <h2 className="text-xl font-black text-gray-900">⭐ Chef's Special</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Hand-picked premium dishes</p>
               </div>
             </div>
             <MenuSection
@@ -479,14 +463,14 @@ export default function HomeScreen() {
         {/* All Dishes (or Filtered Results) */}
         {!isLoading && displayedItems.length > 0 && (
           <div id="all-dishes" className="px-4 scroll-mt-24">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-1 h-10 bg-gradient-to-b from-orange-500 to-red-600 rounded-full shadow-md" />
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-1 h-7 bg-[#E23744] rounded-full" />
               <div className="flex-1">
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
-                  {searchQuery ? `Search: "${searchQuery}"` : selectedCategory ? `${selectedCategory}` : "🍽️ Complete Menu"}
+                <h2 className="text-xl font-black text-gray-900">
+                  {searchQuery ? `"${searchQuery}"` : selectedCategory ? `${selectedCategory}` : "🍽️ All Dishes"}
                 </h2>
-                <p className="text-sm text-gray-600 mt-1.5">
-                  {searchQuery ? `${displayedItems.length} items found` : selectedCategory ? `Premium ${selectedCategory} collection` : "Explore our culinary masterpieces"}
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {searchQuery ? `${displayedItems.length} results found` : selectedCategory ? `${selectedCategory} dishes` : `${displayedItems.length} items`}
                 </p>
               </div>
             </div>

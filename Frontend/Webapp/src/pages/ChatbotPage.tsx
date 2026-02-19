@@ -91,7 +91,8 @@ const ChatbotPage = () => {
         id: `msg-${Date.now()}`,
         role: 'ai',
         content: data.response,
-        timestamp: new Date()
+        timestamp: new Date(),
+        combos: data.combos && data.combos.length > 0 ? data.combos : undefined,
       };
       setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
@@ -131,11 +132,12 @@ const ChatbotPage = () => {
   };
 
   const quickPrompts = [
-    "🌶️ Spicy food suggestions",
-    "🍰 Best desserts",
-    "🥗 Healthy vegan options",
-    "👨‍🍳 Chef's specials",
-    "🍹 Refreshing drinks"
+    "🍱 Make me a combo meal",
+    "🌶️ Best spicy starters",
+    "🥗 Vegan options only",
+    "🍛 Today's specials",
+    "🍰 What desserts do you have?",
+    "💰 Something under ₹500",
   ];
 
   return (
@@ -189,7 +191,7 @@ const ChatbotPage = () => {
           {/* Messages */}
           <div className="space-y-6">
             {messages.map((msg) => (
-              <ChatMessage key={msg.id} message={msg} />
+              <ChatMessage key={msg.id} message={msg} onSend={handleSendMessage} />
             ))}
 
             {/* AI Loading Indicator */}
