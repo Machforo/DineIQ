@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+import { format } from "date-fns";
 import {
   BarChart3,
   UtensilsCrossed,
@@ -37,14 +39,25 @@ const mainItems = [
 ];
 
 export function AppSidebar() {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <Sidebar className="border-r border-sidebar-border">
       <div className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mb-2">
           <div className="h-8 w-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
             <UtensilsCrossed className="h-4 w-4 text-sidebar-primary-foreground" />
           </div>
           <span className="text-lg font-bold text-sidebar-foreground">DineIQ</span>
+        </div>
+        <div className="text-xs text-sidebar-foreground/60 font-medium pl-1 flex items-center gap-1.5">
+          <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+          {format(time, "PPPP | p")}
         </div>
       </div>
       <SidebarContent>

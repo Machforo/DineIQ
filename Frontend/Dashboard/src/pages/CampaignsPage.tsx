@@ -3,8 +3,17 @@ import { DataTable } from "@/components/DataTable";
 import { KPICard } from "@/components/KPICard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Megaphone, CheckCircle, Clock, RefreshCcw } from "lucide-react";
+import { Megaphone, CheckCircle, Clock, RefreshCcw, Plus } from "lucide-react";
 import { parseGVizJson } from "@/utils/parseGVizJson";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { CampaignForm } from "@/components/CampaignForm";
 
 type Campaign = {
   Campaign_ID: string;
@@ -19,53 +28,59 @@ type Campaign = {
 };
 
 const statusColors: Record<string, string> = {
-  Active: "bg-green-600",
-  Scheduled: "bg-blue-500",
-  Completed: "bg-gray-500",
+  ACTIVE: "bg-green-600",
+  UPCOMING: "bg-blue-500",
+  INACTIVE: "bg-gray-500",
 };
 
 export default function CampaignsPage() {
   const [data, setData] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const SPREADSHEET_ID = import.meta.env.VITE_SPREADSHEET_ID;
 
   const fetchCampaigns = async () => {
     setLoading(true);
     try {
       const res = await fetch(
-        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Campaigns`
+        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Campaigns&headers=1`
       );
       const text = await res.text();
-      const json = JSON.parse(text.substr(47).slice(0, -2));
-      const cols = json.table.cols.map((c: any) => c.label);
+      const match = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/s);
+      if (!match) throw new Error("Could not parse GViz response");
+
+      const json = JSON.parse(match[1]);
       const rows: Campaign[] = parseGVizJson(json, "Campaigns").map((r: any) => {
-        const obj: any = {};
-        cols.forEach((col: string) => {
-          obj[col] = r[col] ?? "";
+        const obj = { ...r };
+
+        // Parse date-time columns to local format for display
+        ["Campaign_Start_DateTime", "Campaign_End_DateTime"].forEach(key => {
+          if (obj[key]) {
+            const d = new Date(obj[key]);
+            if (!isNaN(d.getTime())) {
+              obj[key] = d.toLocaleString();
+            }
+          }
         });
 
-        // Parse actual date-time columns
-        obj.Campaign_Start_DateTime = obj.Campaign_Start_DateTime
-          ? new Date(String(obj.Campaign_Start_DateTime)).toLocaleString()
-          : "";
-        obj.Campaign_End_DateTime = obj.Campaign_End_DateTime
-          ? new Date(String(obj.Campaign_End_DateTime)).toLocaleString()
-          : "";
-
-        // Message_Send_Timing #1..#10 remain as HH:mm string
         return obj;
       });
       setData(rows);
     } catch (err) {
-      console.error("Error fetching Campaigns:", err);
+      console.error("❌ Error fetching Campaigns:", err);
     }
     setLoading(false);
   };
 
   useEffect(() => { fetchCampaigns(); }, []);
 
-  const active = data.filter(c => c.Campaign_Status === "Active").length;
-  const scheduled = data.filter(c => c.Campaign_Status === "Scheduled").length;
+  const handleCreateSuccess = () => {
+    setIsSheetOpen(false);
+    fetchCampaigns();
+  };
+
+  const active = data.filter(c => String(c.Campaign_Status).toUpperCase() === "ACTIVE").length;
+  const scheduled = data.filter(c => String(c.Campaign_Status).toUpperCase() === "UPCOMING").length;
 
   // Build columns dynamically
   const columns = useMemo(() => {
@@ -101,15 +116,34 @@ export default function CampaignsPage() {
   }, [data]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Campaigns</h1>
           <p className="text-muted-foreground">Marketing campaigns and messaging</p>
         </div>
-        <Button onClick={fetchCampaigns} disabled={loading} className="flex items-center gap-2">
-          <RefreshCcw size={18} /> {loading ? "Refreshing..." : "Refresh"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={fetchCampaigns} disabled={loading} variant="outline" className="flex items-center gap-2">
+            <RefreshCcw size={18} /> {loading ? "Refreshing..." : "Refresh"}
+          </Button>
+
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+            <SheetTrigger asChild>
+              <Button className="flex items-center gap-2">
+                <Plus size={18} /> Create Campaigns
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="sm:max-w-[700px] overflow-y-auto w-[90vw]">
+              <SheetHeader className="mb-6">
+                <SheetTitle>Create New Campaign</SheetTitle>
+                <SheetDescription>
+                  Fill out the details below to launch a new marketing campaign.
+                </SheetDescription>
+              </SheetHeader>
+              <CampaignForm onSuccess={handleCreateSuccess} />
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

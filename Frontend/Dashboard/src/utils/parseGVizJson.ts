@@ -15,16 +15,31 @@ export const parseGVizJson = (json: any, sheetName: string) => {
     rows = rows.slice(1);
   } else {
     // Normal case: headers are in table.cols
-    cols = json.table.cols.map((c: any, i: number) => c.label || c.id || `Column_${i}`);
+    cols = json.table.cols.map((c: any, i: number) => {
+      let label = c.label || c.id || `Column_${i}`;
+      // Fix for Google Sheets merging header and first row data in label
+      // e.g. "Campaign_ID Cmp_0001" -> "Campaign_ID"
+      // e.g. "Message_Template #1 My Message" -> "Message_Template #1"
+      if (label.includes(" ")) {
+        const parts = label.split(" ");
+        // If part 1 looks like an index (#1), join it back to part 0
+        if (parts[1] && parts[1].startsWith("#")) {
+          label = `${parts[0]} ${parts[1]}`;
+        } else if (parts[0] && /^[a-zA-Z0-9_#]+$/.test(parts[0])) {
+          label = parts[0];
+        }
+      }
+      return label;
+    });
   }
 
-  // Ensure cols are strings and have fallbacks if empty (e.g., from row 0 having empty cells)
-  cols = cols.map((c, i) => c || `Column_${i}`);
+  // Ensure cols are strings and have fallbacks if empty
+  cols = cols.map((c, i) => String(c || `Column_${i}`).trim());
 
   return rows.map((row: any) => {
     const obj: Record<string, any> = {};
     cols.forEach((col: string, i: number) => {
-      let val = row.c[i]?.v;
+      let val = row.c?.[i]?.v; // Safer access
       if (val === undefined || val === null) val = "";
 
       // Removed Is_Active boolean coercion as it might be "ACTIVE"/"INACTIVE" string
@@ -46,6 +61,8 @@ export const parseGVizJson = (json: any, sheetName: string) => {
       }
 
       obj[col] = val;
+      // Also provide index-based access for safety if needed
+      obj[`__col_${i}`] = val;
     });
     return obj;
   });
@@ -83,6 +100,7 @@ function parseFlexibleDate(val: any): string {
       "MM/dd/yyyy HH:mm:ss",
       "MM/dd/yyyy",
       "yyyy-MM-dd HH:mm:ss",
+      "yyyy-MM-dd HH:mm",
       "yyyy-MM-dd",
     ];
 

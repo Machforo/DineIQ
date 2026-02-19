@@ -245,19 +245,22 @@ def process_single_campaign(campaign: CampaignInternal):
 # ---------------------------------------------------------
 @campaigns_router.post("/add")
 async def add_campaign(request: Request):
-    payload = await request.json()
-    print("📥 Raw campaign payload:", payload)
-
     try:
+        print("\n🔥 /campaigns/add endpoint HIT")
+        payload = await request.json()
+        print("📥 Incoming campaign payload:", payload)
+
         campaign = normalize_frontend_campaign(payload)
+        campaign_id, status = process_single_campaign(campaign)
+
+        return {
+            "campaign_id": campaign_id,
+            "campaign_status": status,
+            "message": "Campaign created successfully",
+        }
     except Exception as e:
+        import traceback
+        print("❌ Campaign Creation Error:")
+        traceback.print_exc()
         from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail=str(e))
-
-    campaign_id, status = process_single_campaign(campaign)
-
-    return {
-        "campaign_id": campaign_id,
-        "campaign_status": status,
-        "message": "Campaign created successfully",
-    }
+        raise HTTPException(status_code=500, detail=str(e))
