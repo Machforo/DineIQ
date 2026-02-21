@@ -10,7 +10,8 @@ import CartBar from "@/components/CartBar";
 import AIButton from "@/components/AIButton";
 import { saveLog } from "@/utils/logger";
 import { api } from "@/api";
-import { MenuItem } from "@/lib/data";
+import { MenuItem, Category } from "@/lib/data";
+import { extractDynamicCategories } from "@/lib/categoryUtils";
 import { Ticket, Percent, Gift } from "lucide-react";
 
 export default function HomeScreen() {
@@ -21,6 +22,7 @@ export default function HomeScreen() {
   const [combos, setCombos] = useState<MenuItem[]>([]);
   const [chefSpecials, setChefSpecials] = useState<MenuItem[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [dynamicCategories, setDynamicCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Coupon codes data
@@ -78,10 +80,11 @@ export default function HomeScreen() {
               return {
                 id: String(item.Item_ID || item.id || ''),
                 name: item.Item_Name || item.name || 'Unknown Item',
-                description: item.Item_Description || item.description || item.Item_Category || '',
+                description: item.Item_Description || item.description || '',
                 price: parseFloat(String(item.Current_Price || item.price || 0).replace(/,/g, "")),
                 image: item.Image_URL || item.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c",
-                isVeg: Boolean(item.Is_Veg || item.isVeg),
+                isVeg: (item.Is_Veg === true || String(item.Is_Veg).toLowerCase() === 'true') ||
+                  (item.isVeg === true || String(item.isVeg).toLowerCase() === 'true'),
                 category: item.Item_Category || category || 'Other',
                 rating: 4.5,
                 ratingCount: 100,
@@ -112,6 +115,10 @@ export default function HomeScreen() {
             setFullMenu(allItems);
             setMenuItems(allItems);
 
+            // Extract dynamic categories from menu sections
+            const extractedCategories = extractDynamicCategories(sections);
+            setDynamicCategories(extractedCategories);
+
             // Generate smart combos if none exist
             if (combosTemp.length === 0) {
               combosTemp = generateSmartCombos(allItems);
@@ -134,37 +141,45 @@ export default function HomeScreen() {
   /* --- Navigation & Filtering Logic --- */
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const { isVegMode } = useUser();
 
   const handleCategorySelect = (category: string) => {
-    if (selectedCategory === category) {
-      setSelectedCategory(null); // Toggle off
-    } else {
-      setSelectedCategory(category);
-      setSearchQuery(""); // Clear search when category selected
-      // No scrolling needed
+    setSelectedCategory(category);
+
+    // Special Case: Chef Special -> Jump to standalone section
+    if (category === "Chef Special") {
+      const element = document.getElementById("chef-recs");
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return;
+    }
+
+    // Find category object to get ID
+    const catObj = dynamicCategories.find(c => c.name === category);
+    if (catObj) {
+      const elementId = `category-${catObj.id}`;
+      const element = document.getElementById(elementId);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     }
   };
 
   const handleSearch = useCallback((query: string) => {
     console.log("🔍 Search Query:", query); // Debug
     setSearchQuery(query);
-    if (query) {
-      setSelectedCategory(null); // Clear category when searching
-    }
   }, []);
 
   // Filter items for "All Dishes" section
+  const filteredMenuItems = isVegMode ? menuItems.filter(i => i.isVeg === true) : menuItems;
+
   const displayedItems = searchQuery
-    ? menuItems.filter(item =>
+    ? filteredMenuItems.filter(item =>
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.category.toLowerCase().includes(searchQuery.toLowerCase())
     )
-    : selectedCategory
-      ? menuItems.filter((item) =>
-        item.category.toLowerCase().includes(selectedCategory.toLowerCase()) ||
-        item.name.toLowerCase().includes(selectedCategory.toLowerCase())
-      )
-      : menuItems;
+    : filteredMenuItems;
 
 
   // Generate smart combos from menu items
@@ -189,7 +204,7 @@ export default function HomeScreen() {
         description: `${riceItems[0].name} • ${gravyItems[0].name} • ${breadItems[0].name}`,
         price: Math.round(totalPrice * 0.8), // 20% off
         image: 'https://images.unsplash.com/photo-1585937421612-70a008356fbe',
-        isVeg: true,
+        isVeg: riceItems[0].isVeg === true && gravyItems[0].isVeg === true && breadItems[0].isVeg === true,
         category: 'Combos',
         rating: 4.6,
         ratingCount: 156
@@ -205,7 +220,7 @@ export default function HomeScreen() {
         description: `${gravyItems[1].name} • ${breadItems[1].name} • Raita`,
         price: Math.round(totalPrice * 0.85), // 15% off
         image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d',
-        isVeg: true,
+        isVeg: gravyItems[1].isVeg === true && breadItems[1].isVeg === true,
         category: 'Combos',
         rating: 4.4,
         ratingCount: 98
@@ -221,7 +236,7 @@ export default function HomeScreen() {
         description: `${starterItems[0].name} • ${riceItems[0].name} • ${gravyItems[0].name}`,
         price: Math.round(totalPrice * 0.75), // 25% off
         image: 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0',
-        isVeg: true,
+        isVeg: starterItems[0].isVeg === true && riceItems[0].isVeg === true && gravyItems[0].isVeg === true,
         category: 'Combos',
         rating: 4.7,
         ratingCount: 234
@@ -236,9 +251,8 @@ export default function HomeScreen() {
 
 
   const handleBannerClick = (offer: any) => {
-    // Clear filter first to ensure sections are visible
-    setSelectedCategory(null);
-    setSearchQuery(""); // Clear search
+    // Clear search if any
+    setSearchQuery("");
 
     // Allow a brief render cycle for sections to reappear
     setTimeout(() => {
@@ -250,12 +264,18 @@ export default function HomeScreen() {
         const element = document.getElementById("smart-combos");
         if (element) element.scrollIntoView({ behavior: "smooth", block: "center" });
       } else if (title.includes("chef") || subtitle.includes("chef") || title.includes("special")) {
+        // Jump to Chef's Recommendations Section
         const element = document.getElementById("chef-recs");
         if (element) element.scrollIntoView({ behavior: "smooth", block: "center" });
       } else {
-        // Default fallback
-        const element = document.getElementById("all-dishes");
-        if (element) element.scrollIntoView({ behavior: "smooth", block: "start" });
+        // Default (Check Menu) -> Jump to First Category (skipping Chef/Bestsellers if needed)
+        // We want the Start of the Menu list
+        if (dynamicCategories.length > 0) {
+          // Find first non-special category if possible, or just the first available one
+          const firstCat = dynamicCategories.find(c => c.name !== "Chef Special" && c.name !== "Bestseller") || dynamicCategories[0];
+          const element = document.getElementById(`category-${firstCat.id}`);
+          if (element) element.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
       }
     }, 100);
   };
@@ -268,13 +288,19 @@ export default function HomeScreen() {
 
       <main className="animate-fade-in flex flex-col gap-6 pt-0"> {/* Removed top padding for Hero edge-to-edge */}
 
-        {/* Only show Hero & Banners if NOT searching/filtering */}
-        {!searchQuery && !selectedCategory && (
+        {/* Only show Hero & Banners if NOT searching */}
+        {!searchQuery && (
           <>
             {/* 1. Hero Banner */}
             <HeroBanner onOrderNow={() => {
-              const element = document.getElementById("all-dishes");
-              if (element) element.scrollIntoView({ behavior: "smooth", block: "start" });
+              if (dynamicCategories.length > 0) {
+                // Find first non-special category
+                const firstCat = dynamicCategories.find(c => c.name !== "Chef Special" && c.name !== "Bestseller") || dynamicCategories[0];
+                const element = document.getElementById(`category-${firstCat.id}`);
+                if (element) {
+                  element.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+              }
             }} />
 
             {/* 2. Offers (Discount Cards) */}
@@ -282,13 +308,13 @@ export default function HomeScreen() {
               <OfferCarousel offers={offers} onBannerClick={handleBannerClick} />
             </div>
 
-            {/* 3. Smart Combos (AI Menu) */}
-            {!isLoading && combos.length > 0 && (
+            {/* 3. Smart Combos (AI Menu) - Kept separate as it's frontend generated and distinct style */}
+            {!isLoading && (isVegMode ? combos.filter(c => c.isVeg === true) : combos).length > 0 && (
               <div id="smart-combos" className="px-3 scroll-mt-24">
                 <MenuSection
                   title="🎁 Smart Combos"
                   subtitle="AI-curated combo deals - Save more!"
-                  items={combos}
+                  items={isVegMode ? combos.filter(c => c.isVeg === true) : combos}
                   type="combos"
                 />
               </div>
@@ -299,22 +325,16 @@ export default function HomeScreen() {
               <div className="bg-transparent py-2">
 
                 <CategoryScroll
+                  categories={dynamicCategories.filter(category => {
+                    const categoryItems = menuItems.filter(item => item.category === category.name);
+                    return !isVegMode || categoryItems.some(item => item.isVeg === true);
+                  })}
                   onSelect={handleCategorySelect}
                   selectedCategory={selectedCategory || undefined}
                 />
               </div>
             )}
           </>
-        )}
-
-        {/* Show Categories Row even if filtering by category (but not search) */}
-        {!searchQuery && selectedCategory && !isLoading && (
-          <div className="bg-white py-4 shadow-sm mb-2">
-            <CategoryScroll
-              onSelect={handleCategorySelect}
-              selectedCategory={selectedCategory || undefined}
-            />
-          </div>
         )}
 
         {/* Loading State */}
@@ -325,48 +345,66 @@ export default function HomeScreen() {
           </div>
         )}
 
+        {/* SEARCH RESULTS */}
+        {!isLoading && searchQuery && displayedItems.length > 0 && (
+          <div className="px-3 scroll-mt-24">
+            <MenuSection
+              title={`Search Results for "${searchQuery}"`}
+              subtitle={`${displayedItems.length} items found`}
+              items={displayedItems}
+              type="standard"
+            />
+          </div>
+        )}
 
-
-        {/* Chef's Recommendations */}
-        {!isLoading && chefSpecials.length > 0 && !selectedCategory && !searchQuery && (
+        {/* Chef's Recommendations (Standalone) */}
+        {!isLoading && (isVegMode ? chefSpecials.filter(c => c.isVeg === true) : chefSpecials).length > 0 && !searchQuery && (
           <div id="chef-recs" className="px-3 scroll-mt-24">
             <MenuSection
               title="⭐ Chef's Recommendations"
               subtitle="Premium dishes handpicked for you"
-              items={chefSpecials}
+              items={isVegMode ? chefSpecials.filter(c => c.isVeg === true) : chefSpecials}
               type="chef"
             />
           </div>
         )}
 
-        {/* All Dishes (or Filtered Results) */}
-        {!isLoading && displayedItems.length > 0 && (
-          <div id="all-dishes" className="px-3 scroll-mt-24">
-            <div className="flex justify-between items-end mb-2 px-1">
+        {/* MAIN MENU SECTIONS (Dynamic Categories - Browse Mode) */}
+        {!isLoading && !searchQuery && dynamicCategories.map((category) => {
+          // Skip standalone sections to avoid duplication
+          if (category.name === "Chef Special") return null;
+
+          // Filter items for this category
+          const categoryItems = menuItems.filter(item => item.category === category.name);
+
+          // Veg Mode Check: Ensure we don't render empty sections if all items are filtered out
+          const visibleItems = isVegMode ? categoryItems.filter(i => i.isVeg === true) : categoryItems;
+
+          if (visibleItems.length === 0) return null;
+
+          // Determine Section Type
+          let sectionType: "standard" | "chef" | "combos" = "standard";
+          if (category.name === "Bestseller") sectionType = "standard"; // Bestsellers usually list
+          if (category.name === "Your Favorites") sectionType = "standard";
+
+          return (
+            <div key={category.id} id={`category-${category.id}`} className="px-3 scroll-mt-24">
               <MenuSection
-                title={searchQuery ? `Search Results for "${searchQuery}"` : selectedCategory ? `${selectedCategory} Menu` : "🍽️ All Dishes"}
-                subtitle={searchQuery ? `${displayedItems.length} items found` : selectedCategory ? `Showing best ${selectedCategory} for you` : "Explore our complete menu"}
-                items={displayedItems}
-                type="standard"
+                title={category.name}
+                subtitle={category.tagline}
+                items={visibleItems}
+                type={sectionType}
               />
             </div>
-            {(selectedCategory || searchQuery) && (
-              <button
-                onClick={() => { setSelectedCategory(null); setSearchQuery(""); }}
-                className="mx-4 mt-4 w-full text-center text-orange-600 text-sm font-bold p-2 bg-orange-50 rounded-lg"
-              >
-                View Full Menu
-              </button>
-            )}
-          </div>
-        )}
+          );
+        })}
 
         {/* Empty State */}
-        {!isLoading && displayedItems.length === 0 && (
+        {!isLoading && searchQuery && displayedItems.length === 0 && (
           <div className="p-12 text-center">
             <div className="text-6xl mb-4">🍽️</div>
             <p className="text-xl font-semibold text-gray-700">No items found</p>
-            <button onClick={() => { setSelectedCategory(null); setSearchQuery(""); }} className="text-orange-600 font-bold mt-2">Clear Filter</button>
+            <button onClick={() => { setSearchQuery(""); }} className="text-orange-600 font-bold mt-2">Clear Search</button>
           </div>
         )}
       </main>

@@ -34,10 +34,19 @@ export default function ComboCard({ item }: ComboCardProps) {
       </div>
 
       {/* Content */}
-      <div className="flex items-start gap-2 mb-2">
+      <div className="flex items-start gap-2 mb-1">
         <div className={item.isVeg ? "badge-veg flex-shrink-0 mt-1" : "badge-nonveg flex-shrink-0 mt-1"} />
         <h3 className="font-bold text-foreground text-base leading-tight">{item.name}</h3>
       </div>
+
+      {/* Description (Under name, horizontally scrollable) */}
+      {item.description && (
+        <div className="overflow-x-auto hide-scrollbar mb-2">
+          <p className="text-[11px] text-gray-500 font-medium whitespace-nowrap">
+            {item.description}
+          </p>
+        </div>
+      )}
 
       {/* Combo items */}
       {item.comboItems && item.comboItems.length > 0 && (

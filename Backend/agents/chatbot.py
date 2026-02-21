@@ -319,6 +319,9 @@ def generate_next_chat_id():
 # ---------------------------------------------------------
 # SAVE CHAT SESSION ENDPOINT
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# SAVE CHAT SESSION ENDPOINT
+# ---------------------------------------------------------
 @chatbot_router.post("/save-chat")
 async def save_chat(session: ChatSession):
     """

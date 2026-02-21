@@ -12,7 +12,7 @@ export default function DishCard({ item, compact = false }: DishCardProps) {
   const quantity = getItemQuantity(item.id);
 
   return (
-    <div className={`flex gap-4 bg-white rounded-[20px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-white relative overflow-visible ${compact ? "p-3" : "p-4"}`}>
+    <div id={`menu-item-${item.id}`} className={`flex gap-4 bg-white rounded-[20px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-white relative overflow-visible ${compact ? "p-3" : "p-4"}`}>
 
       {/* Left: Info Content */}
       <div className="flex-1 min-w-0 flex flex-col justify-between">
@@ -41,6 +41,15 @@ export default function DishCard({ item, compact = false }: DishCardProps) {
             {item.name}
           </h3>
 
+          {/* Description (Under name, horizontally scrollable) */}
+          {item.description && (
+            <div className="overflow-x-auto hide-scrollbar mb-2">
+              <p className="text-[11px] text-gray-400 font-medium whitespace-nowrap">
+                {item.description}
+              </p>
+            </div>
+          )}
+
           {/* Rating Badge */}
           <div className="flex items-center gap-2 mb-2">
             <div className="flex items-center gap-0.5 bg-green-700 text-white px-1.5 py-[2px] rounded-[4px] text-[11px] font-bold shadow-sm">
@@ -67,13 +76,6 @@ export default function DishCard({ item, compact = false }: DishCardProps) {
             )}
           </div>
         </div>
-
-        {/* Description (Bottom) */}
-        {!compact && (
-          <p className="text-[12px] text-gray-400 font-medium mt-2 line-clamp-2 leading-relaxed tracking-tight">
-            {item.description}
-          </p>
-        )}
       </div>
 
       {/* Right: Image + Floating Button */}

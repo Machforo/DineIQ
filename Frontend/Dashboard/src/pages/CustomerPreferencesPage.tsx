@@ -10,8 +10,8 @@ type CustomerPreference = {
   Customer_Name: string;
   Customer_Email: string;
   Dietary_Type: string;
-  Preferred_Bread: string;
-  Favorite_Beverage: string;
+  Preferred_Soup: string;
+  Favorite_Bun: string;
   Dessert_Preference: string;
   Timestamp: string;
 };
@@ -52,8 +52,8 @@ export default function CustomerPreferencesPage() {
     { key: "Customer_Name", label: "Name" },
     { key: "Customer_Email", label: "Email" },
     { key: "Dietary_Type", label: "Dietary Type" },
-    { key: "Preferred_Bread", label: "Bread" },
-    { key: "Favorite_Beverage", label: "Beverage" },
+    { key: "Preferred_Soup", label: "Soup" },
+    { key: "Favorite_Bun", label: "Bun" },
     { key: "Dessert_Preference", label: "Dessert" },
     { key: "Timestamp", label: "Updated" },
   ];

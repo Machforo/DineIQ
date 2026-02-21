@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowRight, Loader2, Utensils, Coffee, IceCream, Pizza, Moon, Activity, Bell, Sandwich, Flame, DoorOpen } from "lucide-react";
+import { ArrowRight, Loader2, Utensils, Coffee, IceCream, Pizza, Moon, Activity, Bell, Sandwich, Flame, DoorOpen, Soup, Beef } from "lucide-react";
 import { toast } from "sonner";
 
 // Questions List with Icons
 const questions = [
-  { id: 1, q: "Dietary Type?", icon: <Utensils className="text-red-500" />, options: ["Vegetarian", "Non-Vegetarian", "Vegan", "Eggetarian", "Jain"] },
-  { id: 2, q: "Preferred Indian Bread?", icon: <Sandwich className="text-amber-600" />, options: ["Roti", "Kulcha", "Naan"] },
-  { id: 3, q: "Favorite beverages?", icon: <Coffee className="text-amber-700" />, options: ["Chaas", "Lassi", "Juice", "Soda"] },
-  { id: 4, q: "Dessert Preferences?", icon: <IceCream className="text-pink-500" />, options: ["Ice-Creams", "Sweets"] },
+  { id: 1, q: "Dietary Type?", icon: <Utensils className="text-red-500" />, options: ["Vegetarian", "Non-Vegetarian", "Vegan", "Eggetarian", "No-Restrictions"] },
+  { id: 2, q: "Preferred Soup?", icon: <Soup className="text-amber-600" />, options: ["Tuscan White Bean", "Mulligatawny Soup", "Green Soup", "Bone Broth & Mushroom Soup"] },
+  { id: 3, q: "Favorite Bun?", icon: <Beef className="text-amber-700" />, options: ["Pressed Pork Belly", "Paneer Bao", "Slow-Cooked Beef Brisket"] },
+  { id: 4, q: "Dessert Preference?", icon: <IceCream className="text-pink-500" />, options: ["Basque Cheesecake", "Chocolate Overload", "Cyclic Churros", "Lavender Parfait", "Vanilla Millefeuille", "Fresh Fruit Salad", "Sorbet of the Day", "Ice Cream of the Day"] },
 ];
 
 import { api } from "@/api";

@@ -63,6 +63,7 @@ def infer_dietary(order_items):
     - Non-Vegetarian: Meat or fish present.
     - Vegan: No animal products at all.
     - Jain: No root vegetables (onion, garlic, potato), no meat, no eggs.
+    - No-Restrictions: All food items allowed, including meat, fish, eggs, etc.
 
     Rules:
     - Infer the dominant dietary preference based on the ordered items.
@@ -90,6 +91,7 @@ def infer_dietary(order_items):
         "non vegetarian": "Non-Vegetarian",
         "vegan": "Vegan",
         "jain": "Jain",
+        "no-restrictions": "No-Restrictions",
         "null": None
     }
 
@@ -123,11 +125,11 @@ def infer_aov(orders):
         return None
     
     # Fine the right aov range
-    if avg < 300:
+    if avg < 1000:
         return "Low Spender"
-    elif avg < 600:
+    elif avg < 3000:
         return "Mid Spender"
-    elif avg < 1000:
+    elif avg < 5000:
         return "High Spender"
     else:
         return "Premium Spender"
@@ -219,7 +221,7 @@ def infer_attitude(orders):
 # Attitude  : "Value-Seeker", "Quality-Seeker", "Coupon-Driven", "Refund-Prone"
 # Favorite Food Items: A list of 1-2 items in chat
 # -------------------------------------------------------------------
-ALLOWED_DIETARY = {"Vegetarian", "Non-Vegetarian", "Vegan", "Eggetarian", "Jain"}
+ALLOWED_DIETARY = {"Vegetarian", "Non-Vegetarian", "Vegan", "Eggetarian", "Jain", "No-Restrictions"}
 ALLOWED_ATTITUDE = {"Value-Seeker", "Quality-Seeker", "Coupon-Driven", "Refund-Prone"}
 
 def infer_from_chat(chat_text):
@@ -420,7 +422,7 @@ def categorize_single_customer(customer_id: str) -> bool:
             
             # Extract favorite items from preferences
             favorites = []
-            for col in ["Preferred_Bread", "Favorite_Beverage", "Dessert_Preference"]:
+            for col in ["Preferred_Soup", "Favorite_Bun", "Dessert_Preference"]:
                 item = str(pref_row.get(col, "")).strip()
                 if item and item.lower() not in ["", "nan", "none"]:
                     favorites.append(item)
@@ -626,7 +628,7 @@ def categorize_customers():
             
             # Extract favorite items from preferences
             favorites = []
-            for col in ["Preferred_Bread", "Favorite_Beverage", "Dessert_Preference"]:
+            for col in ["Preferred_Soup", "Favorite_Bun", "Dessert_Preference"]:
                 item = str(pref_row.get(col, "")).strip()
                 if item and item.lower() not in ["", "nan", "none"]:
                     favorites.append(item)

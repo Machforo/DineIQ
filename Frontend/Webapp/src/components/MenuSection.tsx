@@ -29,7 +29,7 @@ export default function MenuSection({ title, subtitle, items, type }: MenuSectio
   const scrollRef = useRef<HTMLDivElement>(null);
   const Icon = sectionIcons[type];
 
-  const filteredItems = isVegMode ? items.filter((item) => item.isVeg) : items;
+  const filteredItems = isVegMode ? items.filter((item) => item.isVeg === true) : items;
 
   if (filteredItems.length === 0) return null;
 

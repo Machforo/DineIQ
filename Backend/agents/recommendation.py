@@ -147,15 +147,15 @@ class RecommendationAgent:
             customer_name = user_row.get("Customer_Name", "Unknown")
 
             # 2. Prepare Preference Row
-            # Questions mapping: 1:Dietary, 2:Bread, 3:Beverage, 4:Dessert
+            # Questions mapping: 1:Dietary, 2:Soup, 3:Bun, 4:Dessert
             import time
             new_row = [
                 customer_id,
                 customer_name,
                 email,
                 preferences.get("1", ""), # Dietary Type
-                preferences.get("2", ""), # Preferred Bread
-                preferences.get("3", ""), # Favorite Beverage
+                preferences.get("2", ""), # Preferred Soup
+                preferences.get("3", ""), # Favorite Bun
                 preferences.get("4", ""), # Dessert Preference
                 time.strftime("%d/%m/%Y %H:%M:%S")
             ]
@@ -289,14 +289,26 @@ class RecommendationAgent:
     # --- Helpers ---
 
     def _get_user_dietary_pref(self, email):
-        # Fetch from Customer_Auth or specific preferences sheet
-        # Fallback
-        return "General"
+        try:
+            rows = self.sheets_client.read_sheet_rows("Customer_Preferences")
+            user_pref = next((r for r in rows if r.get("Customer_Email") == email), None)
+            if user_pref:
+                return user_pref.get("Dietary_Type", "General")
+            return "General"
+        except:
+            return "General"
 
     def _get_items_by_category_from_df(self, df, categories, diet, exclude_id):
         mask = (df['Item_Category'].isin(categories)) & (df['Is_Active'].astype(str).str.lower() == 'true')
+        
+        # Apply dietary filter
+        if diet in ["Vegetarian", "Jain", "Vegan"]:
+             if 'Is_Veg' in df.columns:
+                 mask &= (df['Is_Veg'].astype(str).str.lower() == 'true')
+
         if exclude_id:
             mask &= (df['Item_ID'] != exclude_id)
+        
         
         items = df[mask].head(3)
         return [

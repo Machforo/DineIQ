@@ -183,11 +183,11 @@ export default function MenuPage() {
         <div className="flex gap-2">
           <Button
             onClick={handleSyncHarvest}
-            disabled={loading}
-            className="flex items-center gap-2 bg-orange-500 text-white hover:bg-orange-600"
+            disabled={true}
+            className="flex items-center gap-2 bg-gray-200 text-gray-500 cursor-not-allowed hover:bg-gray-200"
           >
-            <RefreshCcw size={18} className={loading ? "animate-spin" : ""} />
-            {loading ? "Syncing..." : "Sync from Harvest"}
+            <RefreshCcw size={18} />
+            Sync from Harvest
           </Button>
           <Button onClick={openAdd}>
             <Plus className="h-4 w-4 mr-1" /> Add Item

@@ -613,13 +613,46 @@ class MenuAgent:
     # -------------------------------------------------------------------
     # 🧠 Smart Menu / Frontend Logic (Migrated from menu_agent.py)
     # -------------------------------------------------------------------
-    def _is_veg_item(self, item_name: str) -> bool:
-        """Detect if item is vegetarian based on name"""
+    def _is_veg_item(self, item_name: str, category: str = "", description: str = "") -> bool:
+        """
+        Detect if item is vegetarian with precedence: Category -> Name -> Description.
+        Returns False if any 'non-veg' hint is found in order.
+        """
+        non_veg_keywords = [
+            'chicken', 'mutton', 'fish', 'egg', 'meat', 'prawn', 'lamb', 
+            'beef', 'pork', 'ham', 'bacon', 'seafood', 'sea food', 'salmon', 
+            'tuna', 'lobster', 'crab', 'shrimp', 'squid', 'duck', 'steak', 
+            'salami', 'pepperoni', 'wings', 'calamari', 'calamares', 
+            'ostrich', 'turkey', 'prosciutto', 'anchovies', 'venison', 
+            'quail', 'scallops', 'mussels', 'octopus', 'steakhouse', 
+            'brisket', 'ribs', 'bolognese', 'carbonara', 'pancetta',
+            'sausage', 'chorizo', 'salamini', 'meatball', 'meat ball'
+        ]
+        
+        non_veg_categories = [
+            'STARTERS FROM THE SEA', 'MAINS FROM THE SEA', 'GRILLS'
+        ]
+
+        # 1. Check Category (Precedence 1)
+        cat_lower = str(category).upper()
+        if any(cv in cat_lower for cv in non_veg_categories):
+            return False
+            
+        # 2. Check Name (Precedence 2)
         name_lower = str(item_name).lower()
-        non_veg = ['chicken', 'mutton', 'fish', 'egg', 'meat', 'prawn', 'lamb']
-        if any(word in name_lower for word in non_veg): return False
-        if any(word in name_lower for word in self.veg_keywords): return True
-        return True # Default safe
+        if any(word in name_lower for word in non_veg_keywords):
+            return False
+            
+        # 3. Check Description (Precedence 3)
+        desc_lower = str(description).lower()
+        if any(word in desc_lower for word in non_veg_keywords):
+            return False
+
+        # If none of the non-veg hints match, check if it's explicitly veg
+        if any(word in name_lower for word in self.veg_keywords):
+            return True
+
+        return True # Default safe if no non-veg hint found
 
     def _get_image_for_item(self, category: str, item_name: str) -> str:
         """Get appropriate image based on category or item name"""
@@ -679,19 +712,33 @@ class MenuAgent:
 
             menu_sections = {}
 
-            # Helper
             def format_item(row) -> dict:
-                item_name = str(row['Item_Name'])
-                category = str(row['Item_Category'])
+                item_name = str(row.get('Item_Name', 'Unknown')).strip()
+                category = str(row.get('Item_Category', 'General')).strip()
+                
+                # Robust description fetching
+                # Check for Item_Description, then description (case-insensitive)
+                description = ""
+                for key in ['Item_Description', 'description', 'Description']:
+                    val = row.get(key)
+                    if val and str(val).lower() != 'nan' and str(val).strip() != "":
+                        description = str(val).strip()
+                        break
+                
+                if not description:
+                    description = self._get_item_description(category, item_name)
+                
+                is_veg = self._is_veg_item(item_name, category, description)
+                
                 return {
-                    'Item_ID': str(row['Item_ID']),
+                    'Item_ID': str(row.get('Item_ID', '')),
                     'Item_Name': item_name,
-                    'Item_Description': self._get_item_description(category, item_name),
-                    'Current_Price': float(row['Current_Price']) if row['Current_Price'] else 0.0,
+                    'Item_Description': description,
+                    'Current_Price': float(row['Current_Price']) if row.get('Current_Price') and str(row['Current_Price']).lower() != 'nan' else 0.0,
                     'Image_URL': self._get_image_for_item(category, item_name),
-                    'Is_Veg': self._is_veg_item(item_name),
+                    'Is_Veg': is_veg,
                     'Item_Category': category,
-                    'Dietary_Type': 'Veg' if self._is_veg_item(item_name) else 'Non-Veg'
+                    'Dietary_Type': 'Veg' if is_veg else 'Non-Veg'
                 }
 
             # 1. YOUR FAVORITES
@@ -728,8 +775,9 @@ class MenuAgent:
                 print(f"Stats Error (Chef Special): {e}")
 
             # 4. CATEGORIES
+            # Preserve order from sheet: keys of active_df['Item_Category'] in order of appearance
             categories = active_df['Item_Category'].unique()
-            for category in sorted(categories):
+            for category in categories:
                 if not category: continue
                 cat_items = active_df[active_df['Item_Category'] == category]
                 if not cat_items.empty:
@@ -786,7 +834,7 @@ def get_smart_menu_endpoint(
     """
     Main Menu Endpoint - Returns Sections (Favorites, Bestsellers, Categories)
     """
-    email = dataset.get("email") # Can be None
+    email = dataset.get("email") or dataset.get("customer_email")
     return agent.get_smart_menu(email)
 
 
