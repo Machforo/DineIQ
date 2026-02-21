@@ -156,7 +156,8 @@ class SheetsClient:
             col_idx = df.columns.get_loc(col) + 1
             col_letter = self._col_letter(col_idx)
 
-            values = [[v] for v in df[col].tolist()]
+            # Serialize each value to a JSON-safe native Python type
+            values = [[self._serialize_value(v)] for v in df[col].tolist()]
 
             request = self._service.values().update(
                 spreadsheetId=self.spreadsheet_id,
@@ -205,6 +206,23 @@ class SheetsClient:
     # -------------------------------------------------------------------
     # 🔠 Utilities
     # -------------------------------------------------------------------
+    @staticmethod
+    def _serialize_value(v):
+        """
+        Convert numpy scalar types to native Python types so they are
+        JSON-serializable and stored correctly in Google Sheets via RAW mode.
+        - numpy.int* → Python int
+        - numpy.float* → Python float (NaN → "")
+        - Everything else passes through unchanged.
+        """
+        import math
+        type_name = type(v).__name__
+        if type_name.startswith("int") or type_name in ("int8", "int16", "int32", "int64"):
+            return int(v)
+        if type_name.startswith("float") or type_name in ("float16", "float32", "float64"):
+            return "" if math.isnan(v) else float(v)
+        return v
+
     @staticmethod
     def _col_letter(n: int) -> str:
         """Convert 1-based column index to A, B, ..., AA, AB, etc."""

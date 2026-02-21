@@ -315,6 +315,85 @@ def build_customer_category(insights):
     return ", ".join(v for v in fields if v)
 
 # -------------------------------------------------------------------
+# 🧩 Compute Customer Score (0–100)
+#
+# Scoring rubric (weighted across 4 behavioral dimensions + 1 data signal):
+#
+#  AOV Tier        (30 pts)  — Spending power
+#    Premium Spender → 30
+#    High Spender    → 22
+#    Mid Spender     → 14
+#    Low Spender     →  6
+#    Unknown         →  0
+#
+#  Visit Frequency (30 pts)  — Loyalty / retention signal
+#    Loyal           → 30
+#    Frequent        → 22
+#    Regular         → 14
+#    Occasional      →  6
+#    Unknown         →  0
+#
+#  Attitude        (20 pts)  — Order quality / risk signal
+#    Quality-Seeker  → 20
+#    Value-Seeker    → 12
+#    Coupon-Driven   →  8
+#    Refund-Prone    →  0
+#    Unknown         →  0
+#
+#  Dietary known   (10 pts)  — Profile completeness signal
+#    Any value       → 10
+#    Unknown / None  →  0
+#
+#  Favorites known (10 pts)  — Engagement / personalisation signal
+#    Has favorites   → 10
+#    None            →  0
+#
+# Total: 0 – 100
+# -------------------------------------------------------------------
+def compute_customer_score(insights: dict) -> int:
+    score = 0
+
+    # --- AOV (30 pts) ---
+    aov_scores = {
+        "Premium Spender": 30,
+        "High Spender":    22,
+        "Mid Spender":     14,
+        "Low Spender":      6,
+    }
+    score += aov_scores.get(insights.get("AOV") or "", 0)
+
+    # --- Frequency (30 pts) ---
+    freq_scores = {
+        "Loyal":      30,
+        "Frequent":   22,
+        "Regular":    14,
+        "Occasional":  6,
+    }
+    score += freq_scores.get(insights.get("Frequency") or "", 0)
+
+    # --- Attitude (20 pts) ---
+    attitude_scores = {
+        "Quality-Seeker": 20,
+        "Value-Seeker":   12,
+        "Coupon-Driven":   8,
+        "Refund-Prone":    0,
+    }
+    score += attitude_scores.get(insights.get("Attitude") or "", 0)
+
+    # --- Dietary known (10 pts) ---
+    dietary = (insights.get("Dietary") or "").strip()
+    if dietary:
+        score += 10
+
+    # --- Favorites known (10 pts) ---
+    favorites = (insights.get("Favorites") or "").strip()
+    if favorites:
+        score += 10
+
+    print(f"🏆 Customer_Score computed: {score}/100")
+    return score
+
+# -------------------------------------------------------------------
 # 🚀 SINGLE CUSTOMER CATEGORIZATION (for order triggers)
 # -------------------------------------------------------------------
 def categorize_single_customer(customer_id: str) -> bool:
@@ -451,6 +530,10 @@ def categorize_single_customer(customer_id: str) -> bool:
             "Frequency": order_insights["Frequency"],
             "Attitude": order_insights["Attitude"] or chat_insights["attitude"]
         }
+
+        # Compute composite Customer Score
+        customer_score = compute_customer_score(final_insights)
+        final_insights["Customer_Score"] = customer_score
         
         # Update or insert in Customer_Insights sheet
         existing_idx = df_insights[df_insights["Customer_ID"] == customer_id].index
@@ -464,6 +547,7 @@ def categorize_single_customer(customer_id: str) -> bool:
             for col in ["Dietary", "Favorites", "AOV", "Frequency", "Attitude"]:
                 if final_insights.get(col) is not None:
                     df_insights.at[i, col] = final_insights[col]
+            df_insights.at[i, "Customer_Score"] = customer_score
             print(f"✅ Updated existing insights for customer {customer_id}")
         else:
             # Insert new customer
@@ -475,6 +559,7 @@ def categorize_single_customer(customer_id: str) -> bool:
                 "AOV": final_insights["AOV"],
                 "Frequency": final_insights["Frequency"],
                 "Attitude": final_insights["Attitude"],
+                "Customer_Score": customer_score,
             }
             df_insights = pd.concat(
                 [df_insights, pd.DataFrame([new_row])],
@@ -487,14 +572,17 @@ def categorize_single_customer(customer_id: str) -> bool:
         print(f"🏷️ Customer Category: {customer_category}")
         
         # Treat NaN values before writing to Google Sheets
+        # String columns: fill with empty string
         for col in ["Customer_ID", "Customer_Name", "Dietary", "Favorites", "AOV", "Frequency", "Attitude"]:
             df_insights[col] = df_insights[col].fillna("")
+        # Score column: cast to native Python int so Google Sheets stores it as a number
+        df_insights["Customer_Score"] = pd.to_numeric(df_insights["Customer_Score"], errors="coerce").fillna(0).apply(int)
         
         # Update Customer_Insights sheet
         sheets_client.update_sheet(
             CUSTOMER_INSIGHTS_SHEET,
             df_insights,
-            columns_to_update=["Customer_ID", "Customer_Name", "Dietary", "Favorites", "AOV", "Frequency", "Attitude"]
+            columns_to_update=["Customer_ID", "Customer_Name", "Dietary", "Favorites", "AOV", "Frequency", "Attitude", "Customer_Score"]
         )
         print(f"✅ Customer_Insights sheet updated")
         
@@ -652,6 +740,10 @@ def categorize_customers():
             "Attitude": order_insights["Attitude"] or chat_insights["attitude"]
         }
 
+        # Compute composite Customer Score
+        customer_score = compute_customer_score(final_insights)
+        final_insights["Customer_Score"] = customer_score
+
         # Find out existing customers/indices in insights data
         existing_idx = df_insights[
             df_insights["Customer_ID"] == customer_id
@@ -668,11 +760,8 @@ def categorize_customers():
             for col in ["Dietary", "Favorites", "AOV", "Frequency", "Attitude"]:
                 if final_insights.get(col) is not None:
                     df_insights.at[i, col] = final_insights[col]
+            df_insights.at[i, "Customer_Score"] = customer_score
         else:
-            # df_insights = pd.concat(
-            #     [df_insights, pd.DataFrame([final_insights])],
-            #     ignore_index=True
-            # )
             new_row = {
                 "Customer_ID": customer_id,
                 "Customer_Name": customer_name,
@@ -681,6 +770,7 @@ def categorize_customers():
                 "AOV": final_insights["AOV"],
                 "Frequency": final_insights["Frequency"],
                 "Attitude": final_insights["Attitude"],
+                "Customer_Score": customer_score,
             }
             df_insights = pd.concat(
                 [df_insights, pd.DataFrame([new_row])],
@@ -698,15 +788,18 @@ def categorize_customers():
         time.sleep(REQUEST_DELAY)
 
     # Treat NaN values in customer insights before writing to google sheets
+    # String columns: fill with empty string
     for col in ["Customer_ID", "Customer_Name", "Dietary", "Favorites", "AOV", "Frequency", "Attitude"]:
         df_insights[col] = df_insights[col].fillna("")
+    # Score column: cast to native Python int so Google Sheets stores it as a number
+    df_insights["Customer_Score"] = pd.to_numeric(df_insights["Customer_Score"], errors="coerce").fillna(0).apply(int)
     
     # Update Customer Insights in Customer_Insights sheet
     print("🧪 Insights DF columns:", list(df_insights.columns))
     sheets_client.update_sheet(
         CUSTOMER_INSIGHTS_SHEET,
         df_insights,
-        columns_to_update=["Customer_ID", "Customer_Name", "Dietary", "Favorites", "AOV", "Frequency", "Attitude"]
+        columns_to_update=["Customer_ID", "Customer_Name", "Dietary", "Favorites", "AOV", "Frequency", "Attitude", "Customer_Score"]
     )
     print("✅ Customer Insights updated")
 
