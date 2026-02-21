@@ -55,7 +55,7 @@ export default function HomeScreen() {
       navigate("/login");
     } else {
       const userEmail = user?.email || "guest@dineiq.com";
-      saveLog(userEmail, "PAGE_VIEW", "User landed on Home Screen");
+      // saveLog(userEmail, "PAGE_VIEW", "User landed on Home Screen"); // Removed as per request
 
       const loadData = async () => {
         setIsLoading(true);
@@ -93,27 +93,44 @@ export default function HomeScreen() {
               };
             };
 
-            // Process menu sections
+            // Process menu sections with deduplication
+            const itemMap = new Map<string, MenuItem>();
+
             Object.entries(sections).forEach(([sectionName, items]: [string, any]) => {
               if (Array.isArray(items)) {
                 items.forEach((item: any) => {
-                  const menuItem = mapToMenuItem(item, sectionName);
-                  allItems.push(menuItem);
+                  const itemID = String(item.Item_ID || item.id || '');
+                  if (!itemID) return;
 
-                  // Filter for specific sections
+                  const menuItem = mapToMenuItem(item, sectionName);
+
+                  // Collect for specific UI sections regardless of duplication in main list
                   if (sectionName === "Combos" || sectionName.includes("Family")) {
                     combosTemp.push(menuItem);
                   }
-                  if (sectionName === "Chef Special" || sectionName === "Bestseller") {
+                  if (sectionName === "Chef Special" || sectionName === "Bestseller" || sectionName === "Chef's Recommendations") {
                     chefTemp.push(menuItem);
+                  }
+
+                  // Deduplicate for the master menuItems list
+                  // We prefer the first category assignment unless it's a virtual one
+                  if (!itemMap.has(itemID)) {
+                    itemMap.set(itemID, menuItem);
+                  } else if (sectionName !== "Chef Special" && sectionName !== "Bestseller") {
+                    // Update category if the current section is a 'real' one
+                    const existing = itemMap.get(itemID)!;
+                    if (existing.category === "Chef Special" || existing.category === "Bestseller") {
+                      itemMap.set(itemID, { ...menuItem, category: sectionName });
+                    }
                   }
                 });
               }
             });
 
-            console.log(`✅ Loaded ${allItems.length} items`);
-            setFullMenu(allItems);
-            setMenuItems(allItems);
+            const uniqueAllItems = Array.from(itemMap.values());
+            console.log(`✅ Loaded ${uniqueAllItems.length} unique items`);
+            setFullMenu(uniqueAllItems);
+            setMenuItems(uniqueAllItems);
 
             // Extract dynamic categories from menu sections
             const extractedCategories = extractDynamicCategories(sections);
@@ -146,6 +163,9 @@ export default function HomeScreen() {
   const handleCategorySelect = (category: string) => {
     setSelectedCategory(category);
 
+    // Log category selection
+    saveLog(user?.email || "Guest", "CATEGORY_CLICK", category);
+
     // Special Case: Chef Special -> Jump to standalone section
     if (category === "Chef Special") {
       const element = document.getElementById("chef-recs");
@@ -167,9 +187,11 @@ export default function HomeScreen() {
   };
 
   const handleSearch = useCallback((query: string) => {
-    console.log("🔍 Search Query:", query); // Debug
+    if (query.length >= 3) {
+      saveLog(user?.email || "Guest", "SEARCH_ITEM", query);
+    }
     setSearchQuery(query);
-  }, []);
+  }, [user?.email]);
 
   // Filter items for "All Dishes" section
   const filteredMenuItems = isVegMode ? menuItems.filter(i => i.isVeg === true) : menuItems;
@@ -251,6 +273,9 @@ export default function HomeScreen() {
 
 
   const handleBannerClick = (offer: any) => {
+    // Log banner click
+    saveLog(user?.email || "Guest", "CHEF_SPECIAL_CARD_CLICK", offer.title);
+
     // Clear search if any
     setSearchQuery("");
 
@@ -293,6 +318,7 @@ export default function HomeScreen() {
           <>
             {/* 1. Hero Banner */}
             <HeroBanner onOrderNow={() => {
+              saveLog(user?.email || "Guest", "VIEW_MENU_BANNER_CLICK", "User clicked Check Menu in Hero Banner");
               if (dynamicCategories.length > 0) {
                 // Find first non-special category
                 const firstCat = dynamicCategories.find(c => c.name !== "Chef Special" && c.name !== "Bestseller") || dynamicCategories[0];
@@ -371,8 +397,11 @@ export default function HomeScreen() {
 
         {/* MAIN MENU SECTIONS (Dynamic Categories - Browse Mode) */}
         {!isLoading && !searchQuery && dynamicCategories.map((category) => {
-          // Skip standalone sections to avoid duplication
-          if (category.name === "Chef Special") return null;
+          // Skip standalone / virtual sections to avoid duplication in main menu flow
+          if (category.name === "Chef Special" ||
+            category.name === "Bestseller" ||
+            category.name === "Chef's Recommendations" ||
+            category.name === "Combos") return null;
 
           // Filter items for this category
           const categoryItems = menuItems.filter(item => item.category === category.name);

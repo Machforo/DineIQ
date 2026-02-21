@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { api } from "@/api";
 import { MenuItem } from "@/lib/data";
+import { saveLog } from "@/utils/logger";
 
 export interface Order {
   id: string;
@@ -192,7 +193,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   const toggleVegMode = () => {
-    setIsVegMode((prev) => !prev);
+    setIsVegMode((prev) => {
+      const newState = !prev;
+      saveLog(profile.email || "Guest", "VEG_FILTER_TOGGLE", newState ? "Enabled" : "Disabled");
+      return newState;
+    });
   };
 
   const updateProfile = (updates: Partial<UserProfile>) => {

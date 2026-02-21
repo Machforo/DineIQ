@@ -5,9 +5,10 @@ import { Star, Plus, Minus, Heart } from "lucide-react";
 interface DishCardProps {
   item: MenuItem;
   compact?: boolean;
+  source?: string;
 }
 
-export default function DishCard({ item, compact = false }: DishCardProps) {
+export default function DishCard({ item, compact = false, source = "Menu" }: DishCardProps) {
   const { addItem, removeItem, getItemQuantity } = useCart();
   const quantity = getItemQuantity(item.id);
 
@@ -97,7 +98,7 @@ export default function DishCard({ item, compact = false }: DishCardProps) {
         <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-[90px] shadow-lg rounded-lg bg-white z-20">
           {quantity === 0 ? (
             <button
-              onClick={() => addItem(item)}
+              onClick={() => addItem(item, false, source)}
               className="w-full bg-[#FFF4F4] hover:bg-[#ffe5e5] text-[#E23744] border border-[#E23744]/20 font-extrabold text-sm h-9 rounded-lg uppercase tracking-wide flex items-center justify-center transition-colors"
             >
               ADD
@@ -105,14 +106,14 @@ export default function DishCard({ item, compact = false }: DishCardProps) {
           ) : (
             <div className="flex items-center justify-between bg-[#E23744] text-white h-9 rounded-lg px-2 w-full shadow-inner">
               <button
-                onClick={() => removeItem(item.id)}
+                onClick={() => removeItem(item.id, false, source)}
                 className="p-1 hover:bg-white/20 rounded transition-colors"
               >
                 <Minus size={14} strokeWidth={3} />
               </button>
               <span className="font-black text-sm">{quantity}</span>
               <button
-                onClick={() => addItem(item)}
+                onClick={() => addItem(item, false, source)}
                 className="p-1 hover:bg-white/20 rounded transition-colors"
               >
                 <Plus size={14} strokeWidth={3} />

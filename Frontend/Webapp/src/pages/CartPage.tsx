@@ -267,55 +267,89 @@ export default function CartPage() {
       <div className="py-2 space-y-4">
 
         {/* 1. Pairs well (Specific Recs) */}
-        {recommendations.length > 0 && (
-          <div className="pl-4 animate-fade-in">
-            <h3 className="font-bold text-gray-800 text-sm mb-2">Pairs well with your order</h3>
-            <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 pr-4">
-              {recommendations.map((rec) => (
-                <div key={rec.Item_ID} className="flex-shrink-0 w-36 bg-white rounded-lg p-2 border border-gray-100 shadow-sm">
-                  <div className="relative mb-2">
-                    <img src={rec.Image_URL || "https://images.unsplash.com/photo-1546833999-b9f581a1996d"} className="w-full h-24 object-cover rounded-md" />
-                    <div className={`absolute top-1 right-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${rec.Is_Veg ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                      {rec.Is_Veg ? "VEG" : "NON"}
+        {(() => {
+          const displayedIds = new Set();
+          const uniqueRecs = recommendations.filter(rec => {
+            if (displayedIds.has(rec.Item_ID)) return false;
+            displayedIds.add(rec.Item_ID);
+            return true;
+          });
+
+          if (uniqueRecs.length === 0) return null;
+
+          return (
+            <div className="pl-4 animate-fade-in">
+              <h3 className="font-bold text-gray-800 text-sm mb-2">Pairs well with your order</h3>
+              <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 pr-4">
+                {uniqueRecs.map((rec) => (
+                  <div key={rec.Item_ID} className="flex-shrink-0 w-36 bg-white rounded-lg p-2 border border-gray-100 shadow-sm">
+                    <div className="relative mb-2">
+                      <img src={rec.Image_URL || "https://images.unsplash.com/photo-1546833999-b9f581a1996d"} className="w-full h-24 object-cover rounded-md" />
+                      <div className={`absolute top-1 right-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${rec.Is_Veg ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                        {rec.Is_Veg ? "VEG" : "NON"}
+                      </div>
+                      <button
+                        onClick={() => handleAddRecommendation(rec)}
+                        className="absolute -bottom-3 right-2 bg-white shadow-md text-green-600 font-bold px-3 py-1 rounded-md text-xs border border-green-100 uppercase">
+                        ADD
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleAddRecommendation(rec)}
-                      className="absolute -bottom-3 right-2 bg-white shadow-md text-green-600 font-bold px-3 py-1 rounded-md text-xs border border-green-100 uppercase">
-                      ADD
-                    </button>
+                    <div className="mt-4">
+                      <p className="text-sm font-bold text-gray-800 line-clamp-1">{rec.Item_Name}</p>
+                      <p className="text-xs text-gray-500">KSh {rec.Current_Price}</p>
+                    </div>
                   </div>
-                  <div className="mt-4">
-                    <p className="text-xs text-gray-500">KSh {rec.Current_Price}</p>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* 2. Sweet Cravings (Upsells) */}
-        {Object.entries(upsells).map(([category, uItems]: [string, any[]]) => (
-          <div key={category} className="pl-4 animate-fade-in">
-            <h3 className="font-bold text-gray-800 text-sm mb-2">{category} Cravings?</h3>
-            <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 pr-4">
-              {uItems.map((rec) => (
-                <div key={rec.Item_ID} className="flex-shrink-0 w-36 bg-white rounded-lg p-2 border border-gray-100 shadow-sm">
-                  <div className="relative mb-2">
-                    <img src={rec.Image_URL} className="w-full h-24 object-cover rounded-md" />
-                    <button
-                      onClick={() => handleAddRecommendation(rec)}
-                      className="absolute -bottom-3 right-2 bg-white shadow-md text-green-600 font-bold px-3 py-1 rounded-md text-xs border border-green-100 uppercase">
-                      ADD
-                    </button>
+        {(() => {
+          // Flatten and deduplicate across all upsell categories
+          const allUpsells: any[] = [];
+          const seenIds = new Set(recommendations.map(r => r.Item_ID)); // Don't repeat what's in "Pairs well"
+
+          Object.entries(upsells).forEach(([category, items]: [string, any]) => {
+            if (Array.isArray(items)) {
+              items.forEach(item => {
+                if (!seenIds.has(item.Item_ID)) {
+                  allUpsells.push({ ...item, upsellCategory: category });
+                  seenIds.add(item.Item_ID);
+                }
+              });
+            }
+          });
+
+          if (allUpsells.length === 0) return null;
+
+          // Group back if we want to keep categories, or just show a curated list
+          // For now, let's just show them uniquely
+          return (
+            <div className="pl-4 animate-fade-in">
+              <h3 className="font-bold text-gray-800 text-sm mb-2">Something sweet?</h3>
+              <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 pr-4">
+                {allUpsells.map((rec) => (
+                  <div key={rec.Item_ID} className="flex-shrink-0 w-36 bg-white rounded-lg p-2 border border-gray-100 shadow-sm">
+                    <div className="relative mb-2">
+                      <img src={rec.Image_URL} className="w-full h-24 object-cover rounded-md" />
+                      <button
+                        onClick={() => handleAddRecommendation(rec)}
+                        className="absolute -bottom-3 right-2 bg-white shadow-md text-green-600 font-bold px-3 py-1 rounded-md text-xs border border-green-100 uppercase">
+                        ADD
+                      </button>
+                    </div>
+                    <div className="mt-4">
+                      <p className="text-sm font-bold text-gray-800 line-clamp-1">{rec.Item_Name}</p>
+                      <p className="text-xs text-gray-500">KSh {rec.Current_Price}</p>
+                    </div>
                   </div>
-                  <div className="mt-4">
-                    <p className="text-xs text-gray-500">KSh {rec.Current_Price}</p>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })()}
       </div>
 
 

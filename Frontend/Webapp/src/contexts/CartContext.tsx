@@ -9,9 +9,9 @@ interface CartItem extends MenuItem {
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (item: MenuItem, silent?: boolean) => void;
-  removeItem: (itemId: string, silent?: boolean) => void;
-  updateQuantity: (itemId: string, quantity: number, silent?: boolean) => void;
+  addItem: (item: MenuItem, silent?: boolean, source?: string) => void;
+  removeItem: (itemId: string, silent?: boolean, source?: string) => void;
+  updateQuantity: (itemId: string, quantity: number, silent?: boolean, source?: string) => void;
   getItemQuantity: (itemId: string) => number;
   totalItems: number;
   totalPrice: number;
@@ -32,7 +32,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("dineiq_cart", JSON.stringify(items));
   }, [items]);
 
-  const addItem = (item: MenuItem, silent: boolean = false) => {
+  const addItem = (item: MenuItem, silent: boolean = false, source: string = "Menu") => {
     // If it's a combo, deconstruct it into individual items
     if (item.isCombo && item.comboItems && item.comboItems.length > 0) {
       item.comboItems.forEach(componentName => {
@@ -62,7 +62,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         saveLog(
           useUser().user?.email || "Guest",
           "CART_ADD",
-          `${item.name} (Combo)`
+          `${item.name} (Combo) from ${source}`
         );
       }
       return;
@@ -77,7 +77,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         saveLog(
           useUser().user?.email || "Guest",
           "CART_ADD",
-          `${item.name} (Qty: ${newQuantity})`
+          `${item.name} (Qty: ${newQuantity}) from ${source}`
         );
       }
 
@@ -90,7 +90,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const removeItem = (itemId: string, silent: boolean = false) => {
+  const removeItem = (itemId: string, silent: boolean = false, source: string = "Menu") => {
     setItems((prev) => {
       const existing = prev.find((i) => i.id === itemId);
       if (!existing) return prev;
@@ -102,7 +102,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         saveLog(
           useUser().user?.email || "Guest",
           "CART_REMOVE",
-          `${existing.name} (New Qty: ${newQuantity})`
+          `${existing.name} (New Qty: ${newQuantity}) from ${source}`
         );
       }
 
@@ -115,7 +115,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const updateQuantity = (itemId: string, quantity: number, silent: boolean = false) => {
+  const updateQuantity = (itemId: string, quantity: number, silent: boolean = false, source: string = "Menu") => {
     setItems((prev) => {
       const existing = prev.find((i) => i.id === itemId);
       if (!existing) return prev;

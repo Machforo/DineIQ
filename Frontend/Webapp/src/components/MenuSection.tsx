@@ -92,7 +92,7 @@ export default function MenuSection({ title, subtitle, items, type }: MenuSectio
             className="flex gap-4 px-4 overflow-x-auto hide-scrollbar snap-x snap-mandatory pb-2 scroll-smooth"
           >
             {filteredItems.map((item) => (
-              <ComboCard key={item.id} item={item} />
+              <ComboCard key={item.id} item={item} source={title} />
             ))}
           </div>
         ) : type === "chef" ? (
@@ -102,14 +102,14 @@ export default function MenuSection({ title, subtitle, items, type }: MenuSectio
           >
             {filteredItems.map((item) => (
               <div key={item.id} className="flex-shrink-0 w-[85vw] max-w-[320px] md:w-80 snap-center">
-                <DishCard item={item} />
+                <DishCard item={item} source={title} />
               </div>
             ))}
           </div>
         ) : (
           <div className="px-4 space-y-3">
             {filteredItems.map((item) => (
-              <DishCard key={item.id} item={item} compact />
+              <DishCard key={item.id} item={item} compact source={title} />
             ))}
           </div>
         )}

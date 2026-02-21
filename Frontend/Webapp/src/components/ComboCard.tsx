@@ -4,9 +4,10 @@ import { Star, Plus, Minus, Sparkles } from "lucide-react";
 
 interface ComboCardProps {
   item: MenuItem;
+  source?: string;
 }
 
-export default function ComboCard({ item }: ComboCardProps) {
+export default function ComboCard({ item, source = "Combos" }: ComboCardProps) {
   const { addItem, removeItem, getItemQuantity } = useCart();
   const quantity = getItemQuantity(item.id);
   const savings = item.originalPrice ? item.originalPrice - item.price : 0;
@@ -85,7 +86,7 @@ export default function ComboCard({ item }: ComboCardProps) {
 
         {quantity === 0 ? (
           <button
-            onClick={() => addItem(item)}
+            onClick={() => addItem(item, false, source)}
             className="bg-card border-2 border-primary text-primary font-bold px-5 py-1.5 rounded-lg shadow-sm hover:bg-primary hover:text-primary-foreground transition-all text-sm"
           >
             ADD
@@ -93,7 +94,7 @@ export default function ComboCard({ item }: ComboCardProps) {
         ) : (
           <div className="flex items-center gap-1 bg-primary rounded-lg shadow-md overflow-hidden">
             <button
-              onClick={() => removeItem(item.id)}
+              onClick={() => removeItem(item.id, false, source)}
               className="p-2 text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <Minus className="w-4 h-4" />
@@ -102,7 +103,7 @@ export default function ComboCard({ item }: ComboCardProps) {
               {quantity}
             </span>
             <button
-              onClick={() => addItem(item)}
+              onClick={() => addItem(item, false, source)}
               className="p-2 text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <Plus className="w-4 h-4" />
