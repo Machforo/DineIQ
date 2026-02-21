@@ -11,7 +11,7 @@ import AIButton from "@/components/AIButton";
 import { saveLog } from "@/utils/logger";
 import { api } from "@/api";
 import { MenuItem, Category } from "@/lib/data";
-import { extractDynamicCategories } from "@/lib/categoryUtils";
+import { extractDynamicCategories, getMenuItemImage } from "@/lib/categoryUtils";
 import { Ticket, Percent, Gift } from "lucide-react";
 
 export default function HomeScreen() {
@@ -77,15 +77,20 @@ export default function HomeScreen() {
 
             // Map backend items to frontend format
             const mapToMenuItem = (item: any, category: string): MenuItem => {
-              return {
+              const baseItem = {
                 id: String(item.Item_ID || item.id || ''),
                 name: item.Item_Name || item.name || 'Unknown Item',
                 description: item.Item_Description || item.description || '',
                 price: parseFloat(String(item.Current_Price || item.price || 0).replace(/,/g, "")),
-                image: item.Image_URL || item.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c",
+                category: item.Item_Category || category || 'Other',
+                Image_URL: item.Image_URL || item.image, // Pass original URL for mapping if needed
+              };
+
+              return {
+                ...baseItem,
+                image: getMenuItemImage(item) || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c",
                 isVeg: (item.Is_Veg === true || String(item.Is_Veg).toLowerCase() === 'true') ||
                   (item.isVeg === true || String(item.isVeg).toLowerCase() === 'true'),
-                category: item.Item_Category || category || 'Other',
                 rating: 4.5,
                 ratingCount: 100,
                 comboItems: item.Combo_Items || [],

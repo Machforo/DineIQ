@@ -20,6 +20,7 @@ import {
   Star
 } from "lucide-react";
 import { saveLog } from "@/utils/logger";
+import { getMenuItemImage } from "@/lib/categoryUtils";
 
 export default function CartPage() {
   const navigate = useNavigate();
@@ -204,7 +205,7 @@ export default function CartPage() {
           >
             {/* Image */}
             <img
-              src={item.image}
+              src={getMenuItemImage(item)}
               alt={item.name}
               className="w-20 h-20 rounded-xl object-cover"
             />
@@ -284,7 +285,7 @@ export default function CartPage() {
                 {uniqueRecs.map((rec) => (
                   <div key={rec.Item_ID} className="flex-shrink-0 w-36 bg-white rounded-lg p-2 border border-gray-100 shadow-sm">
                     <div className="relative mb-2">
-                      <img src={rec.Image_URL || "https://images.unsplash.com/photo-1546833999-b9f581a1996d"} className="w-full h-24 object-cover rounded-md" />
+                      <img src={getMenuItemImage(rec) || "https://images.unsplash.com/photo-1546833999-b9f581a1996d"} className="w-full h-24 object-cover rounded-md" />
                       <div className={`absolute top-1 right-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${rec.Is_Veg ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                         {rec.Is_Veg ? "VEG" : "NON"}
                       </div>
@@ -333,7 +334,7 @@ export default function CartPage() {
                 {allUpsells.map((rec) => (
                   <div key={rec.Item_ID} className="flex-shrink-0 w-36 bg-white rounded-lg p-2 border border-gray-100 shadow-sm">
                     <div className="relative mb-2">
-                      <img src={rec.Image_URL} className="w-full h-24 object-cover rounded-md" />
+                      <img src={getMenuItemImage(rec)} className="w-full h-24 object-cover rounded-md" />
                       <button
                         onClick={() => handleAddRecommendation(rec)}
                         className="absolute -bottom-3 right-2 bg-white shadow-md text-green-600 font-bold px-3 py-1 rounded-md text-xs border border-green-100 uppercase">
@@ -506,7 +507,7 @@ export default function CartPage() {
                   {/* Image */}
                   <div className="relative h-36 -mx-4 -mt-4 mb-3">
                     <img
-                      src={combo.Image_URL}
+                      src={getMenuItemImage(combo)}
                       alt={combo.Item_Name}
                       className="w-full h-full object-cover"
                       onError={(e) => {
