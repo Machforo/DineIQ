@@ -13,8 +13,12 @@ import os, re
 from dotenv import load_dotenv
 load_dotenv()
 
+from functools import lru_cache
 from services.sheets import SheetsClient
-sheets_client = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
+
+@lru_cache(maxsize=1)
+def get_sheets_client() -> SheetsClient:
+    return SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
 
 from services.email import GmailClient
 
@@ -142,7 +146,7 @@ def find_row_by_phone(rows: list[dict], phone: str):
 def find_user_by_email(email: str):
     print(">>> Finding user by email:", email)
 
-    rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
+    rows = get_sheets_client().read_sheet_rows(CUSTOMER_AUTH_SHEET)
     row = find_row_by_email(rows, email)
 
     if not row:
@@ -157,7 +161,7 @@ def find_user_by_email(email: str):
 def find_user_by_phone(phone: str):
     print(">>> Finding user by phone:", phone)
 
-    rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
+    rows = get_sheets_client().read_sheet_rows(CUSTOMER_AUTH_SHEET)
     row = find_row_by_phone(rows, phone)
 
     if not row:
@@ -170,14 +174,14 @@ def find_user_by_phone(phone: str):
     }
 
 def update_last_login_by_phone(phone: str):
-    rows = sheets_client.read_sheet(CUSTOMER_AUTH_SHEET)
+    rows = get_sheets_client().read_sheet(CUSTOMER_AUTH_SHEET)
 
     row = rows[rows["Customer_Phone"].astype(str) == str(phone)]
     if row.empty:
         return
 
     row_num = row.index[0] + 2
-    sheets_client.update_cell(
+    get_sheets_client().update_cell(
         CUSTOMER_AUTH_SHEET,
         f"I{row_num}",  # Last_Login_DateTime
         time.strftime("%d/%m/%Y %H:%M:%S"),
@@ -199,7 +203,7 @@ def generate_next_customer_id(rows: list[dict]) -> str:
 def save_otp_for_email(email, otp, name=None, mobile=None):
     print(">>> Saving OTP for:", email)
 
-    rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
+    rows = get_sheets_client().read_sheet_rows(CUSTOMER_AUTH_SHEET)
 
     otp_hash = sha256(otp)
     expiry = int(time.time()) + 300
@@ -212,8 +216,8 @@ def save_otp_for_email(email, otp, name=None, mobile=None):
 
         print(">>> Updating existing row:", row_num)
 
-        sheets_client.update_cell(CUSTOMER_AUTH_SHEET, f"F{row_num}", otp_hash)
-        sheets_client.update_cell(CUSTOMER_AUTH_SHEET, f"G{row_num}", expiry)
+        get_sheets_client().update_cell(CUSTOMER_AUTH_SHEET, f"F{row_num}", otp_hash)
+        get_sheets_client().update_cell(CUSTOMER_AUTH_SHEET, f"G{row_num}", expiry)
         return
 
     # ---- New signup ----
@@ -222,7 +226,7 @@ def save_otp_for_email(email, otp, name=None, mobile=None):
     customer_id = generate_next_customer_id(rows)
     print(">>> Generated Customer_ID:", customer_id)
 
-    sheets_client.append_row(
+    get_sheets_client().append_row(
         CUSTOMER_AUTH_SHEET,
         [
             customer_id,                # Customer_ID (A)           <-- Customer ID is created for a new signup
@@ -241,7 +245,7 @@ def save_otp_for_email(email, otp, name=None, mobile=None):
 def verify_otp_for_email(email, otp):
     print(">>> Verifying OTP for:", email)
 
-    rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
+    rows = get_sheets_client().read_sheet_rows(CUSTOMER_AUTH_SHEET)
 
     entered_hash = sha256(otp)
     now = int(time.time())
@@ -261,7 +265,7 @@ def verify_otp_for_email(email, otp):
 
     # Update last login time
     row_num = rows.index(row) + 2
-    sheets_client.update_cell(
+    get_sheets_client().update_cell(
         CUSTOMER_AUTH_SHEET,
         f"I{row_num}",  # Last_Login_DateTime
         time.strftime("%d/%m/%Y %H:%M:%S"),

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+﻿import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
 import HomeHeader, { HomeHeaderHandle } from "@/components/HomeHeader";
@@ -51,21 +51,21 @@ export default function HomeScreen() {
       title: "Flat ₹50 OFF",
       subtitle: "On orders above ₹299",
       icon: Ticket,
-      color: "from-orange-500 to-red-500"
+      color: "from-maroon to-maroon-dark"
     },
     {
       code: "COMBO30",
       title: "30% OFF",
       subtitle: "On all combo meals",
       icon: Percent,
-      color: "from-green-500 to-emerald-500"
+      color: "from-maroon-light to-maroon-dark"
     },
     {
       code: "FIRST100",
       title: "₹100 OFF",
       subtitle: "First order bonus",
       icon: Gift,
-      color: "from-purple-500 to-pink-500"
+      color: "from-maroon to-maroon-dark"
     }
   ];
 
@@ -75,7 +75,7 @@ export default function HomeScreen() {
       setIsLoadingAICombos(true);
       const userEmail = user?.email || "";
 
-      console.log("🤖 Fetching AI combos for:", userEmail);
+      console.log("ðŸ¤– Fetching AI combos for:", userEmail);
 
       const response = await axios.post(
         `${API_BASE_URL}/generate-combos`,
@@ -85,20 +85,20 @@ export default function HomeScreen() {
         }
       );
 
-      console.log("🎯 AI Combos Response:", response.data);
+      console.log("ðŸŽ¯ AI Combos Response:", response.data);
 
       if (response.data?.combos && response.data.combos.length > 0) {
         setAiCombos(response.data.combos);
         saveLog(userEmail, "AI_COMBOS_LOADED", `Loaded ${response.data.combos.length} AI combos`);
-        toast.success("✨ Fresh AI combos generated!", {
+        toast.success("âœ¨ Fresh AI combos generated!", {
           description: `${response.data.combos.length} personalized combos ready`
         });
       } else {
-        console.warn("⚠️ No AI combos received");
+        console.warn("âš ï¸ No AI combos received");
         toast.info("Using smart combos instead");
       }
     } catch (error) {
-      console.error("❌ Error loading AI combos:", error);
+      console.error("âŒ Error loading AI combos:", error);
       toast.error("Could not load AI combos, showing smart combos");
     } finally {
       setIsLoadingAICombos(false);
@@ -122,7 +122,7 @@ export default function HomeScreen() {
 
           // 2. Fetch Menu
           const menuData = await api.fetchMenu(userEmail);
-          console.log("📥 Menu Data:", menuData);
+          console.log("ðŸ“¥ Menu Data:", menuData);
 
           if (menuData?.status === "success" && menuData?.menu_sections) {
             const sections = menuData.menu_sections;
@@ -132,18 +132,29 @@ export default function HomeScreen() {
 
             // Map backend items to frontend format
             const mapToMenuItem = (item: any, category: string): MenuItem => {
+              const description = item.Item_Description || item.description || item.Item_Category || '';
+              let comboItems = item.Combo_Items || item.comboItems || [];
+
+              // If no combo items but description has separators, parse it
+              if (comboItems.length === 0 && description) {
+                const parts = description.split(/[•\+\,]/).map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+                if (parts.length > 1) {
+                  comboItems = parts;
+                }
+              }
+
               return {
                 id: String(item.Item_ID || item.id || ''),
                 name: item.Item_Name || item.name || 'Unknown Item',
-                description: item.Item_Description || item.description || item.Item_Category || '',
+                description: description,
                 price: parseFloat(String(item.Current_Price || item.price || 0)),
                 image: item.Image_URL || item.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c",
                 isVeg: Boolean(item.Is_Veg || item.isVeg),
                 category: item.Item_Category || category || 'Other',
                 rating: 4.5,
                 ratingCount: 100,
-                comboItems: item.Combo_Items || [],
-                isCombo: category === "Combos" || (item.Combo_Items && item.Combo_Items.length > 0) || Boolean(item.isCombo),
+                comboItems: comboItems,
+                isCombo: category === "Combos" || comboItems.length > 0 || Boolean(item.isCombo),
               };
             };
 
@@ -165,7 +176,7 @@ export default function HomeScreen() {
               }
             });
 
-            console.log(`✅ Loaded ${allItems.length} items`);
+            console.log(`âœ… Loaded ${allItems.length} items`);
             setFullMenu(allItems);
             setMenuItems(allItems);
 
@@ -182,7 +193,7 @@ export default function HomeScreen() {
           await loadAICombos();
 
         } catch (e) {
-          console.error("❌ Error:", e);
+          console.error("âŒ Error:", e);
         } finally {
           setIsLoading(false);
         }
@@ -206,7 +217,7 @@ export default function HomeScreen() {
   };
 
   const handleSearch = useCallback((query: string) => {
-    console.log("🔍 Search Query:", query);
+    console.log("ðŸ” Search Query:", query);
     setSearchQuery(query);
     if (query) {
       setSelectedCategory(null);
@@ -250,7 +261,8 @@ export default function HomeScreen() {
         isVeg: true,
         category: 'Combos',
         rating: 4.6,
-        ratingCount: 156
+        ratingCount: 156,
+        comboItems: [riceItems[0].name, gravyItems[0].name, breadItems[0].name]
       });
     }
 
@@ -266,7 +278,8 @@ export default function HomeScreen() {
         isVeg: true,
         category: 'Combos',
         rating: 4.4,
-        ratingCount: 98
+        ratingCount: 98,
+        comboItems: [gravyItems[1].name, breadItems[1].name, "Raita"]
       });
     }
 
@@ -282,7 +295,8 @@ export default function HomeScreen() {
         isVeg: true,
         category: 'Combos',
         rating: 4.7,
-        ratingCount: 234
+        ratingCount: 234,
+        comboItems: [starterItems[0].name, riceItems[0].name, gravyItems[0].name]
       });
     }
 
@@ -313,7 +327,7 @@ export default function HomeScreen() {
   if (!isLoggedIn) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-28 relative overflow-x-hidden">
+    <div className="min-h-screen bg-background pb-28 relative overflow-x-hidden">
 
       <HomeHeader ref={headerRef} onSearch={handleSearch} searchQuery={searchQuery} />
 
@@ -343,15 +357,15 @@ export default function HomeScreen() {
                     <div className="mb-6">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-1 h-8 bg-[#E23744] rounded-full" />
+                          <div className="w-1 h-8 bg-primary rounded-full" />
                           <div>
-                            <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
-                              <Sparkles className="w-5 h-5 text-[#E23744]" />
-                              AI-Crafted Combos
+                            <h2 className="text-xl font-black text-gray-900 flex items-center gap-2 font-serif">
+                              <Sparkles className="w-5 h-5 text-primary" />
+                              Harvest-Inspired Combos
                             </h2>
                             <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
                               <span className="inline-block w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                              Personalized for you • Save up to 15%
+                              Personalized for you â€¢ Save up to 15%
                             </p>
                           </div>
                         </div>
@@ -361,7 +375,7 @@ export default function HomeScreen() {
                           disabled={isLoadingAICombos}
                           variant="outline"
                           size="sm"
-                          className="border-gray-200 text-gray-600 hover:border-[#E23744] hover:text-[#E23744] transition-all text-xs"
+                          className="border-gray-200 text-gray-600 hover:border-primary hover:text-primary transition-all text-xs"
                         >
                           <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isLoadingAICombos ? 'animate-spin' : ''}`} />
                           {isLoadingAICombos ? 'Loading...' : 'Refresh'}
@@ -388,7 +402,7 @@ export default function HomeScreen() {
                   /* Fallback to Smart Combos */
                   <div id="smart-combos">
                     <MenuSection
-                      title="🎁 Smart Combos"
+                      title="ðŸŽ Smart Combos"
                       subtitle="AI-curated combo deals - Save more!"
                       items={combos}
                       type="combos"
@@ -445,10 +459,10 @@ export default function HomeScreen() {
         {!isLoading && chefSpecials.length > 0 && !selectedCategory && !searchQuery && (
           <div id="chef-recs" className="px-4 scroll-mt-24">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-1 h-7 bg-[#E23744] rounded-full" />
+              <div className="w-1 h-7 bg-primary rounded-full" />
               <div>
-                <h2 className="text-xl font-black text-gray-900">⭐ Chef's Special</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Hand-picked premium dishes</p>
+                <h2 className="text-xl font-black text-gray-900 font-serif">ðŸŒ¿ Chef's Special</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Fresh from the harvest</p>
               </div>
             </div>
             <MenuSection
@@ -464,10 +478,10 @@ export default function HomeScreen() {
         {!isLoading && displayedItems.length > 0 && (
           <div id="all-dishes" className="px-4 scroll-mt-24">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-1 h-7 bg-[#E23744] rounded-full" />
+              <div className="w-1 h-7 bg-primary rounded-full" />
               <div className="flex-1">
                 <h2 className="text-xl font-black text-gray-900">
-                  {searchQuery ? `"${searchQuery}"` : selectedCategory ? `${selectedCategory}` : "🍽️ All Dishes"}
+                  {searchQuery ? `"${searchQuery}"` : selectedCategory ? `${selectedCategory}` : "ðŸ½ï¸ All Dishes"}
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
                   {searchQuery ? `${displayedItems.length} results found` : selectedCategory ? `${selectedCategory} dishes` : `${displayedItems.length} items`}
@@ -485,9 +499,9 @@ export default function HomeScreen() {
             {(selectedCategory || searchQuery) && (
               <button
                 onClick={() => { setSelectedCategory(null); setSearchQuery(""); }}
-                className="mx-auto mt-8 w-full max-w-md block text-center text-orange-600 text-sm font-bold p-3.5 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl border-2 border-orange-200 hover:border-orange-400 transition-all shadow-md hover:shadow-lg"
+                className="mx-auto mt-8 w-full max-w-md block text-center text-orange-600 text-sm font-bold p-3.5 bg-gradient-to-r from-orange-50 to-maroon-dark rounded-xl border-2 border-orange-200 hover:border-orange-400 transition-all shadow-md hover:shadow-lg"
               >
-                ← View Complete Menu
+                â† View Complete Menu
               </button>
             )}
           </div>
@@ -496,7 +510,7 @@ export default function HomeScreen() {
         {/* Empty State */}
         {!isLoading && displayedItems.length === 0 && (
           <div className="p-16 text-center">
-            <div className="text-7xl mb-6 animate-bounce">🔍</div>
+            <div className="text-7xl mb-6 animate-bounce">ðŸ”</div>
             <p className="text-2xl font-bold text-gray-800 mb-2">No items found</p>
             <p className="text-gray-500 mb-6">Try adjusting your search or browse our categories</p>
             <button

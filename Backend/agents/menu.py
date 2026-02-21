@@ -10,6 +10,7 @@ import pandas as pd
 # import agents and services classes
 from services.sheets import SheetsClient
 from services.llm import GroqClient
+from functools import lru_cache
 
 # ---------------------------------------------------------
 # Load environment variables
@@ -54,7 +55,10 @@ class MenuAgent:
         
         self.veg_keywords = ['paneer', 'aloo', 'gobi', 'dal', 'roti', 'naan', 'rice', 
                             'veg', 'vegetable', 'bhindi', 'palak', 'matar', 'raita',
-                            'lassi', 'juice', 'smoothie', 'salad']
+                            'lassi', 'juice', 'smoothie', 'salad', 'idli', 'dosa',
+                            'sambar', 'vada', 'poha', 'upma', 'paratha', 'kulcha',
+                            'chole', 'rajma', 'kofta', 'baingan', 'bharta', 'jeera',
+                            'curriveg', 'mix-veg', 'paneer-tikka']
 
     # -------------------------------------------------------------------
     # 🍽️ Public API
@@ -91,16 +95,7 @@ class MenuAgent:
         print(f">>> Menu: {len(df)} unique active items after deduplication")
 
         # Shape response for frontend
-        return [
-            {
-                "id":       row["Item_ID"],
-                "name":     row["Item_Name"],
-                "price":    float(row["Current_Price"]) if row["Current_Price"] != "" else None,
-                "category": row.get("Item_Category", ""),
-                "isVeg":    str(row.get("Is_Veg", "")).strip().lower() in ["1", "yes", "true", "veg"],
-            }
-            for _, row in df.iterrows()
-        ]
+        return [self._format_item_row(row) for _, row in df.iterrows()]
 
     # -------------------------------------------------------------------
     # 🔹 Format menu for frontend (simplified)
@@ -142,17 +137,12 @@ class MenuAgent:
             if rank_threshold is not None and row.get("gemini_rank", 9999) < rank_threshold:
                 matches.extend(["AOV", "Attitude"])
 
-            formatted_menu.append({
-                "name": row.get("Item_Name", ""),
-                "price": (
-                    float(row["Current_Price"])
-                    if row.get("Current_Price") not in (None, "")
-                    else None
-                ),
+            item_obj = self._format_item_row(row)
+            item_obj.update({
                 "matching": matches if matches else None,
-                "rank": int(_ + 1)  # 🔍 TEST ONLY — safe to remove
-
+                "rank": int(_ + 1)
             })
+            formatted_menu.append(item_obj)
 
         return formatted_menu
 
@@ -403,10 +393,44 @@ class MenuAgent:
     def _is_veg_item(self, item_name: str) -> bool:
         """Detect if item is vegetarian based on name"""
         name_lower = str(item_name).lower()
-        non_veg = ['chicken', 'mutton', 'fish', 'egg', 'meat', 'prawn', 'lamb']
+        non_veg = ['chicken', 'mutton', 'fish', 'egg', 'meat', 'prawn', 'lamb', 'pork', 'beef', 'duck', 'shrimp', 'crab', 'keema', 'pepperoni', 'ham', 'bacon']
         if any(word in name_lower for word in non_veg): return False
         if any(word in name_lower for word in self.veg_keywords): return True
         return True # Default safe
+
+    def _format_item_row(self, row: pd.Series) -> dict:
+        """Robust unified formatter for a menu item row"""
+        item_name = str(row.get('Item_Name', 'Unknown'))
+        category = str(row.get('Item_Category', 'General'))
+        is_veg = self._is_veg_item(item_name)
+        
+        # Check if Sheet already has Is_Veg
+        if 'Is_Veg' in row and pd.notna(row['Is_Veg']):
+            sheet_veg = str(row['Is_Veg']).strip().lower()
+            if sheet_veg in ['yes', '1', 'true', 'veg']:
+                is_veg = True
+            elif sheet_veg in ['no', '0', 'false', 'non-veg']:
+                is_veg = False
+
+        return {
+            'id': str(row.get('Item_ID', '')),
+            'Item_ID': str(row.get('Item_ID', '')),
+            'name': item_name,
+            'Item_Name': item_name,
+            'description': self._get_item_description(category, item_name),
+            'Item_Description': self._get_item_description(category, item_name),
+            'price': float(row['Current_Price']) if pd.notna(row.get('Current_Price')) and row['Current_Price'] != '' else 0.0,
+            'Current_Price': float(row['Current_Price']) if pd.notna(row.get('Current_Price')) and row['Current_Price'] != '' else 0.0,
+            'image': self._get_image_for_item(category, item_name),
+            'Image_URL': self._get_image_for_item(category, item_name),
+            'isVeg': is_veg,
+            'Is_Veg': is_veg,
+            'category': category,
+            'Item_Category': category,
+            'Dietary_Type': 'Veg' if is_veg else 'Non-Veg',
+            'rating': 4.5,
+            'ratingCount': 100
+        }
 
     def _get_image_for_item(self, category: str, item_name: str) -> str:
         """Get appropriate image based on category or item name"""
@@ -468,22 +492,11 @@ class MenuAgent:
                 menu_df["Is_Active"] = menu_df["Is_Active"].astype(str).str.strip().str.lower().isin(valid_status)
                 active_df = menu_df[menu_df["Is_Active"]].copy()
                 if active_df.empty: active_df = menu_df.copy() # Fallback
-
-                # Helper
-                def format_item(row) -> dict:
-                    item_name = str(row['Item_Name'])
-                    category = str(row['Item_Category'])
-                    return {
-                        'Item_ID': str(row['Item_ID']),
-                        'Item_Name': item_name,
-                        'Item_Description': self._get_item_description(category, item_name),
-                        'Current_Price': float(row['Current_Price']) if row['Current_Price'] else 0.0,
-                        'Image_URL': self._get_image_for_item(category, item_name),
-                        'Is_Veg': self._is_veg_item(item_name),
-                        'Item_Category': category,
-                        'Dietary_Type': 'Veg' if self._is_veg_item(item_name) else 'Non-Veg'
-                    }
                 
+                # DEDUPLICATE BEFORE SELECTION: Ensure we work with unique names
+                active_df = active_df.drop_duplicates(subset=['Item_Name'], keep='first')
+
+                # Unified Global Data
                 global_sections = {}
                 
                 # A. BESTSELLERS & CHEF SPECIAL (Need Order Stats)
@@ -491,22 +504,25 @@ class MenuAgent:
                     order_items_df = self.sheets_client.read_sheet("Order_Items")
                     
                     # Bestsellers
+                    bestseller_names = []
                     if not order_items_df.empty:
                         popular_names = order_items_df['Item_Name'].value_counts().head(6).index
                         bestsellers = active_df[active_df['Item_Name'].isin(popular_names)]
-                        # DEDUPLICATION: Remove duplicates from bestsellers
-                        bestsellers = bestsellers.drop_duplicates(subset=['Item_Name'], keep='first')
                         if not bestsellers.empty:
-                            global_sections["Bestseller"] = [format_item(row) for _, row in bestsellers.iterrows()]
+                            global_sections["Bestseller"] = [self._format_item_row(row) for _, row in bestsellers.iterrows()]
+                            bestseller_names = bestsellers['Item_Name'].tolist()
 
-                    # Chef Special
-                    active_df['Price_Float'] = pd.to_numeric(active_df['Current_Price'], errors='coerce').fillna(0)
-                    sorted_by_price = active_df.sort_values(by='Price_Float', ascending=False)
-                    chef_special = sorted_by_price.head(max(1, int(len(sorted_by_price) * 0.3))).head(8)
-                    # DEDUPLICATION: Remove duplicates from chef special
-                    chef_special = chef_special.drop_duplicates(subset=['Item_Name'], keep='first')
-                    if not chef_special.empty:
-                        global_sections["Chef Special"] = [format_item(row) for _, row in chef_special.iterrows()]
+                    # Chef Special (Exclude Bestsellers to avoid duplicates in UI)
+                    chef_candidates = active_df[~active_df['Item_Name'].isin(bestseller_names)].copy()
+                    if not chef_candidates.empty:
+                        chef_candidates['Price_Float'] = pd.to_numeric(chef_candidates['Current_Price'], errors='coerce').fillna(0)
+                        sorted_by_price = chef_candidates.sort_values(by='Price_Float', ascending=False)
+                        # Pick top 8 unique premium items
+                        chef_special = sorted_by_price.head(8)
+                        if not chef_special.empty:
+                            global_sections["Chef Special"] = [self._format_item_row(row) for _, row in chef_special.iterrows()]
+                            # Add alias for frontend compatibility if needed
+                            global_sections["Chef Recommendation"] = global_sections["Chef Special"]
                         
                 except Exception as e:
                     print(f"Stats Error: {e}")
@@ -517,7 +533,7 @@ class MenuAgent:
                     if not category: continue
                     cat_items = active_df[active_df['Item_Category'] == category]
                     if not cat_items.empty:
-                        global_sections[category] = [format_item(row) for _, row in cat_items.iterrows()]
+                        global_sections[category] = [self._format_item_row(row) for _, row in cat_items.iterrows()]
                 
                 base_data = {
                     "menu_sections": global_sections,
@@ -550,22 +566,7 @@ class MenuAgent:
                              fav_items = active_df[active_df['Item_Name'].isin(past_items)]
                              if not fav_items.empty:
                                  # Format favorites
-                                 fav_list = []
-                                 for _, row in fav_items.iterrows():
-                                     # Re-use format logic (duplicated strictly locally or we can extract helper)
-                                     # For speed, we just do it here
-                                     item_name = str(row['Item_Name'])
-                                     category = str(row['Item_Category'])
-                                     fav_list.append({
-                                         'Item_ID': str(row['Item_ID']),
-                                         'Item_Name': item_name,
-                                         'Item_Description': self._get_item_description(category, item_name),
-                                         'Current_Price': float(row['Current_Price']) if row['Current_Price'] else 0.0,
-                                         'Image_URL': self._get_image_for_item(category, item_name),
-                                         'Is_Veg': self._is_veg_item(item_name),
-                                         'Item_Category': category,
-                                         'Dietary_Type': 'Veg' if self._is_veg_item(item_name) else 'Non-Veg'
-                                     })
+                                 fav_list = [self._format_item_row(row) for _, row in fav_items.iterrows()]
                                  final_sections = {"Your Favorites": fav_list, **final_sections}
                 except Exception as e:
                     print(f"Personalization Error: {e}")
@@ -584,12 +585,14 @@ class MenuAgent:
 
 
 # ---------------------------------------------------------
-# Dependency: MenuAgent instance
+# Dependency: MenuAgent instance (Lazy Singleton)
 # ---------------------------------------------------------
-menu_agent = MenuAgent()
+@lru_cache(maxsize=1)
+def get_menu_agent_instance() -> MenuAgent:
+    return MenuAgent()
 
 def get_menu_agent() -> MenuAgent:
-    return menu_agent
+    return get_menu_agent_instance()
 
 
 # ---------------------------------------------------------

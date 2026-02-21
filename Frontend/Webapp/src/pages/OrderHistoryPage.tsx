@@ -104,7 +104,7 @@ export default function OrderHistoryPage() {
           >
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
-          <h1 className="text-xl font-bold text-foreground">Order History</h1>
+          <h1 className="text-xl font-bold text-foreground font-serif">Order History</h1>
         </div>
       </header>
 

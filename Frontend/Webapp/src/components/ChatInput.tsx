@@ -41,7 +41,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   }, [disabled]);
 
   return (
-    <div className="flex gap-2 items-end bg-gray-100 p-2 rounded-[2rem] border border-gray-200 focus-within:ring-2 focus-within:ring-[#E23744]/20 focus-within:border-[#E23744] transition-all shadow-inner">
+    <div className="flex gap-2 items-end bg-gray-100 p-2 rounded-[2rem] border border-gray-200 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all shadow-inner">
       <button className="p-3 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-200">
         <Mic className="w-5 h-5" />
       </button>
@@ -62,8 +62,8 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         onClick={handleSend}
         disabled={!message.trim() || disabled}
         className={`w-11 h-11 shrink-0 rounded-full flex items-center justify-center transition-all duration-300 shadow-md transform ${message.trim() && !disabled
-            ? "bg-[#E23744] text-white hover:scale-105 hover:shadow-lg"
-            : "bg-gray-200 text-gray-400 cursor-not-allowed"
+          ? "bg-primary text-white hover:scale-105 hover:shadow-lg"
+          : "bg-gray-200 text-gray-400 cursor-not-allowed"
           }`}
       >
         <Send className="w-5 h-5 ml-0.5" />

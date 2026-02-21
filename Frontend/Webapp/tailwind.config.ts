@@ -22,9 +22,10 @@ export default {
       },
     },
     extend: {
-      // 1. FONT MATCHING (Jo index.css mein import kiya hai)
+      // 1. FONT MATCHING
       fontFamily: {
-        sans: ["Plus Jakarta Sans", "sans-serif"],
+        sans: ["Inter", "sans-serif"],
+        serif: ["Playfair Display", "serif"],
       },
       // 2. COLOR VARIABLES MAPPING
       colors: {
@@ -34,7 +35,7 @@ export default {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "hsl(var(--primary))", // Zomato Red (via CSS variable)
+          DEFAULT: "hsl(var(--primary))", // Harvest Green
           foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {
@@ -61,14 +62,18 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Custom Zomato Colors
+        // Custom Theme Colors — Maroon
         gold: {
           DEFAULT: "hsl(var(--gold))",
           foreground: "hsl(var(--gold-foreground))",
         },
+        maroon: {
+          DEFAULT: "hsl(var(--maroon))",
+          dark: "hsl(var(--maroon-dark))",
+          light: "hsl(var(--maroon-light))",
+        },
         veg: "hsl(var(--veg-green))",
         nonveg: "hsl(var(--non-veg-red))",
-        rating: "hsl(var(--rating-star))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -136,5 +141,8 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    // @ts-ignore
+    require("tailwindcss-animate")
+  ],
 } satisfies Config;

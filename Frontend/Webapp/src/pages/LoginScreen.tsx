@@ -166,9 +166,9 @@ export default function LoginScreen() {
       <div className="h-[35vh] relative w-full overflow-hidden">
         <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-        <div className="absolute bottom-8 left-6 right-6 text-white animate-fade-in">
-          <h1 className="text-4xl font-black tracking-tighter mb-1">DineIQ <span className="text-[#E23744]">Kitchen</span></h1>
-          <p className="text-gray-300 text-sm font-medium">India's #1 Table Ordering App</p>
+        <div className="absolute bottom-8 left-6 right-6 text-white animate-fade-in text-center">
+          <h1 className="text-4xl font-black tracking-tighter mb-1 font-serif">Harvest <span className="text-primary">DineIQ</span></h1>
+          <p className="text-gray-300 text-sm font-medium">Bounty from the earth, served with care</p>
         </div>
       </div>
 
@@ -195,8 +195,8 @@ export default function LoginScreen() {
               {step === 1 ? (
                 <>
                   <div className="flex gap-4 border-b border-gray-100 pb-2">
-                    <button onClick={() => setLoginMethod("phone")} className={`text-sm font-bold transition-all pb-1 ${loginMethod === "phone" ? "text-[#E23744] border-b-2 border-[#E23744]" : "text-gray-400"}`}>Phone</button>
-                    <button onClick={() => setLoginMethod("email")} className={`text-sm font-bold transition-all pb-1 ${loginMethod === "email" ? "text-[#E23744] border-b-2 border-[#E23744]" : "text-gray-400"}`}>Email</button>
+                    <button onClick={() => setLoginMethod("phone")} className={`text-sm font-bold transition-all pb-1 ${loginMethod === "phone" ? "text-primary border-b-2 border-primary" : "text-gray-400"}`}>Phone</button>
+                    <button onClick={() => setLoginMethod("email")} className={`text-sm font-bold transition-all pb-1 ${loginMethod === "email" ? "text-primary border-b-2 border-primary" : "text-gray-400"}`}>Email</button>
                   </div>
 
                   {loginMethod === "phone" ? (
@@ -204,12 +204,12 @@ export default function LoginScreen() {
                       <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 border-r border-gray-300 pr-3">
                         <span className="font-bold text-gray-900">+91</span>
                       </div>
-                      <Input type="tel" maxLength={10} placeholder="Mobile Number" value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))} className="pl-24 h-14 bg-gray-50 border-gray-200 focus:border-[#E23744] rounded-xl font-bold text-lg" />
+                      <Input type="tel" maxLength={10} placeholder="Mobile Number" value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))} className="pl-24 h-14 bg-gray-50 border-gray-200 focus:border-primary rounded-xl font-bold text-lg" />
                     </div>
                   ) : (
                     <div className="relative group">
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                      <Input placeholder="Email Address" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-12 h-14 bg-gray-50 border-gray-200 focus:border-[#E23744] rounded-xl font-medium text-lg" />
+                      <Input placeholder="Email Address" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-12 h-14 bg-gray-50 border-gray-200 focus:border-primary rounded-xl font-medium text-lg" />
                     </div>
                   )}
                 </>
@@ -259,7 +259,7 @@ export default function LoginScreen() {
               }
             }}
             disabled={isLoading}
-            className="w-full h-14 bg-[#E23744] hover:bg-[#d32f3c] text-white font-bold text-lg rounded-xl shadow-lg mt-2 transition-all"
+            className="w-full h-14 bg-primary hover:bg-[#243d33] text-white font-bold text-lg rounded-xl shadow-lg mt-2 transition-all"
           >
             {isLoading ? <Loader2 className="animate-spin mr-2" /> : (
               activeTab === "login"

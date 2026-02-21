@@ -1,4 +1,4 @@
-import { useCart } from "@/contexts/CartContext";
+﻿import { useCart } from "@/contexts/CartContext";
 import { Plus, Minus, Star, Sparkles } from "lucide-react";
 import { MenuItem } from "@/lib/data";
 
@@ -31,14 +31,14 @@ export default function ComboCard({ item }: ComboCardProps) {
           {savings > 0 && (
             <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-xl flex items-center gap-1.5">
               <Star className="w-3.5 h-3.5 fill-current" />
-              <span>SAVE ₹{savings}</span>
+              <span>SAVE â‚¹{savings}</span>
             </div>
           )}
 
           {/* Combo Badge */}
-          <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-xl flex items-center gap-1.5">
+          <div className="bg-gradient-to-r from-accent to-[#8B4513] text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-xl flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 fill-current" />
-            <span>Combo</span>
+            <span>Harvest Special</span>
           </div>
         </div>
 
@@ -56,7 +56,7 @@ export default function ComboCard({ item }: ComboCardProps) {
         {/* Rating Badge */}
         {item.rating && (
           <div className="absolute bottom-4 right-4 z-20 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1">
-            <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+            <Star className="w-3.5 h-3.5 fill-yellow-400 text-maroon" />
             <span className="text-xs font-bold text-gray-900">{item.rating}</span>
           </div>
         )}
@@ -73,22 +73,38 @@ export default function ComboCard({ item }: ComboCardProps) {
         </p>
 
         {/* Combo Items */}
-        {item.comboItems && item.comboItems.length > 0 && (
-          <div className="mb-4 p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
-            <p className="text-xs text-gray-700 font-medium">
-              {item.comboItems.map((ci: any) => ci.name).join(" • ")}
-            </p>
-          </div>
-        )}
+        {(() => {
+          let itemsToShow = [];
+          if (item.comboItems && item.comboItems.length > 0) {
+            itemsToShow = item.comboItems;
+          } else if (item.description) {
+            // Regex to split by dot, plus, or comma with optional spaces
+            const parts = item.description.split(/[•\+\,]/).map(s => s.trim()).filter(s => s.length > 0);
+            if (parts.length > 1) {
+              itemsToShow = parts;
+            }
+          }
+
+          if (itemsToShow.length > 0) {
+            return (
+              <div className="mb-4 p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
+                <p className="text-xs text-gray-700 font-medium">
+                  {itemsToShow.map((ci: any) => typeof ci === 'string' ? ci : (ci.name || ci.item_name || 'Item')).join(" • ")}
+                </p>
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         {/* Price & Action */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
           <div className="flex flex-col">
             {item.originalPrice && (
-              <span className="text-sm text-gray-400 line-through font-medium">₹{item.originalPrice}</span>
+              <span className="text-sm text-gray-400 line-through font-medium">â‚¹{item.originalPrice}</span>
             )}
             <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-black text-gray-900">₹{item.price}</span>
+              <span className="text-2xl font-black text-gray-900">â‚¹{item.price}</span>
               {discountPercent > 0 && (
                 <span className="text-xs font-bold text-green-600">
                   {discountPercent}% OFF
@@ -100,12 +116,12 @@ export default function ComboCard({ item }: ComboCardProps) {
           {quantity === 0 ? (
             <button
               onClick={() => addItem(item)}
-              className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-sm uppercase tracking-wider transform hover:scale-105 active:scale-95"
+              className="bg-primary hover:bg-[#243d33] text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-sm uppercase tracking-wider transform hover:scale-105 active:scale-95"
             >
               ADD
             </button>
           ) : (
-            <div className="flex items-center bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg overflow-hidden h-11">
+            <div className="flex items-center bg-primary rounded-xl shadow-lg overflow-hidden h-11">
               <button
                 onClick={() => removeItem(item.id)}
                 className="w-10 h-full flex items-center justify-center text-white hover:bg-black/10"
@@ -131,3 +147,4 @@ export default function ComboCard({ item }: ComboCardProps) {
     </div>
   );
 }
+

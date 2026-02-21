@@ -15,8 +15,8 @@ export default function DishCard({ item, compact = false }: DishCardProps) {
   const VegBadge = ({ size = "sm" }: { size?: "sm" | "lg" }) => {
     const sz = size === "sm" ? "w-4 h-4" : "w-5 h-5";
     return (
-      <div className={`${sz} border-2 rounded-sm flex items-center justify-center p-[2px] bg-white shadow-sm ${item.isVeg ? 'border-green-600' : 'border-red-600'}`}>
-        <div className={`w-full h-full rounded-full ${item.isVeg ? 'bg-green-600' : 'bg-red-600'}`} />
+      <div className={`${sz} border-2 rounded-sm flex items-center justify-center p-[2px] bg-white shadow-sm ${item.isVeg ? 'border-veg-green' : 'border-non-veg-red'}`}>
+        <div className={`w-full h-full rounded-full ${item.isVeg ? 'bg-veg-green' : 'bg-non-veg-red'}`} />
       </div>
     );
   };
@@ -49,7 +49,7 @@ export default function DishCard({ item, compact = false }: DishCardProps) {
             )}
             {item.rating && (
               <div className="flex items-center gap-1 mt-1.5">
-                <div className="flex items-center gap-0.5 bg-green-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
+                <div className="flex items-center gap-0.5 bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
                   <Star className="w-2.5 h-2.5 fill-white" strokeWidth={0} />
                   {item.rating}
                 </div>
@@ -65,12 +65,12 @@ export default function DishCard({ item, compact = false }: DishCardProps) {
             {quantity === 0 ? (
               <button
                 onClick={() => addItem(item)}
-                className="text-[#E23744] border-2 border-[#E23744] font-black text-xs px-4 py-1.5 rounded-lg hover:bg-[#E23744] hover:text-white transition-all duration-200 uppercase tracking-wider active:scale-95"
+                className="text-primary border-2 border-primary font-black text-xs px-4 py-1.5 rounded-lg hover:bg-primary hover:text-white transition-all duration-200 uppercase tracking-wider active:scale-95"
               >
                 ADD
               </button>
             ) : (
-              <div className="flex items-center gap-1 bg-[#E23744] rounded-lg overflow-hidden h-8 shadow-md">
+              <div className="flex items-center gap-1 bg-primary rounded-lg overflow-hidden h-8 shadow-md">
                 <button
                   onClick={() => removeItem(item.id)}
                   className="w-8 h-full flex items-center justify-center text-white hover:bg-black/10 transition-colors"
@@ -111,7 +111,7 @@ export default function DishCard({ item, compact = false }: DishCardProps) {
 
         {/* Rating */}
         {item.rating && (
-          <div className="absolute top-3 right-3 z-20 bg-green-600 text-white text-[11px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 shadow-md">
+          <div className="absolute top-3 right-3 z-20 bg-primary text-white text-[11px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 shadow-md">
             <Star className="w-2.5 h-2.5 fill-white" strokeWidth={0} />
             {item.rating}
           </div>
@@ -143,12 +143,12 @@ export default function DishCard({ item, compact = false }: DishCardProps) {
           {quantity === 0 ? (
             <button
               onClick={() => addItem(item)}
-              className="text-[#E23744] border-2 border-[#E23744] font-black text-xs px-5 py-2 rounded-xl hover:bg-[#E23744] hover:text-white transition-all duration-200 uppercase tracking-wider active:scale-95 shadow-sm hover:shadow-md"
+              className="text-primary border-2 border-primary font-black text-xs px-5 py-2 rounded-xl hover:bg-primary hover:text-white transition-all duration-200 uppercase tracking-wider active:scale-95 shadow-sm hover:shadow-md"
             >
               ADD
             </button>
           ) : (
-            <div className="flex items-center gap-1 bg-[#E23744] rounded-xl shadow-md overflow-hidden h-9">
+            <div className="flex items-center gap-1 bg-primary rounded-xl shadow-md overflow-hidden h-9">
               <button
                 onClick={() => removeItem(item.id)}
                 className="w-9 h-full flex items-center justify-center text-white hover:bg-black/10 transition-colors"

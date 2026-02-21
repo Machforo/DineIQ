@@ -127,9 +127,9 @@ export default function CartPage() {
         <div className="w-40 h-40 bg-white rounded-full flex items-center justify-center mb-6 shadow-xl animate-pulse-soft">
           <img src="https://cdn-icons-png.flaticon.com/512/11329/11329060.png" alt="Empty Cart" className="w-24 h-24 opacity-80" />
         </div>
-        <h3 className="text-2xl font-black text-gray-800 mb-2">Good food is waiting</h3>
+        <h3 className="text-2xl font-black text-gray-800 mb-2 font-serif">Good food is waiting</h3>
         <p className="text-gray-500 mb-8 max-w-xs mx-auto">Your cart is empty. Add something delicious from the menu!</p>
-        <Button onClick={() => navigate("/home")} className="bg-[#E23744] hover:bg-[#d12e3b] text-white px-8 py-6 rounded-xl text-lg font-bold shadow-lg shadow-red-200">
+        <Button onClick={() => navigate("/home")} className="bg-primary hover:bg-[#243d33] text-white px-8 py-6 rounded-xl text-lg font-bold shadow-lg shadow-primary/20">
           Browse Menu
         </Button>
       </div>
@@ -137,17 +137,13 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-yellow-50 pb-24 relative overflow-x-hidden">
-      {/* Vibrant Background Pattern */}
-      <div className="fixed inset-0 opacity-30 pointer-events-none" style={{
-        backgroundImage: `radial-gradient(circle at 20% 50%, rgba(244, 67, 54, 0.08) 0%, transparent 50%),
-                          radial-gradient(circle at 80% 80%, rgba(255, 193, 7, 0.08) 0%, transparent 50%),
-                          radial-gradient(circle at 40% 20%, rgba(33, 150, 243, 0.06) 0%, transparent 50%)`
-      }} />
+    <div className="min-h-screen bg-background pb-24 relative overflow-x-hidden">
+      {/* Organic Background Pattern */}
+      <div className="fixed inset-0 opacity-20 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/natural-paper.png')]" />
 
       {/* Decorative Dots Pattern */}
       <div className="fixed inset-0 opacity-20 pointer-events-none" style={{
-        backgroundImage: `radial-gradient(circle at 2px 2px, rgba(244, 67, 54, 0.15) 1px, transparent 0)`,
+        backgroundImage: `radial-gradient(circle at 2px 2px, rgba(45, 75, 63, 0.15) 1px, transparent 0)`,
         backgroundSize: '48px 48px'
       }} />
 
@@ -158,8 +154,8 @@ export default function CartPage() {
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-gray-900">Your Cart</h1>
-            <p className="text-sm text-gray-600">{items.length} {items.length === 1 ? 'item' : 'items'}</p>
+            <h1 className="text-xl font-bold text-gray-900 font-serif">Your Cart</h1>
+            <p className="text-sm text-gray-600 font-medium">{items.length} {items.length === 1 ? 'item' : 'items'}</p>
           </div>
         </div>
       </div>
@@ -174,8 +170,8 @@ export default function CartPage() {
               <div className="relative w-20 h-20 flex-shrink-0">
                 <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-lg" />
                 <div className={`absolute bottom-0 right-0 p-1 bg-white rounded-tl-lg shadow-sm border-t border-l border-gray-100`}>
-                  <div className={`w-3 h-3 border-[2px] ${item.isVeg ? "border-green-600" : "border-red-500"} flex items-center justify-center p-[1px]`}>
-                    <div className={`w-full h-full rounded-full ${item.isVeg ? "bg-green-600" : "bg-red-500"}`} />
+                  <div className={`w-3 h-3 border-[2px] ${item.isVeg ? "border-green-600" : "border-[#A0522D]"} flex items-center justify-center p-[1px]`}>
+                    <div className={`w-full h-full rounded-full ${item.isVeg ? "bg-green-600" : "bg-[#A0522D]"}`} />
                   </div>
                 </div>
               </div>
@@ -208,12 +204,12 @@ export default function CartPage() {
                   <div className="font-black text-gray-900">₹{item.price * item.quantity}</div>
 
                   {/* Quantity Stepper */}
-                  <div className="flex items-center bg-red-50 border border-red-100 rounded-lg h-8">
-                    <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-8 h-full flex items-center justify-center text-[#E23744] hover:bg-red-100 rounded-l-lg transition-colors">
+                  <div className="flex items-center bg-secondary/30 border border-secondary rounded-lg h-8">
+                    <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-8 h-full flex items-center justify-center text-primary hover:bg-secondary/50 rounded-l-lg transition-colors">
                       {item.quantity === 1 ? <Trash2 className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
                     </button>
-                    <span className="text-sm font-bold text-[#E23744] w-6 text-center">{item.quantity}</span>
-                    <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-8 h-full flex items-center justify-center text-[#E23744] hover:bg-red-100 rounded-r-lg transition-colors">
+                    <span className="text-sm font-bold text-primary w-6 text-center">{item.quantity}</span>
+                    <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-8 h-full flex items-center justify-center text-primary hover:bg-secondary/50 rounded-r-lg transition-colors">
                       <Plus className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -239,13 +235,13 @@ export default function CartPage() {
 
         {/* Recommendations - "Best Compliments" */}
         {(recommendations.length > 0) && (
-          <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-5 border border-yellow-200 shadow-md">
+          <div className="bg-gradient-to-br from-secondary/50 to-sand/30 rounded-2xl p-5 border border-secondary/50 shadow-md">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-1 h-12 bg-gradient-to-b from-yellow-400 to-orange-500 rounded-full shadow-lg" />
+              <div className="w-1 h-12 bg-gradient-to-b from-maroon to-maroon-dark rounded-full shadow-lg" />
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-yellow-600 fill-yellow-500" />
-                  <h3 className="font-bold text-gray-900 text-lg">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  <h3 className="font-bold text-gray-900 text-lg font-serif">
                     Best Compliments
                   </h3>
                 </div>
@@ -266,7 +262,7 @@ export default function CartPage() {
 
                     {/* Tag Badge */}
                     {rec.tag && (
-                      <div className="absolute top-2 left-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 text-[10px] font-black px-2 py-1 rounded-lg shadow-lg">
+                      <div className="absolute top-2 left-2 bg-gradient-to-r from-maroon to-maroon-dark text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg">
                         {rec.tag}
                       </div>
                     )}
@@ -281,8 +277,8 @@ export default function CartPage() {
                   <div className="mt-2.5">
                     <div className="flex items-start justify-between gap-1">
                       <p className="text-xs font-bold text-gray-800 line-clamp-2 leading-tight">{rec.Item_Name}</p>
-                      <div className={`w-2.5 h-2.5 border-[1px] flex-shrink-0 mt-0.5 ${rec.isVeg ? "border-green-600" : "border-red-500"} flex items-center justify-center p-[1px]`}>
-                        <div className={`w-full h-full rounded-full ${rec.isVeg ? "bg-green-600" : "bg-red-500"}`} />
+                      <div className={`w-2.5 h-2.5 border-[1px] flex-shrink-0 mt-0.5 ${rec.isVeg ? "border-green-600" : "border-[#A0522D]"} flex items-center justify-center p-[1px]`}>
+                        <div className={`w-full h-full rounded-full ${rec.isVeg ? "bg-green-600" : "bg-[#A0522D]"}`} />
                       </div>
                     </div>
                     <p className="text-xs text-gray-500 mt-1 font-medium">₹{rec.Current_Price}</p>
@@ -337,7 +333,7 @@ export default function CartPage() {
                     <h4 className="font-bold text-sm text-gray-900 line-clamp-1">{combo.Item_Name}</h4>
                     <p className="text-xs text-gray-500">₹{combo.Current_Price}</p>
                   </div>
-                  <button onClick={() => handleAddRecommendation(combo)} className="bg-red-50 text-[#E23744] text-xs font-bold px-3 py-1 rounded uppercase border border-red-100">ADD</button>
+                  <button onClick={() => handleAddRecommendation(combo)} className="bg-primary/5 text-primary text-xs font-bold px-3 py-1 rounded uppercase border border-primary/20">ADD</button>
                 </div>
               </div>
             ))}
@@ -404,7 +400,7 @@ export default function CartPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-6 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] z-50">
         <Button
           onClick={handleProceedToPayment}
-          className="w-full bg-[#E23744] hover:bg-[#c9212e] text-white h-14 rounded-xl font-bold text-lg shadow-lg flex items-center justify-between px-6"
+          className="w-full bg-primary hover:bg-[#243d33] text-white h-14 rounded-xl font-bold text-lg shadow-lg flex items-center justify-between px-6"
         >
           <div className="flex flex-col items-start leading-none">
             <span className="text-sm font-medium opacity-80">Total to Pay</span>
@@ -426,8 +422,8 @@ export default function CartPage() {
             </div>
             <div className="space-y-4">
               {coupons.map((coupon) => (
-                <div key={coupon.id} onClick={() => { setSelectedCoupon(coupon); setShowCoupons(false); }} className="border border-gray-200 rounded-xl p-4 cursor-pointer hover:border-[#E23744] transition-colors relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-1 rounded-bl-lg">
+                <div key={coupon.id} onClick={() => { setSelectedCoupon(coupon); setShowCoupons(false); }} className="border border-gray-200 rounded-xl p-4 cursor-pointer hover:border-primary transition-colors relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 bg-primary/10 text-primary text-[10px] font-bold px-2 py-1 rounded-bl-lg">
                     {coupon.code}
                   </div>
                   <h3 className="font-bold text-gray-800">{coupon.title}</h3>

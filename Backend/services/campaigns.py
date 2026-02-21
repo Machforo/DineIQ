@@ -1,4 +1,4 @@
-# DineIQ\Backend\services\campaigns.py
+﻿# DineIQ\Backend\services\campaigns.py
 
 # ---------------------------------------------------------
 # Library and Packages Import
@@ -21,8 +21,12 @@ load_dotenv()
 # ---------------------------------------------------------
 # Sheets Client
 # ---------------------------------------------------------
+from functools import lru_cache
 from services.sheets import SheetsClient
-sheets_client = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
+
+@lru_cache(maxsize=1)
+def get_sheets_client() -> SheetsClient:
+    return SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
 
 CAMPAIGNS_SHEET = "Campaigns"
 MAX_MESSAGES = 10
@@ -73,8 +77,8 @@ def compute_campaign_status(start_dt: datetime, end_dt: datetime) -> str:
 # Sheet helpers (HEADER CREATION ONLY)
 # ---------------------------------------------------------
 def _get_campaigns_sheet_id() -> int:
-    meta = sheets_client._service.get(
-        spreadsheetId=sheets_client.spreadsheet_id
+    meta = get_sheets_client()._service.get(
+        spreadsheetId=get_sheets_client().spreadsheet_id
     ).execute()
 
     for s in meta["sheets"]:
@@ -86,8 +90,8 @@ def _get_campaigns_sheet_id() -> int:
 
 def ensure_message_columns(count: int):
     # Fetch current headers
-    result = sheets_client._service.values().get(
-        spreadsheetId=sheets_client.spreadsheet_id,
+    result = get_sheets_client()._service.values().get(
+        spreadsheetId=get_sheets_client().spreadsheet_id,
         range=f"{CAMPAIGNS_SHEET}!1:1",
     ).execute()
 
@@ -126,11 +130,11 @@ def ensure_message_columns(count: int):
                     }
                 })
 
-                headers.append(col_name)  # 🔑 immediately extend header list
+                headers.append(col_name)  # ðŸ”‘ immediately extend header list
 
     if requests:
-        sheets_client._service.batchUpdate(
-            spreadsheetId=sheets_client.spreadsheet_id,
+        get_sheets_client()._service.batchUpdate(
+            spreadsheetId=get_sheets_client().spreadsheet_id,
             body={"requests": requests},
         ).execute()
 
@@ -167,15 +171,15 @@ def normalize_frontend_campaign(payload: dict) -> CampaignInternal:
 # ---------------------------------------------------------
 def process_single_campaign(campaign: CampaignInternal):
     # Initialize Sheets service
-    sheets_client.init_service()
+    get_sheets_client().init_service()
 
-    # 1️⃣ Ensure message columns exist (structure mutation)
+    # 1ï¸âƒ£ Ensure message columns exist (structure mutation)
     ensure_message_columns(campaign.campaign_message_count)
 
-    # 2️⃣ RE-READ sheet so pandas sees new headers (CRITICAL)
-    df = sheets_client.read_sheet(CAMPAIGNS_SHEET)
+    # 2ï¸âƒ£ RE-READ sheet so pandas sees new headers (CRITICAL)
+    df = get_sheets_client().read_sheet(CAMPAIGNS_SHEET)
 
-    # 3️⃣ Generate Campaign ID
+    # 3ï¸âƒ£ Generate Campaign ID
     existing_ids = (
         df["Campaign_ID"].dropna().astype(str).tolist()
         if "Campaign_ID" in df.columns
@@ -183,12 +187,12 @@ def process_single_campaign(campaign: CampaignInternal):
     )
     campaign_id = generate_campaign_id(existing_ids)
 
-    # 4️⃣ Compute status
+    # 4ï¸âƒ£ Compute status
     start_dt = datetime.strptime(campaign.start_datetime, "%Y-%m-%d %H:%M")
     end_dt = datetime.strptime(campaign.end_datetime, "%Y-%m-%d %H:%M")
     status = compute_campaign_status(start_dt, end_dt)
 
-    # 5️⃣ Build a row strictly aligned to sheet headers
+    # 5ï¸âƒ£ Build a row strictly aligned to sheet headers
     new_row = {col: "" for col in df.columns}
 
     # Core campaign fields
@@ -203,7 +207,7 @@ def process_single_campaign(campaign: CampaignInternal):
         "Campaign_Status": status,
     })
 
-    # 6️⃣ Populate dynamic message columns
+    # 6ï¸âƒ£ Populate dynamic message columns
     for i in range(1, MAX_MESSAGES + 1):
         tmpl_col = f"Message_Template #{i}"
         time_col = f"Message_Send_Timing #{i}"
@@ -222,29 +226,29 @@ def process_single_campaign(campaign: CampaignInternal):
                 else ""
             )
 
-    # 7️⃣ Append row
+    # 7ï¸âƒ£ Append row
     df.loc[len(df)] = new_row
 
-    # 8️⃣ Sanitize NaNs (Sheets hates NaN)
+    # 8ï¸âƒ£ Sanitize NaNs (Sheets hates NaN)
     df = df.fillna("")
 
-    # 9️⃣ Persist back to Sheets
-    sheets_client.update_sheet(CAMPAIGNS_SHEET, df)
+    # 9ï¸âƒ£ Persist back to Sheets
+    get_sheets_client().update_sheet(CAMPAIGNS_SHEET, df)
 
-    print("📐 Columns count:", len(df.columns))
-    print("📍 Last column:", df.columns[-1])
+    print("ðŸ“ Columns count:", len(df.columns))
+    print("ðŸ“ Last column:", df.columns[-1])
 
     return campaign_id, status
 
 
 
 # ---------------------------------------------------------
-# 🚀 API: Add Campaign
+# ðŸš€ API: Add Campaign
 # ---------------------------------------------------------
 @campaigns_router.post("/add")
 async def add_campaign(request: Request):
     payload = await request.json()
-    print("📥 Raw campaign payload:", payload)
+    print("ðŸ“¥ Raw campaign payload:", payload)
 
     try:
         campaign = normalize_frontend_campaign(payload)
@@ -258,3 +262,4 @@ async def add_campaign(request: Request):
         "campaign_status": status,
         "message": "Campaign created successfully",
     }
+

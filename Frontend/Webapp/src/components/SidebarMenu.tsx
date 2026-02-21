@@ -85,13 +85,13 @@ export default function SidebarMenu({ children }: SidebarMenuProps) {
                 </div>
               </div>
             </div>
-            {/* Gold Member Badge */}
+            {/* Harvest Premium Badge */}
             <div className="mt-4 bg-white/10 rounded-xl p-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Crown className="w-5 h-5 text-gold" />
-                <span className="text-white font-medium text-sm">Gold Member</span>
+                <Crown className="w-5 h-5 text-accent" />
+                <span className="text-white font-medium text-sm font-serif">Harvest Premium</span>
               </div>
-              <span className="text-gold text-sm font-bold">Table #{tableNumber}</span>
+              <span className="text-white/90 text-sm font-bold">Table #{tableNumber}</span>
             </div>
           </div>
         </SheetHeader>

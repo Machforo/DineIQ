@@ -107,7 +107,7 @@ const Payment = () => {
       {/* Header */}
       <div className="flex items-center mb-6">
         <button onClick={() => navigate(-1)} className="mr-4 text-xl">←</button>
-        <h1 className="text-xl font-bold">Payment Options</h1>
+        <h1 className="text-xl font-bold font-serif">Payment Options</h1>
       </div>
 
       {/* Bill Summary */}
@@ -122,7 +122,7 @@ const Payment = () => {
       <div className="space-y-4">
         {/* Cash Option */}
         <label
-          className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'cash' ? 'border-red-500 bg-red-50' : 'border-gray-200'
+          className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'cash' ? 'border-primary bg-primary/5' : 'border-gray-200'
             }`}
         >
           <input
@@ -131,7 +131,7 @@ const Payment = () => {
             value="cash"
             checked={paymentMethod === 'cash'}
             onChange={() => setPaymentMethod('cash')}
-            className="w-5 h-5 text-red-500"
+            className="w-5 h-5 text-primary"
           />
           <div className="ml-4">
             <h3 className="font-semibold">Cash / Pay at Counter</h3>
@@ -141,7 +141,7 @@ const Payment = () => {
 
         {/* Online Option */}
         <label
-          className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'online' ? 'border-red-500 bg-red-50' : 'border-gray-200'
+          className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'online' ? 'border-primary bg-primary/5' : 'border-gray-200'
             }`}
         >
           <input
@@ -150,7 +150,7 @@ const Payment = () => {
             value="online"
             checked={paymentMethod === 'online'}
             onChange={() => setPaymentMethod('online')}
-            className="w-5 h-5 text-red-500"
+            className="w-5 h-5 text-primary"
           />
           <div className="ml-4">
             <h3 className="font-semibold">Pay Online</h3>
@@ -164,7 +164,7 @@ const Payment = () => {
         <button
           onClick={paymentMethod === 'cash' ? handleCashPayment : handleOnlinePayment}
           disabled={loading}
-          className="w-full bg-red-600 text-white py-4 rounded-lg font-bold text-lg hover:bg-red-700 transition disabled:bg-gray-400"
+          className="w-full bg-primary text-white py-4 rounded-lg font-bold text-lg hover:bg-[#243d33] transition disabled:bg-gray-400"
         >
           {loading ? 'Processing...' : paymentMethod === 'cash' ? 'Place Order (Cash)' : 'Pay Now'}
         </button>

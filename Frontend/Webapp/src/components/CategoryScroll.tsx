@@ -21,8 +21,8 @@ export default function CategoryScroll({ onSelect, selectedCategory }: CategoryS
             className="flex-shrink-0 flex flex-col items-center gap-2 group snap-center"
           >
             <div className={`relative w-[76px] h-[76px] rounded-full p-[2px] transition-all duration-300 ${selectedCategory === category.name
-                ? 'bg-gradient-brand shadow-md scale-105'
-                : 'bg-transparent group-hover:bg-gray-200'
+              ? 'bg-primary shadow-md scale-105'
+              : 'bg-transparent group-hover:bg-gray-200'
               }`}>
               <div className="w-full h-full rounded-full overflow-hidden border-[3px] border-white bg-gray-100">
                 <img
@@ -34,8 +34,8 @@ export default function CategoryScroll({ onSelect, selectedCategory }: CategoryS
             </div>
 
             <span className={`text-[12px] font-bold tracking-wide transition-colors ${selectedCategory === category.name
-                ? 'text-[#E23744]'
-                : 'text-gray-600'
+              ? 'text-primary'
+              : 'text-gray-600'
               }`}>
               {category.name}
             </span>

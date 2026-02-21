@@ -11,8 +11,6 @@ interface OfferCarouselProps {
 export default function OfferCarousel({ offers = [], onBannerClick }: OfferCarouselProps) {
   if (!offers.length) return null;
 
-  console.log("OfferCarousel offers:", offers); // Debug
-
   return (
     <section className="py-4">
       <div className="flex gap-4 px-4 overflow-x-auto hide-scrollbar snap-x snap-mandatory">
@@ -25,7 +23,7 @@ export default function OfferCarousel({ offers = [], onBannerClick }: OfferCarou
               key={offer.id}
               onClick={() => onBannerClick && onBannerClick(offer)}
               style={{ backgroundColor: offer.bgColor?.startsWith('#') ? offer.bgColor : undefined }}
-              className={`cursor-pointer relative flex-shrink-0 w-[92vw] max-w-[500px] h-48 rounded-2xl overflow-hidden snap-center ${!offer.bgColor?.startsWith('#') ? (offer.bgColor || 'bg-red-500') : ''} active:scale-95 transition-transform shadow-lg`}
+              className={`cursor-pointer relative flex-shrink-0 w-[92vw] max-w-[500px] h-48 rounded-2xl overflow-hidden snap-center ${!offer.bgColor?.startsWith('#') ? (offer.bgColor || 'bg-primary') : ''} active:scale-[0.95] transition-transform shadow-lg`}
             >
               {/* Removed Background Image as requested */}
 

@@ -1,6 +1,7 @@
 import os
 import traceback
 import logging
+from functools import lru_cache
 from typing import List, Dict, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -402,8 +403,28 @@ class RecommendationAgent:
     def _generate_ai_super_combos(self, active_items, customer_insights: Dict, num_combos: int) -> List[Dict]:
         """🎯 Use Groq AI to create personalized, intelligent combos"""
         try:
-            # Prepare menu context for Gemini
-            menu_sample = active_items[['Item_Name', 'Item_Category', 'Current_Price']].head(50).to_dict('records')
+            # Smart Menu Sampling: Ensure AI sees relevant items
+            favorites = customer_insights.get('favorite_items', [])
+            preferred_cats = customer_insights.get('preferred_categories', [])
+            
+            # 1. Start with items that are explicit favorites
+            context_items = active_items[active_items['Item_Name'].isin(favorites)].copy()
+            
+            # 2. Add sample from preferred categories
+            for cat in preferred_cats:
+                cat_items = active_items[active_items['Item_Category'] == cat].head(10)
+                context_items = pd.concat([context_items, cat_items])
+            
+            # 3. Add a general diverse sample to fill up to 80 items
+            if len(context_items) < 80:
+                remaining_needed = 80 - len(context_items)
+                other_items = active_items[~active_items['Item_ID'].isin(context_items['Item_ID'])].sample(
+                    min(remaining_needed, len(active_items) - len(context_items)),
+                    random_state=42
+                )
+                context_items = pd.concat([context_items, other_items])
+            
+            menu_sample = context_items[['Item_Name', 'Item_Category', 'Current_Price']].drop_duplicates().to_dict('records')
             
             # Build intelligent prompt with customer insights
             prompt = f"""
@@ -443,6 +464,7 @@ Return ONLY a valid JSON array with this exact structure:
 [
   {{
     "name": "Catchy 3-4 word combo name",
+    "is_veg": true,
     "items": [
       {{"item_name": "Exact Item Name from menu", "quantity": 1}},
       {{"item_name": "Exact Item Name from menu", "quantity": 2}}
@@ -529,7 +551,8 @@ CRITICAL:
                                 name=deal.get("name", "DineIQ Special Combo"),
                                 items=combo_items,
                                 discount_percent=discount,
-                                insight=deal.get("insight", "Handpicked for you based on your preferences")
+                                insight=deal.get("insight", "Handpicked for you based on your preferences"),
+                                is_veg=deal.get("is_veg") # AI determined veg status
                             )
                             
                             # Add personalization metadata
@@ -556,7 +579,7 @@ CRITICAL:
             traceback.print_exc()
             return []
 
-    def _create_combo_object(self, name: str, items: List[Dict], discount_percent: int, insight: str):
+    def _create_combo_object(self, name: str, items: List[Dict], discount_percent: int, insight: str, is_veg: bool = None):
         """Create combo object with formatted item description including quantities"""
         # Calculate total price considering quantities
         total = sum(float(item['Current_Price']) * item.get('quantity', 1) for item in items)
@@ -577,21 +600,34 @@ CRITICAL:
         formatted_items = []
         for item in items:
             formatted_items.append({
-                "name": item['Item_Name'],
+                "name": item.get('Item_Name', item.get('name', 'Unknown')),
+                "Item_Name": item.get('Item_Name', item.get('name', 'Unknown')),
                 "quantity": item.get('quantity', 1),
-                "price": float(item['Current_Price']),
-                "category": item.get('Item_Category', 'General')
+                "price": float(item.get('Current_Price', item.get('price', 0))),
+                "Item_Price": float(item.get('Current_Price', item.get('price', 0))),
+                "category": item.get('Item_Category', item.get('category', 'General'))
             })
+
+        # Final Veg/Non-Veg logic: If AI didn't specify, use scientific calculation
+        if is_veg is None:
+            is_veg = all(item.get('Is_Veg', True) for item in items)
 
         return {
             "Item_ID": f"combo_{random.randint(1000, 9999)}",
             "Item_Name": name,
+            "name": name, # Compatibility
             "Item_Description": description,  # e.g., "1 Butter Chicken + 2 Naan + 1 Rice"
-            "Items": formatted_items, # <--- Added this for better UI rendering
+            "description": description, # Compatibility
+            "Items": formatted_items, 
+            "items": formatted_items, # Compatibility
+            "Combo_Items": formatted_items, # Compatibility with HomeScreen.tsx mapping
             "Current_Price": price,
+            "price": price, # Compatibility
             "Original_Price": total,
             "Discount_Percent": discount_percent,
             "Savings": savings,
+            "Is_Veg": is_veg,
+            "isVeg": is_veg, # Compatibility
             "Is_Personalized": True,
             "Insight": insight,
             "Image_URL": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c"
@@ -609,7 +645,7 @@ CRITICAL:
                     "discount": "",
                     "discountPercent": 0,
                     "minOrderValue": 0,
-                    "bgColor": "#FF5722",
+                    "bgColor": "#800000",
                     "image": "",
                     "type": "campaign"
                 },
@@ -621,7 +657,7 @@ CRITICAL:
                     "discount": "",
                     "discountPercent": 0,
                     "minOrderValue": 0,
-                    "bgColor": "#E23744",
+                    "bgColor": "#4D0000",
                     "image": "",
                     "type": "campaign"
                 }
@@ -766,11 +802,13 @@ CRITICAL:
         
         return "Perfect combo for your meal! 🍱"
 
-
 # ---------------------------------------------------------
-# DEPENDENCY
+# DEPENDENCY — Lazy singleton to prevent startup hang
 # ---------------------------------------------------------
-recommendation_agent = RecommendationAgent()
+@lru_cache(maxsize=1)
+def get_recommendation_agent() -> RecommendationAgent:
+    """Initialize only on first real request, not at import time."""
+    return RecommendationAgent()
 
 # ---------------------------------------------------------
 # API Endpoints
@@ -779,24 +817,24 @@ recommendation_agent = RecommendationAgent()
 @recommendation_router.post("/item-addons")
 def get_item_addons(req: AddonRequest):
     """Get smart add-on recommendations for an item"""
-    return recommendation_agent.get_recommendations(req.customer_email, req.item_id)
+    return get_recommendation_agent().get_recommendations(req.customer_email, req.item_id)
 
 @recommendation_router.get("/upsell-items")
 def get_upsell_items():
     """Get upsell items (desserts & beverages)"""
-    return recommendation_agent.get_upsell_items()
+    return get_recommendation_agent().get_upsell_items()
 
 @recommendation_router.post("/save-preferences")
 def save_preferences(req: PreferencesRequest):
     """Save customer preferences"""
-    return recommendation_agent.save_user_preference(req.email, req.preferences)
+    return get_recommendation_agent().save_user_preference(req.email, req.preferences)
 
 @recommendation_router.post("/generate-combos")
 def generate_combos(req: ComboRequest):
     """🚀 Generate Super AI-powered combo deals with deep personalization"""
-    return {"combos": recommendation_agent.generate_combos(req.num_combos, req.email)}
+    return {"combos": get_recommendation_agent().generate_combos(req.num_combos, req.email)}
 
 @recommendation_router.get("/offers")
 def get_offers():
     """Get available offers and campaigns"""
-    return recommendation_agent.get_offers()
+    return get_recommendation_agent().get_offers()

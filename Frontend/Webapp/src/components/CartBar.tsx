@@ -13,14 +13,14 @@ export default function CartBar() {
   return (
     <div className="fixed bottom-[72px] left-4 right-4 z-40 animate-in slide-in-from-bottom-4 duration-300">
       <Link to="/cart">
-        <div className="bg-[#E23744] text-white rounded-2xl shadow-[0_8px_32px_rgba(226,55,68,0.45)] p-4 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-[#cc2f3d]">
+        <div className="bg-primary text-white rounded-2xl shadow-[0_8px_32px_rgba(45,75,63,0.3)] p-4 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-[#243d33]">
 
           {/* Left: Items Info */}
           <div className="flex items-center gap-3">
             <div className="bg-white/20 rounded-xl w-10 h-10 flex items-center justify-center flex-shrink-0">
               <ShoppingBag className="w-5 h-5 fill-white text-white" />
               {totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 bg-white text-[#E23744] text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 bg-white text-primary text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center">
                   {totalItems}
                 </span>
               )}

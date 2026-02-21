@@ -21,10 +21,10 @@ function hasComboOffer(content: string): boolean {
 
 // ── Quick combo chip presets (shown when AI asks "want a combo?") ─────────────
 const COMBO_CHIPS = [
-  { label: "🍱 Starter Feast", msg: "Make me a Starter Feast combo" },
-  { label: "🌶️ Spicy Lover Combo", msg: "Make me a Spicy Lover combo" },
-  { label: "🥗 Light Bite Combo", msg: "Make me a light single-person combo" },
-  { label: "👨‍👩‍👧 Family Platter", msg: "Make me a Family Sharing Platter combo" },
+  { label: "🌿 Field & Forest", msg: "Make me a Field & Forest combo" },
+  { label: "🌶️ Earthy Spice", msg: "Make me an Earthy Spice combo" },
+  { label: "🥗 Garden Light", msg: "Make me a light single-person garden combo" },
+  { label: "👨‍👩‍👧 Harvest Feast", msg: "Make me a Harvest Family Feast combo" },
 ];
 
 export function ChatMessage({ message, onSend }: ChatMessageProps) {
@@ -39,7 +39,7 @@ export function ChatMessage({ message, onSend }: ChatMessageProps) {
     >
       {/* Avatar — AI */}
       {isAI && (
-        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#E23744] to-pink-500 flex items-center justify-center flex-shrink-0 shadow-md mt-1">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-[#3D6151] flex items-center justify-center flex-shrink-0 shadow-md mt-1">
           <Bot className="w-4 h-4 text-white" />
         </div>
       )}
@@ -51,7 +51,7 @@ export function ChatMessage({ message, onSend }: ChatMessageProps) {
             "rounded-2xl px-5 py-3 shadow-sm relative group text-sm leading-relaxed",
             isAI
               ? "bg-white text-gray-800 rounded-tl-sm border border-gray-100"
-              : "bg-[#E23744] text-white rounded-tr-sm shadow-md"
+              : "bg-primary text-white rounded-tr-sm shadow-md"
           )}
         >
           <p className="whitespace-pre-wrap break-words font-medium">{message.content}</p>
@@ -72,7 +72,7 @@ export function ChatMessage({ message, onSend }: ChatMessageProps) {
         {isAI && !message.combos && hasComboOffer(message.content) && onSend && (
           <div>
             <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-2 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-[#E23744]" />
+              <Sparkles className="w-3 h-3 text-primary" />
               Pick a combo style
             </p>
             <div className="flex flex-wrap gap-2">
@@ -80,7 +80,7 @@ export function ChatMessage({ message, onSend }: ChatMessageProps) {
                 <button
                   key={idx}
                   onClick={() => onSend(chip.msg)}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-white border-2 border-[#E23744]/20 rounded-xl text-xs font-bold text-[#E23744] hover:bg-[#E23744] hover:text-white hover:border-[#E23744] transition-all duration-200 active:scale-95 shadow-sm"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-white border-2 border-primary/20 rounded-xl text-xs font-bold text-primary hover:bg-primary hover:text-white hover:border-primary transition-all duration-200 active:scale-95 shadow-sm"
                 >
                   {chip.label}
                 </button>
@@ -146,7 +146,7 @@ function ComboCard({ combo }: { combo: ChatCombo }) {
   return (
     <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#E23744] to-orange-500 px-4 py-2.5 flex items-center justify-between">
+      <div className="bg-gradient-to-r from-primary to-[#3D6151] px-4 py-2.5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-lg">🍱</span>
           <h4 className="text-white font-black text-sm">{combo.name}</h4>
@@ -161,7 +161,7 @@ function ComboCard({ combo }: { combo: ChatCombo }) {
         {combo.items.map((item, i) => (
           <div key={i} className="flex items-center justify-between">
             <span className="text-sm text-gray-700 font-medium flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#E23744] flex-shrink-0" />
+              <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
               {item.name}
             </span>
             <span className="text-sm font-bold text-gray-800">₹{item.price}</span>
@@ -183,13 +183,13 @@ function ComboCard({ combo }: { combo: ChatCombo }) {
         {quantity === 0 ? (
           <button
             onClick={handleAdd}
-            className="flex items-center gap-2 bg-[#E23744] text-white text-sm font-black px-5 py-2.5 rounded-xl hover:bg-[#c0313e] active:scale-95 transition-all shadow-sm hover:shadow-md"
+            className="flex items-center gap-2 bg-primary text-white text-sm font-black px-5 py-2.5 rounded-xl hover:bg-[#243d33] active:scale-95 transition-all shadow-sm hover:shadow-md"
           >
             <ShoppingCart className="w-4 h-4" />
             Add to Cart
           </button>
         ) : (
-          <div className="flex items-center bg-[#E23744] rounded-xl overflow-hidden h-10 shadow-md">
+          <div className="flex items-center bg-primary rounded-xl overflow-hidden h-10 shadow-md">
             <button
               onClick={() => removeItem(cartItemId)}
               className="w-10 h-full flex items-center justify-center text-white hover:bg-black/10 transition-colors"

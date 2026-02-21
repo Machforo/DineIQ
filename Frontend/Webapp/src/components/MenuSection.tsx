@@ -19,15 +19,15 @@ const sectionIcons = {
 };
 
 const sectionStyles = {
-  combos: "bg-gradient-to-br from-orange-50/50 via-red-50/30 to-pink-50/50",
-  chef: "bg-gradient-to-br from-amber-50/50 via-yellow-50/30 to-orange-50/50",
-  standard: "bg-white",
+  combos: "bg-gradient-to-br from-secondary/40 via-primary/5 to-background",
+  chef: "bg-gradient-to-br from-accent/10 via-background to-secondary/10",
+  standard: "bg-background",
 };
 
 const iconStyles = {
-  combos: "bg-gradient-to-br from-orange-500 to-red-500 text-white shadow-lg",
-  chef: "bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg",
-  standard: "bg-gray-100 text-gray-600",
+  combos: "bg-gradient-to-br from-primary to-[#3D6151] text-white shadow-lg",
+  chef: "bg-gradient-to-br from-accent to-[#8B4513] text-white shadow-lg",
+  standard: "bg-secondary text-foreground",
 };
 
 export default function MenuSection({ title, subtitle, items, type }: MenuSectionProps) {
@@ -57,9 +57,9 @@ export default function MenuSection({ title, subtitle, items, type }: MenuSectio
       {title && (
         <div className="px-4 mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-1 h-7 rounded-full ${type === "combos" ? "bg-[#E23744]" : type === "chef" ? "bg-[#E23744]" : "bg-[#E23744]"}`} />
+            <div className={`w-1 h-7 rounded-full bg-primary`} />
             <div>
-              <h2 className="text-xl font-black text-gray-900">{title}</h2>
+              <h2 className="text-xl font-black text-gray-900 font-serif">{title}</h2>
               {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
             </div>
           </div>

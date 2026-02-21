@@ -60,8 +60,8 @@ export const offers: Offer[] = [
   },
   {
     id: "3",
-    title: "Gold Members",
-    subtitle: "Extra 20% OFF",
+    title: "Harvest Premium",
+    subtitle: "Exclusive Perks",
     discount: "20%",
     bgColor: "gradient-dark",
     image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=200&fit=crop",
@@ -236,6 +236,6 @@ export const menuItems: MenuItem[] = [
 ];
 
 export const restaurantInfo = {
-  name: "The Royal Kitchen",
-  tagline: "Crafting Culinary Excellence",
+  name: "Harvest DineIQ",
+  tagline: "Experience the Bounty of the Valley",
 };

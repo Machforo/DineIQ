@@ -31,25 +31,25 @@ export default function HeroBanner({ onOrderNow }: HeroBannerProps) {
             {/* Content */}
             <div className="absolute bottom-0 left-0 right-0 p-8 text-white text-center flex flex-col items-center">
                 {/* Premium Badge */}
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-500 text-white text-xs font-black rounded-full mb-4 uppercase tracking-wider shadow-xl animate-pulse-glow">
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-[#3D6151] text-white text-xs font-black rounded-full mb-4 uppercase tracking-wider shadow-xl animate-pulse-glow">
                     <Sparkles className="w-4 h-4 fill-current" />
-                    <span>Steal Deal of the Day</span>
+                    <span>Harvest Highlights</span>
                 </div>
 
                 {/* Headline */}
-                <h1 className="text-5xl md:text-6xl font-black mb-3 leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
-                    Sizzling <span className="text-gradient-gold">Combos</span>
+                <h1 className="text-5xl md:text-6xl font-black mb-3 leading-tight font-serif" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    Harvest <span className="text-gradient-gold">DineIQ</span>
                 </h1>
 
                 {/* Subtitle */}
                 <p className="text-white/90 text-base md:text-lg font-medium mb-8 max-w-md mx-auto leading-relaxed">
-                    Discover our premium AI-curated family feasts. Limited time offer!
+                    Experience the bounty of the valley with our AI-curated organic feasts.
                 </p>
 
                 {/* Premium CTA Button */}
                 <button
                     onClick={onOrderNow}
-                    className="group relative flex items-center gap-3 bg-white text-red-600 px-10 py-4 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105 active:scale-95 overflow-hidden"
+                    className="group relative flex items-center gap-3 bg-white text-primary px-10 py-4 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105 active:scale-95 overflow-hidden"
                 >
                     {/* Button Shine Effect */}
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />

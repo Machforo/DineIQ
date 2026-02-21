@@ -9,7 +9,7 @@ import { toast } from "sonner";
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { profile, updateProfile, guestName, phoneNumber } = useUser();
-  
+
   const [formData, setFormData] = useState({
     name: profile.name || guestName,
     phone: profile.phone || phoneNumber,
@@ -42,7 +42,7 @@ export default function ProfilePage() {
           >
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
-          <h1 className="text-xl font-bold text-foreground">My Profile</h1>
+          <h1 className="text-xl font-bold text-foreground font-serif">My Profile</h1>
         </div>
       </header>
 

@@ -58,7 +58,7 @@ export default function TrackOrderPage() {
           >
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
-          <h1 className="text-xl font-bold text-foreground">Track Order</h1>
+          <h1 className="text-xl font-bold text-foreground font-serif">Track Order</h1>
         </div>
       </header>
 
@@ -90,19 +90,17 @@ export default function TrackOrderPage() {
                     {/* Line and Circle */}
                     <div className="flex flex-col items-center">
                       <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                          isCompleted || isCurrent
-                            ? "bg-veg text-white"
-                            : "bg-secondary text-muted-foreground"
-                        }`}
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isCompleted || isCurrent
+                          ? "bg-veg text-white"
+                          : "bg-secondary text-muted-foreground"
+                          }`}
                       >
                         <StepIcon className="w-5 h-5" />
                       </div>
                       {index < steps.length - 1 && (
                         <div
-                          className={`w-0.5 h-12 transition-colors ${
-                            isCompleted ? "bg-veg" : "bg-secondary"
-                          }`}
+                          className={`w-0.5 h-12 transition-colors ${isCompleted ? "bg-veg" : "bg-secondary"
+                            }`}
                         />
                       )}
                     </div>
@@ -110,11 +108,10 @@ export default function TrackOrderPage() {
                     {/* Content */}
                     <div className="flex-1 pt-2">
                       <p
-                        className={`font-medium ${
-                          isCompleted || isCurrent
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        }`}
+                        className={`font-medium ${isCompleted || isCurrent
+                          ? "text-foreground"
+                          : "text-muted-foreground"
+                          }`}
                       >
                         {step.label}
                       </p>
@@ -132,9 +129,9 @@ export default function TrackOrderPage() {
           </div>
 
           {/* Estimated Time */}
-          <div className="mt-6 bg-gold/10 rounded-2xl p-4 text-center">
+          <div className="mt-6 bg-secondary/30 rounded-2xl p-4 text-center border border-secondary">
             <p className="text-sm text-muted-foreground">Estimated Delivery Time</p>
-            <p className="text-2xl font-bold text-gold mt-1">20-25 mins</p>
+            <p className="text-2xl font-bold text-accent mt-1">20-25 mins</p>
           </div>
         </div>
       ) : (
@@ -153,7 +150,8 @@ export default function TrackOrderPage() {
             Browse Menu
           </Button>
         </div>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 }

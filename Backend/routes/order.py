@@ -1,17 +1,24 @@
-from fastapi import APIRouter, HTTPException
+﻿from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 import os
 import uuid
 import datetime
+from functools import lru_cache
 
 # Services & Agents
 from services.sheets import SheetsClient
 from agents.pricing import PricingAgent
 
 order_router = APIRouter()
-pricing_agent = PricingAgent()
-sheets_client = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
+
+@lru_cache(maxsize=1)
+def get_sheets_client() -> SheetsClient:
+    return SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
+
+@lru_cache(maxsize=1)
+def get_pricing_agent() -> PricingAgent:
+    return PricingAgent()
 
 ORDERS_SHEET = "Orders"
 ORDER_ITEMS_SHEET = "Order_Items"
@@ -22,7 +29,7 @@ ORDER_ITEMS_SHEET = "Order_Items"
 def _get_next_sequential_id(sheet_name: str, id_column: str, prefix: str, padding: int = 4) -> str:
     """Generates the next sequential ID (e.g., Ord_0001) based on current sheet data."""
     try:
-        rows = sheets_client.read_sheet_rows(sheet_name)
+        rows = get_sheets_client().read_sheet_rows(sheet_name)
         if not rows:
             return f"{prefix}_{'1'.zfill(padding)}"
         
@@ -111,21 +118,21 @@ async def get_pricing_strategy(req: PricingRequest):
     order_count = 0
     try:
         # Get customer ID from email
-        auth_rows = sheets_client.read_sheet_rows("Customer_Auth")
+        auth_rows = get_sheets_client().read_sheet_rows("Customer_Auth")
         target_email = req.customer_email.strip().lower()
         user_row = next((r for r in auth_rows if str(r.get("Customer_Email", "")).strip().lower() == target_email), None)
         
         if user_row:
             customer_id = user_row.get("Customer_ID")
             # Count existing orders for this customer
-            all_orders = sheets_client.read_sheet_rows(ORDERS_SHEET)
+            all_orders = get_sheets_client().read_sheet_rows(ORDERS_SHEET)
             order_count = sum(1 for o in all_orders if o.get("Customer_ID") == customer_id)
             print(f">>> Customer {customer_id} has {order_count} previous orders")
     except Exception as e:
         print(f">>> Error fetching order count: {e}")
         order_count = 0
     
-    return pricing_agent.get_pricing_strategy(subtotal, order_count, cart_items_normalized)
+    return get_pricing_agent().get_pricing_strategy(subtotal, order_count, cart_items_normalized)
 
 
 @order_router.post("/place-order")
@@ -141,7 +148,7 @@ async def place_order(req: OrderRequest):
     
     try:
         # 0. Look up Customer details from Customer_Auth (Normalized)
-        auth_rows = sheets_client.read_sheet_rows("Customer_Auth")
+        auth_rows = get_sheets_client().read_sheet_rows("Customer_Auth")
         target_email = req.customer_email.strip().lower()
         
         with open("debug_order.log", "a") as f:
@@ -176,7 +183,7 @@ async def place_order(req: OrderRequest):
             timestamp,
             "CREATED"
         ]
-        sheets_client.append_row(ORDERS_SHEET, order_row)
+        get_sheets_client().append_row(ORDERS_SHEET, order_row)
         
         # 2. Save to Order_Items Sheet (Optimized: No Read Required)
         try:
@@ -203,11 +210,11 @@ async def place_order(req: OrderRequest):
                 i_subs  = getattr(item, 'sub_items', None)
                 i_combo_items = getattr(item, 'comboItems', None)
 
-                # ── AI Combo: comboItems encoded as "ItemID||ItemName||Price" ──────
+                # â”€â”€ AI Combo: comboItems encoded as "ItemID||ItemName||Price" â”€â”€â”€â”€â”€â”€
                 if i_combo_items and isinstance(i_combo_items, list) and len(i_combo_items) > 0:
                     first = i_combo_items[0] if i_combo_items else ""
                     if "||" in str(first):
-                        # This is an AI chatbot combo — unpack each ingredient
+                        # This is an AI chatbot combo â€” unpack each ingredient
                         for entry in i_combo_items:
                             try:
                                 parts = str(entry).split("||")
@@ -216,39 +223,39 @@ async def place_order(req: OrderRequest):
                                 ing_price = float(parts[2].strip()) if len(parts) > 2 else 0.0
                                 add_row(order_id, ing_id or i_id, ing_name, i_qty, ing_price)
                             except Exception as parse_err:
-                                print(f"⚠️ Combo ingredient parse error: {parse_err}")
+                                print(f"âš ï¸ Combo ingredient parse error: {parse_err}")
                                 add_row(order_id, i_id, str(entry), i_qty, 0.0)
                         continue   # don't save the combo header itself
 
-                # ── Regular item ─────────────────────────────────────────────────
+                # â”€â”€ Regular item â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 add_row(order_id, i_id, i_name, i_qty, i_price)
 
             # Batch insert to Order_Items sheet
-            sheets_client.append_rows(ORDER_ITEMS_SHEET, new_item_rows)
+            get_sheets_client().append_rows(ORDER_ITEMS_SHEET, new_item_rows)
             
         except Exception as e:
-            print(f"⚠️ Error saving order items (Batch): {e}")
+            print(f"âš ï¸ Error saving order items (Batch): {e}")
             # Don't fail the order if items fail, but logic suggests we should.
             # Proceeding to allow at least Order record to exist.
         
         # ===================================================================
-        # 🤖 TRIGGER CATEGORIZATION AGENT
+        # ðŸ¤– TRIGGER CATEGORIZATION AGENT
         # Automatically categorize the customer after order placement
         # ===================================================================
         # try:
         #     from agents.categorization import categorize_single_customer
         #     
-        #     print(f"\n🤖 Triggering categorization for customer: {customer_id}")
+        #     print(f"\nðŸ¤– Triggering categorization for customer: {customer_id}")
         #     # categorization_success = categorize_single_customer(customer_id)
         #     
         #     # if categorization_success:
-        #     #     print(f"✅ Categorization completed successfully for customer {customer_id}")
+        #     #     print(f"âœ… Categorization completed successfully for customer {customer_id}")
         #     # else:
-        #     #     print(f"⚠️ Categorization failed for customer {customer_id}, but order was saved")
+        #     #     print(f"âš ï¸ Categorization failed for customer {customer_id}, but order was saved")
         #         
         # except Exception as e:
         #     # Fail-safe: Don't let categorization errors break order placement
-        #     print(f"⚠️ Categorization error for customer {customer_id}: {e}")
+        #     print(f"âš ï¸ Categorization error for customer {customer_id}: {e}")
         #     print("Order was saved successfully despite categorization error")
         #     import traceback
         #     traceback.print_exc()
@@ -268,12 +275,12 @@ async def get_order_history(email: str):
     Joins Orders and Order_Items.
     """
     try:
-        all_orders = sheets_client.read_sheet_rows(ORDERS_SHEET)
-        all_items = sheets_client.read_sheet_rows(ORDER_ITEMS_SHEET)
+        all_orders = get_sheets_client().read_sheet_rows(ORDERS_SHEET)
+        all_items = get_sheets_client().read_sheet_rows(ORDER_ITEMS_SHEET)
         
         # Filter orders by email (stored in Customer_Auth lookup or directly if email was in sheet)
         # However, the Orders sheet doesn't have email. We need to find customer_id first.
-        auth_rows = sheets_client.read_sheet_rows("Customer_Auth")
+        auth_rows = get_sheets_client().read_sheet_rows("Customer_Auth")
         user_row = next((r for r in auth_rows if r.get("Customer_Email") == email), None)
         
         if not user_row:
@@ -314,4 +321,5 @@ async def get_order_history(email: str):
 
 @order_router.get("/coupons")
 def get_coupons():
-    return {"coupons": pricing_agent._get_coupons(0, 0)}
+    return {"coupons": get_pricing_agent()._get_coupons(0, 0)}
+

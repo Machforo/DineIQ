@@ -141,9 +141,9 @@ const ChatbotPage = () => {
   ];
 
   return (
-    <div className="flex flex-col h-screen bg-[#F4F4F2] relative overflow-hidden">
-      {/* Background Pattern - Subtle Zomato Doodle-like */}
-      <div className="fixed inset-0 opacity-[0.03] pointer-events-none bg-[url('https://b.zmtcdn.com/web_assets/81f3ff974d82520780078ba1cfbd453a1583259680.png')]" />
+    <div className="flex flex-col h-screen bg-background relative overflow-hidden">
+      {/* Background Pattern - Subtle Organic Texture */}
+      <div className="fixed inset-0 opacity-[0.05] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/natural-paper.png')]" />
 
       {/* HEADER - Clean & Premium */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm">
@@ -158,16 +158,16 @@ const ChatbotPage = () => {
 
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#E23744] to-pink-600 flex items-center justify-center shadow-md border-2 border-white">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-[#3D6151] flex items-center justify-center shadow-md border-2 border-white">
                   <Bot className="w-5 h-5 text-white" />
                 </div>
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full animate-pulse"></span>
               </div>
               <div>
-                <h1 className="text-base font-black text-gray-900 leading-tight">DineIQ Concierge</h1>
+                <h1 className="text-base font-black text-gray-900 leading-tight font-serif">Harvest Concierge</h1>
                 <div className="flex items-center gap-1">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                  <p className="text-[10px] font-bold text-gray-500 tracking-wide uppercase">Online & Ready</p>
+                  <p className="text-[10px] font-bold text-gray-500 tracking-wide uppercase">Fresh & Ready</p>
                 </div>
               </div>
             </div>
@@ -221,7 +221,7 @@ const ChatbotPage = () => {
                 <button
                   key={idx}
                   onClick={() => handleSendMessage(prompt)}
-                  className="whitespace-nowrap px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs font-semibold text-gray-600 hover:bg-[#E23744] hover:text-white hover:border-[#E23744] transition-all active:scale-95"
+                  className="whitespace-nowrap px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs font-semibold text-gray-600 hover:bg-primary hover:text-white hover:border-primary transition-all active:scale-95"
                 >
                   {prompt}
                 </button>

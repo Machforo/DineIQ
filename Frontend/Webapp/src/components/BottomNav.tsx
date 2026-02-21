@@ -30,24 +30,24 @@ export default function BottomNav() {
                         const isSearch = item.label === "Search";
 
                         const content = (
-                            <div className={`flex flex-col items-center justify-center gap-1 py-1.5 px-4 rounded-2xl transition-all duration-200 ${active ? 'bg-[#E23744]/10' : ''}`}>
+                            <div className={`flex flex-col items-center justify-center gap-1 py-1.5 px-4 rounded-2xl transition-all duration-200 ${active ? 'bg-primary/10' : ''}`}>
                                 <div className="relative">
                                     <item.icon
-                                        className={`w-5 h-5 transition-all duration-200 ${active ? 'text-[#E23744]' : 'text-gray-400'}`}
+                                        className={`w-5 h-5 transition-all duration-200 ${active ? 'text-primary' : 'text-gray-400'}`}
                                         strokeWidth={active ? 2.5 : 1.8}
-                                        fill={active ? 'rgba(226,55,68,0.15)' : 'none'}
+                                        fill={active ? 'rgba(45,75,63,0.15)' : 'none'}
                                     />
                                     {item.badge ? (
-                                        <span className="absolute -top-2 -right-2 bg-[#E23744] text-white text-[9px] font-black min-w-[16px] h-4 px-0.5 rounded-full flex items-center justify-center shadow-sm animate-in zoom-in-50 duration-200">
+                                        <span className="absolute -top-2 -right-2 bg-primary text-white text-[9px] font-black min-w-[16px] h-4 px-0.5 rounded-full flex items-center justify-center shadow-sm animate-in zoom-in-50 duration-200">
                                             {item.badge}
                                         </span>
                                     ) : null}
                                 </div>
-                                <span className={`text-[10px] font-bold tracking-wide transition-colors duration-200 ${active ? 'text-[#E23744]' : 'text-gray-400'}`}>
+                                <span className={`text-[10px] font-bold tracking-wide transition-colors duration-200 ${active ? 'text-primary' : 'text-gray-400'}`}>
                                     {item.label}
                                 </span>
                                 {active && (
-                                    <div className="w-1 h-1 rounded-full bg-[#E23744]" />
+                                    <div className="w-1 h-1 rounded-full bg-primary" />
                                 )}
                             </div>
                         );

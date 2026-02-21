@@ -11,6 +11,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 import os, re, json, asyncio, time
+from functools import lru_cache
 from fastapi import APIRouter
 from pydantic import BaseModel
 from datetime import datetime, timezone
@@ -23,9 +24,20 @@ from agents.menu import MenuAgent
 from services.llm import GroqClient
 from services.sheets import SheetsClient
 
-menu_agent    = MenuAgent()
-groq_client   = GroqClient()
-sheets_client = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
+# ── Lazy singletons — created on first request, NOT at import time ────────────
+# This prevents blocking uvicorn's worker thread during startup while
+# `build('sheets', 'v4')` fetches Google's API discovery JSON.
+@lru_cache(maxsize=1)
+def get_menu_agent_instance() -> MenuAgent:
+    return MenuAgent()
+
+@lru_cache(maxsize=1)
+def get_groq_client_instance() -> GroqClient:
+    return GroqClient()
+
+@lru_cache(maxsize=1)
+def get_sheets_client_instance() -> SheetsClient:
+    return SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
 
 CHATS_SHEET         = "Chats"
 CUSTOMER_AUTH_SHEET = "Customer_Auth"
@@ -39,6 +51,7 @@ MENU_CACHE_TTL: int     = 300   # seconds (5 minutes)
 
 def get_cached_menu() -> list[dict]:
     global _menu_cache, _menu_cache_ts
+    menu_agent = get_menu_agent_instance()
     if _menu_cache and (time.time() - _menu_cache_ts) < MENU_CACHE_TTL:
         print(f"✅ Menu from cache ({len(_menu_cache)} items)")
         return _menu_cache
@@ -120,7 +133,7 @@ Latest user message: {user_message}
 
 JSON:"""
 
-    raw = groq_client.call_groq_with_retry(prompt)
+    raw = get_groq_client_instance().call_groq_with_retry(prompt)
     print(f"🧠 Intent raw: {raw}")
 
     # Parse JSON safely
@@ -177,26 +190,26 @@ def format_menu_for_llm(menu: list[dict], max_items: int = 60) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 # STEP 3 — RESPONDER: Groq generates the final reply using menu context
 # ─────────────────────────────────────────────────────────────────────────────
-RESPONDER_SYSTEM = """You are DineIQ, a warm and friendly restaurant AI concierge.
+RESPONDER_SYSTEM = """You are Harvest by DineIQ, an elegant and warm AI concierge for a premium farm-to-table restaurant experience.
 
 STRICT RULES:
 1. ONLY mention items that appear in the MENU block. Never invent items or prices.
 2. For vegan/veg queries: ONLY suggest [VEG] items.
-3. Keep replies concise, friendly, and emoji-rich.
-4. No JSON in your reply — plain conversational text only.
-5. Do NOT take orders or make reservations.
+3. Language: Use descriptive, appetizing, and sophisticated language. Focus on "freshness", "organic quality", and "local flavors".
+4. Tone: Helpful, welcoming, and knowledgeable. Use a few elegant emojis (🌿, 🥗, 🍲, 🥖).
+5. No JSON in your reply — plain conversational text only.
+6. Do NOT take orders or make reservations.
 
 For COMBO suggestions:
-- Create 2–3 named combos (give each a creative name like "Weekend Feast" or "Light Bite Combo")
-- List each item in the combo with its price
-- Show the combo total
-- Mention any savings (e.g., "You save ₹X by ordering as a combo!")
-- Format each combo clearly separated by lines
+- Hand-pick 2–3 harmonious pairings and give them "Harvest" inspired names (e.g., "Field & Orchard Feast", "Rustic Garden Duo").
+- List each included item with its price.
+- Clearly state the total and highlight the curated nature of the selection.
+- Format each combo clearly separated by decorative lines.
 
 For ITEM suggestions:
-- Recommend 3–5 dishes from the menu that match the user's request
-- Include the price and a brief appetizing description (1 line max)
-- Ask if they'd like to know more or want a combo suggestion"""
+- Recommend 3–5 dishes that perfectly match the user's intent.
+- Provide a brief, sensory-rich description (e.g., "Crisp seasonal greens...", "Slow-roasted to perfection...").
+- Invite the user to explore more or suggest a curated combo pairing."""
 
 
 def build_response_prompt(
@@ -261,9 +274,9 @@ Return ONLY a valid JSON array, nothing else:
 
 RULES:
 - Use ONLY items from the MENU. Do NOT invent items.
-- totalPrice = sum of all item prices (no discount for now, set savings=0).
+- totalPrice = sum of all item prices.
 - Each combo should have 2-4 items.
-- Give creative names like "Spice Fiesta", "Light Noon Combo", "Family Feast".
+- Give elegant, Harvest-inspired names like "Field & Forest Feast", "Bounty of the Valley", "Heritage Hearth Duo", "Sun-Kissed Garden Select".
 - Return valid JSON array only, no markdown, no explanation.
 """
 
@@ -394,14 +407,14 @@ async def llm_chat(req: ChatRequest):
                 None, generate_structured_combos, menu, menu_text, req.userMessage
             )
             reply_task = loop.run_in_executor(
-                None, groq_client.call_groq_with_retry, reply_prompt
+                None, get_groq_client_instance().call_groq_with_retry, reply_prompt
             )
             structured_combos, ai_reply = await asyncio.gather(combo_task, reply_task)
             print(f"✅ Parallel done: {len(structured_combos)} combos + reply")
         else:
             structured_combos = []
             ai_reply = await loop.run_in_executor(
-                None, groq_client.call_groq_with_retry, reply_prompt
+                None, get_groq_client_instance().call_groq_with_retry, reply_prompt
             )
 
         if not ai_reply:
@@ -423,7 +436,7 @@ async def llm_chat(req: ChatRequest):
 # HELPER: Customer lookup
 # ─────────────────────────────────────────────────────────────────────────────
 def find_customer_id(email: str, phone: str):
-    rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
+    rows = get_sheets_client_instance().read_sheet_rows(CUSTOMER_AUTH_SHEET)
     for r in rows:
         sheet_email = (r.get("Customer_Email") or "").strip().lower()
         sheet_phone = (r.get("Customer_Phone") or "").strip()
@@ -439,7 +452,7 @@ def find_customer_id(email: str, phone: str):
 # ─────────────────────────────────────────────────────────────────────────────
 def generate_next_chat_id():
     try:
-        rows = sheets_client.read_sheet_rows(CHATS_SHEET)
+        rows = get_sheets_client_instance().read_sheet_rows(CHATS_SHEET)
     except Exception:
         rows = []
 
@@ -479,7 +492,7 @@ async def save_chat(session: ChatSession):
             session.transcriptText or "",
         ]
 
-        sheets_client.append_row(CHATS_SHEET, row)
+        get_sheets_client_instance().append_row(CHATS_SHEET, row)
         print(f"✅ Chat saved: {chat_id}")
 
         return {"status": "success", "chatId": chat_id, "customerId": customer_id}
