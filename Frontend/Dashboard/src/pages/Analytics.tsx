@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { KPICard } from "@/components/KPICard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, ShoppingCart, DollarSign, Star, Megaphone, MessageCircle } from "lucide-react";
@@ -19,6 +19,7 @@ export default function Analytics() {
   const [insights, setInsights] = useState<any[]>([]);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [chats, setChats] = useState<any[]>([]);
+  const [orderItems, setOrderItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchSheet = async (sheetName: string) => {
@@ -33,13 +34,14 @@ export default function Analytics() {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [c, o, m, i, cam, ch] = await Promise.all([
+      const [c, o, m, i, cam, ch, oi] = await Promise.all([
         fetchSheet("Customer_Auth"),
         fetchSheet("Orders"),
         fetchSheet("Menu"),
         fetchSheet("Customer_Insights"),
         fetchSheet("Campaigns"),
         fetchSheet("Chats"),
+        fetchSheet("Order_Items"),
       ]);
 
       setCustomers(c);
@@ -48,6 +50,7 @@ export default function Analytics() {
       setInsights(i);
       setCampaigns(cam);
       setChats(ch);
+      setOrderItems(oi);
     } catch (err) {
       console.error("Error fetching analytics data:", err);
     }
@@ -110,10 +113,37 @@ export default function Analytics() {
     "hsl(320, 60%, 50%)",  // Hot Pink
   ];
 
-  const topItems = menu
-    .sort((a, b) => (b.Orders_Sold || 0) - (a.Orders_Sold || 0))
-    .slice(0, 5)
-    .map(m => ({ name: m.Item_Name, orders: m.Orders_Sold || 0 }));
+  // Calculate Top 5 Selling Items from orderItems data
+  const topItems = useMemo(() => {
+    if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) return [];
+
+    const aggregated = orderItems.reduce((acc: Record<string, number>, cur) => {
+      const keys = Object.keys(cur);
+      // Higher priority for specific name columns, explicitly exclude ID columns
+      const nameKey = keys.find(k => /item_name|item name/i.test(k)) ||
+        keys.find(k => /name/i.test(k) && !/id/i.test(k)) ||
+        keys.find(k => /item/i.test(k) && !/id/i.test(k));
+
+      const qtyKey = keys.find(k => /quantity|item_quantity|item quantity/i.test(k)) ||
+        keys.find(k => /qty/i.test(k));
+
+      if (nameKey) {
+        const name = String(cur[nameKey] || "").trim();
+        // Skip header if it leaked in or if it's an ID-like string
+        if (name && !/item_name|item_id|id/i.test(name.toLowerCase())) {
+          const qty = qtyKey ? parsePrice(cur[qtyKey]) : 1;
+          acc[name] = (acc[name] || 0) + qty;
+        }
+      }
+      return acc;
+    }, {});
+
+    return Object.entries(aggregated)
+      .map(([name, orders]) => ({ name, orders: orders as number }))
+      .filter(item => item.orders > 0)
+      .sort((a, b) => b.orders - a.orders)
+      .slice(0, 5);
+  }, [orderItems]);
 
   return (
     <div className="space-y-6">
@@ -197,10 +227,14 @@ export default function Analytics() {
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={topItems} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" fontSize={12} />
-                <YAxis type="category" dataKey="name" fontSize={11} width={110} />
+                <XAxis
+                  type="number"
+                  fontSize={12}
+                  domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]}
+                />
+                <YAxis type="category" dataKey="name" fontSize={11} width={150} />
                 <Tooltip />
-                <Bar dataKey="orders" fill="hsl(38, 92%, 50%)" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="orders" fill="hsl(38, 92%, 50%)" radius={[0, 4, 4, 0]} barSize={20} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
