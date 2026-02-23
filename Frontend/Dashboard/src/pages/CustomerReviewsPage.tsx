@@ -124,13 +124,15 @@ export default function CustomerReviewsPage() {
             render: (v: string) => <Badge className={urgencyColors[v] || ""}>{v}</Badge>,
         },
         {
+            key: "Assigned_To",
+            label: "Assigned To"
+        },
+        { key: "Actions_Needed", label: "Actions Needed" },
+        { key: "Internal_Comments", label: "Internal Comments" },
+        {
             key: "Status",
             label: "Status",
             render: (v: string) => <Badge className={statusColors[v] || ""}>{v}</Badge>,
-        },
-        {
-            key: "Assigned_To",
-            label: "Assigned To"
         },
         {
             key: "_actions",
