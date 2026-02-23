@@ -16,6 +16,7 @@ import NotFound from "@/pages/NotFound";
 import Payment from "@/pages/Payment";
 import PreferenceScreen from "@/pages/PreferenceScreen";
 import ChatbotPage from "@/pages/ChatbotPage";
+import ReviewPage from "@/pages/ReviewPage";
 import AIButton from "@/components/AIButton"; // <-- Added AIButton
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/payment" element={<Payment />} />
               <Route path="/track-order" element={<TrackOrderPage />} />
               <Route path="/chatbot" element={<ChatbotPage />} />
+              <Route path="/review" element={<ReviewPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

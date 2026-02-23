@@ -1,5 +1,5 @@
 import { useUser } from "@/contexts/UserContext";
-import { Search, Mic, MapPin, ShoppingBag } from "lucide-react";
+import { Search, Mic, MapPin, ShoppingBag, Star } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
@@ -41,8 +41,17 @@ export default function HomeHeader({ onSearch, searchQuery = "" }: HomeHeaderPro
           </div>
         </div>
 
-        {/* Right Side Actions - Veg Mode Toggle & Cart */}
+        {/* Right Side Actions - Veg Mode Toggle & Review & Cart */}
         <div className="flex items-center gap-2">
+          {/* Review Icon */}
+          <button
+            onClick={() => navigate("/review")}
+            className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center transition-all active:scale-95"
+            title="Rate your experience"
+          >
+            <Star className="w-5 h-5 text-yellow-500" fill="currentColor" />
+          </button>
+
           {/* Cart Icon */}
           <button
             onClick={() => navigate("/cart")}

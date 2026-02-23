@@ -11,6 +11,7 @@ import {
   MessageCircle,
   Megaphone,
   Activity,
+  MessageSquare,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -36,6 +37,7 @@ const mainItems = [
   { title: "Order Items", url: "/order-items", icon: Package },
   { title: "Chats", url: "/chats", icon: MessageCircle },
   { title: "Campaigns", url: "/campaigns", icon: Megaphone },
+  { title: "Customer Reviews", url: "/customer-reviews", icon: MessageSquare },
 ];
 
 export function AppSidebar() {

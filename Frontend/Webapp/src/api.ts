@@ -132,5 +132,29 @@ export const api = {
             console.error("Place Order Error:", e);
             return null;
         }
+    },
+
+    async submitReview(reviewData: any) {
+        try {
+            const res = await fetch(`${API_BASE_URL}/reviews/submit`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(reviewData),
+            });
+            return await res.json();
+        } catch (e) {
+            console.error("Submit Review Error:", e);
+            return null;
+        }
+    },
+
+    async fetchLatestReview(email: string) {
+        try {
+            const res = await fetch(`${API_BASE_URL}/reviews/customer/${email}`);
+            return await res.json();
+        } catch (e) {
+            console.error("Fetch Latest Review Error:", e);
+            return null;
+        }
     }
 };
