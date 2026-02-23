@@ -64,6 +64,12 @@ export default function CustomerInsightsPage() {
       ? Math.round(data.reduce((sum, c) => sum + Number(c.Customer_Score || 0), 0) / data.length)
       : 0;
 
+  // % of customers classified as high-value spenders (Premium or High AOV)
+  const topAovCount = data.filter(c =>
+    c.AOV === "Premium Spender" || c.AOV === "High Spender"
+  ).length;
+  const topAovPct = data.length > 0 ? Math.round((topAovCount / data.length) * 100) : 0;
+
   const columns = [
     { key: "Customer_ID", label: "ID" },
     { key: "Customer_Name", label: "Name" },
@@ -98,7 +104,7 @@ export default function CustomerInsightsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KPICard title="Avg Score" value={avgScore} icon={Star} subtitle="/100" />
         <KPICard title="Total Profiles" value={data.length} icon={Brain} />
-        <KPICard title="Sample KPI" value={data.length} icon={TrendingUp} />
+        <KPICard title="% Top AOV" value={`${topAovPct}%`} icon={TrendingUp} subtitle="Premium + High" />
       </div>
 
       <DataTable data={data} columns={columns} searchPlaceholder="Search insights..." />

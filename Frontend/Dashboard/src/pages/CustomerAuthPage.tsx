@@ -41,11 +41,12 @@ export default function CustomerAuthPage() {
       const json = JSON.parse(text.substr(47).slice(0, -2));
 
       const rows: CustomerAuth[] = parseGVizJson(json, "Customer_Auth").map((r: any) => {
-        // Normalize date-time fields
+        // Store raw ISO strings for date-based calculations before converting to display format
+        r._lastLoginRaw = r.Last_Login_DateTime || "";
+
+        // Normalize date-time fields for display
         ["Date_of_Birth", "Creation_DateTime", "Last_Login_DateTime"].forEach((key) => {
           if (r[key]) {
-            // parseGVizJson already returns ISO string for these known date columns
-            // We convert to locale string for display
             r[key] = new Date(r[key]).toLocaleString();
           }
         });
@@ -67,6 +68,14 @@ export default function CustomerAuthPage() {
   }, []);
 
   const platinumCount = data.filter(c => c.Customer_Category === "Platinum").length;
+
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const recentLoginsCount = data.filter(c => {
+    const raw = (c as any)._lastLoginRaw;
+    if (!raw) return false;
+    return new Date(raw) >= sevenDaysAgo;
+  }).length;
 
   const columns = [
     { key: "Customer_ID", label: "ID" },
@@ -100,7 +109,7 @@ export default function CustomerAuthPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KPICard title="Total Customers" value={data.length} icon={Users} />
         <KPICard title="Platinum Members" value={platinumCount} icon={Crown} />
-        <KPICard title="Recent Logins (7d)" value={data.length} icon={Clock} />
+        <KPICard title="Recent Logins (7d)" value={recentLoginsCount} icon={Clock} />
       </div>
 
       {/* Data Table */}

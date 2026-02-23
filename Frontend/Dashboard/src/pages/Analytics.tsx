@@ -143,10 +143,17 @@ export default function Analytics() {
         <Card>
           <CardHeader><CardTitle className="text-base">Revenue by Category</CardTitle></CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={revenueByCategory}>
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart data={revenueByCategory} margin={{ bottom: 70 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="category" fontSize={11} />
+                <XAxis
+                  dataKey="category"
+                  fontSize={11}
+                  angle={-45}
+                  textAnchor="end"
+                  interval={0}
+                  tick={{ dy: 6 }}
+                />
                 <YAxis fontSize={12} />
                 <Tooltip />
                 <Bar dataKey="revenue" fill="hsl(345, 55%, 38%)" radius={[4, 4, 0, 0]} />
@@ -159,12 +166,17 @@ export default function Analytics() {
           <CardHeader><CardTitle className="text-base">Customer Distribution</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+              <PieChart margin={{ left: 30 }}>
+                <Pie data={pieData} cx="40%" cy="50%" innerRadius={60} outerRadius={100} dataKey="value">
                   {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
-                <Tooltip />
-                <Legend />
+                <Tooltip formatter={(value, name) => [value, name]} />
+                <Legend
+                  layout="vertical"
+                  align="right"
+                  verticalAlign="middle"
+                  wrapperStyle={{ fontSize: "11px", lineHeight: "22px" }}
+                />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
