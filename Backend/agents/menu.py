@@ -12,6 +12,7 @@ import re
 # import agents and services classes
 from services.sheets import SheetsClient
 from services.llm import GeminiClient
+from services.dependencies import sheets as _sheets_singleton, gemini_menu as _gemini_singleton
 
 # ---------------------------------------------------------
 # Load environment variables
@@ -37,10 +38,9 @@ class MenuAgent:
         if not self.spreadsheet_id:
             raise ValueError("SPREADSHEET_ID is not set in environment variables")
 
-        self.sheets_client = SheetsClient(
-            spreadsheet_id=self.spreadsheet_id
-        )
-        self.gemini_client = GeminiClient()
+        # Use centralized singletons — no new connections created
+        self.sheets_client = _sheets_singleton
+        self.gemini_client  = _gemini_singleton
 
         # Helper Data (Migrated from menu_agent.py)
         self.category_images = {
@@ -588,7 +588,7 @@ class MenuAgent:
     - No explanation, no markdown
     """
 
-        gemini_client = GeminiClient()
+        gemini_client = self.gemini_client   # reuse singleton — do NOT create a new instance here
         response = gemini_client.call_gemini_with_retry(prompt)
 
         if not response:

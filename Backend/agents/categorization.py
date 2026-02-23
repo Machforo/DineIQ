@@ -19,11 +19,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from services.sheets import SheetsClient
-sheets_client = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
-
-from services.llm import GeminiClient, GeminiClient_2
-gemini_client = GeminiClient()
-gemini_client_2 = GeminiClient_2()
+from services.dependencies import sheets as sheets_client
+from services.dependencies import gemini_dietary as gemini_client, gemini_chat_inf as gemini_client_2
 
 GEMINI_CHAT_LLM_INFERENCE_ENABLED = (os.getenv("GEMINI_CHAT_LLM_INFERENCE_ENABLED", "false").lower() == "true")
 GEMINI_DIETARY_LLM_INFERENCE_ENABLED = (os.getenv("GEMINI_DIETARY_LLM_INFERENCE_ENABLED", "false").lower() == "true")

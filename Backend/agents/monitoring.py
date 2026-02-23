@@ -27,8 +27,7 @@ import os
 import datetime
 
 # import agents and services classes
-from services.sheets import SheetsClient
-sheets_client = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
+from services.dependencies import sheets as sheets_client
 
 ACTIVITY_SHEET = "Customer_Activities"
 

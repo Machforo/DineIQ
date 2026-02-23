@@ -19,22 +19,15 @@ load_dotenv()
 SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID", "").strip()
 
 # ---------------------------------------------------------
-# Menu Agent
+# Centralized Singletons
 # ---------------------------------------------------------
-from agents.menu import MenuAgent
-menu_agent = MenuAgent()
+from services.dependencies import sheets as sheets_client, gemini_chatbot as gemini_client
 
 # ---------------------------------------------------------
-# llm Client
+# Menu Agent (singleton via menu.py)
 # ---------------------------------------------------------
-from services.llm import GeminiClient
-gemini_client = GeminiClient()
-
-# ---------------------------------------------------------
-# Sheets Client
-# ---------------------------------------------------------
-from services.sheets import SheetsClient
-sheets_client = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
+from agents.menu import get_menu_agent
+menu_agent = get_menu_agent()
 
 CHATS_SHEET = "Chats"
 CUSTOMER_AUTH_SHEET = "Customer_Auth"

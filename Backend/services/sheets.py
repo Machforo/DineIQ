@@ -4,7 +4,7 @@
 # Library and Packages Import
 # ---------------------------------------------------------
 import os
-# import time
+import time
 import pandas as pd
 # from google.oauth2.service_account import Credentials
 # from googleapiclient.discovery import build
@@ -31,6 +31,14 @@ class SheetsClient:
     # -------------------------------------------------------------------
     SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
+    # ------------------------------------------------------------------
+    # Menu Read Cache — TTL in seconds (default: 5 minutes)
+    # Applies to read_sheet() and read_sheet_rows() calls.
+    # Override per instance: client.CACHE_TTL_SECONDS = 300
+    # Disable entirely:     client.CACHE_TTL_SECONDS = 0
+    # ------------------------------------------------------------------
+    CACHE_TTL_SECONDS: int = 300
+
     def __init__(self, spreadsheet_id: str, service_account_file: str | None = None):
         """
         :param spreadsheet_id: Google Spreadsheet ID
@@ -44,6 +52,9 @@ class SheetsClient:
 
         if not self.service_account_file:
             raise ValueError("SERVICE_ACCOUNT_FILE is not set")
+
+        # In-memory cache: { sheet_name: (timestamp, DataFrame) }
+        self._cache: dict[str, tuple[float, pd.DataFrame]] = {}
 
         self._service = self.init_service()
 
@@ -80,13 +91,28 @@ class SheetsClient:
                     raise e
 
     # -------------------------------------------------------------------
-    # 📖 Read
-    # Caching can be added to avoid repeated sheet reads
+    # 📖 Read  (with TTL cache)
     # -------------------------------------------------------------------
-    def read_sheet(self, sheet_name: str) -> pd.DataFrame:
+    def read_sheet(self, sheet_name: str, bypass_cache: bool = False) -> pd.DataFrame:
         """
         Read a Google Sheet into a pandas DataFrame (auto-pads rows).
+
+        Results are cached in-memory for CACHE_TTL_SECONDS (default 5 min).
+        Pass bypass_cache=True to force a fresh read regardless of TTL.
+        Call invalidate_cache(sheet_name) after writes to keep data fresh.
         """
+        now = time.monotonic()
+        ttl = self.CACHE_TTL_SECONDS
+
+        # --- Cache hit ---
+        if not bypass_cache and ttl > 0 and sheet_name in self._cache:
+            cached_at, cached_df = self._cache[sheet_name]
+            if now - cached_at < ttl:
+                print(f"📦 [Cache HIT] '{sheet_name}' (age {int(now - cached_at)}s)")
+                return cached_df.copy()   # return a copy so callers can mutate safely
+
+        # --- Cache miss: fetch from Sheets API ---
+        print(f"🌐 [Cache MISS] Fetching '{sheet_name}' from Google Sheets...")
         request = self._service.values().get(
             spreadsheetId=self.spreadsheet_id,
             range=f"{sheet_name}!A:ZZ",
@@ -104,29 +130,47 @@ class SheetsClient:
             for r in rows
         ]
 
-        return pd.DataFrame(clean_rows, columns=headers)
+        df = pd.DataFrame(clean_rows, columns=headers)
+
+        # Store in cache
+        if ttl > 0:
+            self._cache[sheet_name] = (now, df)
+
+        return df.copy()
 
     # -------------------------------------------------------------------
-    # 📖 Read - Lightweight Reader (non-pandas)
+    # 📖 Read - Lightweight Reader (non-pandas), uses cache via read_sheet
     # -------------------------------------------------------------------
-    def read_sheet_rows(self, sheet_name: str) -> list[dict]:
-        request = self._service.values().get(
-            spreadsheetId=self.spreadsheet_id,
-            range=f"{sheet_name}!A:ZZ",
-        )
-        result = self._execute_with_retry(request)
-
-        values = result.get("values", [])
-        if not values:
-            return []
-
-        headers = values[0]
-        rows = values[1:]
-
+    def read_sheet_rows(self, sheet_name: str, bypass_cache: bool = False) -> list[dict]:
+        """
+        Return a list of dicts from a Google Sheet.
+        Internally reuses the read_sheet cache to avoid duplicate API calls.
+        """
+        df = self.read_sheet(sheet_name, bypass_cache=bypass_cache)
+        headers = df.columns.tolist()
         return [
-            dict(zip(headers, r + [""] * (len(headers) - len(r))))
-            for r in rows
+            dict(zip(headers, row))
+            for row in df.values.tolist()
         ]
+
+    # -------------------------------------------------------------------
+    # 🗑️ Cache Invalidation
+    # -------------------------------------------------------------------
+    def invalidate_cache(self, sheet_name: str | None = None):
+        """
+        Invalidate cache for a specific sheet, or ALL sheets if sheet_name is None.
+        Call this after any write operation to ensure the next read is fresh.
+
+        Example:
+            sheets.append_row("Orders", row)
+            sheets.invalidate_cache("Orders")   # force fresh on next read
+        """
+        if sheet_name is None:
+            self._cache.clear()
+            print("🗑️ [Cache] All sheets invalidated")
+        elif sheet_name in self._cache:
+            del self._cache[sheet_name]
+            print(f"🗑️ [Cache] '{sheet_name}' invalidated")
 
     # -------------------------------------------------------------------
     # ✍️ Update columns in sheet
