@@ -99,7 +99,16 @@ export default function Analytics() {
   }, {} as Record<string, number>);
   const pieData = Object.entries(categoryDistribution).map(([name, value]) => ({ name, value }));
 
-  const COLORS = ["hsl(38, 92%, 50%)", "hsl(345, 55%, 38%)", "hsl(25, 90%, 50%)", "hsl(20, 20%, 45%)"];
+  const COLORS = [
+    "hsl(38, 92%, 50%)",   // Gold
+    "hsl(345, 55%, 38%)",  // Deep Crimson
+    "hsl(215, 60%, 52%)",  // Royal Blue
+    "hsl(150, 50%, 45%)",  // Emerald Green
+    "hsl(280, 50%, 50%)",  // Amethyst Purple
+    "hsl(25, 90%, 50%)",   // Vibrant Orange
+    "hsl(190, 70%, 45%)",  // Teal
+    "hsl(320, 60%, 50%)",  // Hot Pink
+  ];
 
   const topItems = menu
     .sort((a, b) => (b.Orders_Sold || 0) - (a.Orders_Sold || 0))
@@ -148,7 +157,7 @@ export default function Analytics() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis
                   dataKey="category"
-                  fontSize={11}
+                  fontSize={9}
                   angle={-45}
                   textAnchor="end"
                   interval={0}
