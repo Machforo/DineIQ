@@ -26,7 +26,7 @@ class PreferencesRequest(BaseModel):
 
 class ComboRequest(BaseModel):
     num_combos: int = 3
-    email: Optional[str] = None
+    customer_id: Optional[str] = None
 
 # ---------------------------------------------------------
 # Recommendation Agent Class
@@ -40,13 +40,14 @@ class RecommendationAgent:
         self.gemini_client   = _gemini_combos    # convenience alias used by generate_combos
         self.menu_agent = get_menu_agent()
         
-        # Strategic Pairings
+        # Strategic Pairings adapted to current Menu
         self.category_pairings = {
-            'Bread': {'pairs_with': ['Gravy', 'DryVeg'], 'message': 'Perfect with curry!'},
-            'Rice': {'pairs_with': ['Gravy', 'Dessert', 'Raita'], 'message': 'Complete your meal!'},
-            'Gravy': {'pairs_with': ['Bread', 'Rice'], 'message': 'Best with bread or rice!'},
-            'Starter': {'pairs_with': ['Beverages', 'Smoothies'], 'message': 'Pair with a refreshing drink!'},
-            'Snacks': {'pairs_with': ['Beverages', 'Smoothies'], 'message': 'Great with a drink!'}
+            'MAINS FROM THE SEA': {'pairs_with': ['SIDES', 'FROM THE GARDEN'], 'message': 'Perfect with a fresh side!'},
+            'GRILLS': {'pairs_with': ['SIDES', 'FROM THE GARDEN'], 'message': 'Complete your grill feast!'},
+            'FROM THE GARDEN': {'pairs_with': ['SIDES', 'SOUP'], 'message': 'Healthy and hearty pairings!'},
+            'STARTERS FROM THE SEA': {'pairs_with': ['GRILLS', 'MAINS FROM THE SEA'], 'message': 'Start with seafood, stay with the sea!'},
+            'STARTERS FROM THE LAND': {'pairs_with': ['GRILLS', 'MAINS FROM THE SEA'], 'message': 'The perfect opening act!'},
+            'SOUP': {'pairs_with': ['FROM THE GARDEN', 'SIDES'], 'message': 'A warm start to your meal!'}
         }
 
     # ---------------------------------------------------------
@@ -82,7 +83,7 @@ class RecommendationAgent:
             item_category = full_item_row.iloc[0]['Item_Category']
             item_name = full_item_row.iloc[0]['Item_Name']
 
-            pairing_info = self.category_pairings.get(item_category, {'pairs_with': ['Beverages']})
+            pairing_info = self.category_pairings.get(item_category, {'pairs_with': ['SIDES']})
             pairing_recs = self._get_items_by_category_from_df(menu_df, pairing_info['pairs_with'], diet, str(current_item_id))
 
             # Strategy 2: Frequently Bought Together (Order Items Analysis)
@@ -109,9 +110,9 @@ class RecommendationAgent:
         """Simple upsell getter - e.g. desserts or beverages"""
         try:
              menu_df = self.sheets_client.read_sheet("Menu")
-             # Filter for 'Dessert' or 'Beverages'
-             upsell_df = menu_df[menu_df['Item_Category'].isin(['Dessert', 'Beverages'])]
-             upsell_df = upsell_df[upsell_df['Is_Active'].astype(str).str.lower() == 'true']
+             # Filter for 'DESSERTS' or 'SIDES' as upsells
+             is_active_mask = menu_df['Is_Active'].astype(str).str.upper().isin(['TRUE', 'ACTIVE', 'YES', '1'])
+             upsell_df = menu_df[menu_df['Item_Category'].isin(['DESSERTS', 'SIDES']) & is_active_mask]
              
              return [
                  {
@@ -166,81 +167,240 @@ class RecommendationAgent:
             traceback.print_exc()
             return {"status": "error", "message": str(e)}
 
-    def generate_combos(self, num_combos: int = 3, email: str = None) -> List[Dict]:
-        """Generate AI-powered combo deals (Integrated from ComboAgent)"""
+    def generate_combos(self, num_combos: int = 3, customer_id: str = None) -> List[Dict]:
+        """🤖 SUPER AI COMBO GENERATOR - Powered by Gemini with Deep Customer Intelligence"""
         try:
-            # Reuse sheets client or menu agent to get data
-            # Use self.menu_agent.get_menu() if it returns full dicts, but for Pandas ops we might need raw df
-            # Let's read sheets fresh or optimize later. Reading sheet "Menu" for now to match logic.
-            menu_df = self.sheets_client.read_sheet("Menu")
+            # -------------------------------------------------
+            # CACHE CHECK
+            # -------------------------------------------------
+            if not hasattr(self, '_combo_cache'):
+                self._combo_cache = {}
             
-            # Filter Active
-            active_items = menu_df[menu_df['Is_Active'].astype(str).str.upper() == 'TRUE'].copy()
+            cache_key = f"{customer_id}_{num_combos}"
+            import pandas as pd
+            import time
+            current_time = time.time()
+            CACHE_TTL = 900  # 15 Minutes Cache
+            
+            if cache_key in self._combo_cache:
+                data, timestamp = self._combo_cache[cache_key]
+                if current_time - timestamp < CACHE_TTL:
+                    return data
+            
+            # -------------------------------------------------
+            # GENERATE NEW
+            # -------------------------------------------------
+            print(f"🚀 Generating {num_combos} Super AI Combos for {customer_id or 'guest'}")
+            
+            # Step 1: Load active menu
+            menu_df = self.sheets_client.read_sheet("Menu")
+            is_active_mask = menu_df['Is_Active'].astype(str).str.upper().isin(['TRUE', 'ACTIVE', 'YES', '1'])
+            active_items = menu_df[is_active_mask].copy()
             
             if active_items.empty:
                 return []
 
-            # 1. AI Generation
-            ai_combos = []
-            try:
-                # Context for AI
-                menu_sample = active_items[['Item_Name', 'Item_Category', 'Current_Price']].head(40).to_string(index=False)
-                prompt = f"""
-                Create {num_combos} distinct combo meals from this menu.
-                Menu:
-                {menu_sample}
-                
-                Return a JSON List of objects with keys: "name", "items" (list of exact item names), "insight" (marketing rationale).
-                """
-                
-                response = self.gemini_client.call_gemini_with_retry(prompt)
-                # Cleanup JSON
-                if response:
-                    import json
-                    response = response.replace("```json", "").replace("```", "").strip()
-                    if "[" in response and "]" in response:
-                        start, end = response.find("["), response.rfind("]") + 1
-                        data = json.loads(response[start:end])
-                        
-                        for deal in data:
-                            # Match items back to DB
-                            combo_items = []
-                            for name in deal.get("items", []):
-                                match = active_items[active_items['Item_Name'].str.contains(name, case=False, regex=False)]
-                                if not match.empty:
-                                    combo_items.append(match.iloc[0].to_dict())
-                            
-                            if len(combo_items) >= 2:
-                                ai_combos.append(self._create_combo_object(
-                                    deal.get("name", "Special Combo"),
-                                    combo_items,
-                                    5, # 5% AI Discount
-                                    deal.get("insight", "AI Special")
-                                ))
-            except Exception as e:
-                print(f"AI Combo Gen Error: {e}")
+            # Step 2: Gather Customer Intelligence
+            customer_insights = self._gather_customer_insights(customer_id) if customer_id else {}
+            
+            # Step 3: Filter based on dietary preferences (from insights)
+            diet = customer_insights.get('dietary_preference', 'General')
+            print(f"Applying dietary filter for {customer_id}: {diet}")
+            is_veg_diet = any(k in diet.lower() for k in ["veg", "vegetarian", "pure veg"])
+            if is_veg_diet:
+                if 'Is_Veg' in active_items.columns:
+                    active_items = active_items[active_items['Is_Veg'].astype(str).str.upper() == 'TRUE']
+                    print(f"Filtered for vegetarian using 'Is_Veg' column. Remaining items: {len(active_items)}")
+                else:
+                    # Fallback keyword filter
+                    non_veg_keywords = ['Chicken', 'Egg', 'Meat', 'Fish', 'Mutton', 'Steak', 'Pork', 'Salmon', 'Beef', 'Prawn']
+                    active_items = active_items[~active_items['Item_Name'].str.contains(
+                        '|'.join(non_veg_keywords), case=False, na=False
+                    )]
+                    print(f"Filtered for vegetarian using keyword exclusion. Remaining items: {len(active_items)}")
 
-            if len(ai_combos) >= num_combos:
-                 return ai_combos[:num_combos]
+            # Step 4: Use Gemini AI to generate intelligent combos
+            print(f"Calling _generate_ai_super_combos with {len(active_items)} items.")
+            ai_combos = self._generate_ai_super_combos(
+                active_items=active_items,
+                customer_insights=customer_insights,
+                num_combos=num_combos
+            )
 
-            # 2. Fallback / Return what we have
-            return ai_combos
+            result = ai_combos[:num_combos]
+            
+            # UPDATE CACHE
+            self._combo_cache[cache_key] = (result, current_time)
+            
+            return result
 
         except Exception as e:
+            print(f"❌ Combo Generation Error: {e}")
             traceback.print_exc()
             return []
 
-    def _create_combo_object(self, name, items, discount_percent, insight):
-        total = sum(float(i['Current_Price']) for i in items)
-        price = round(total * (1 - discount_percent/100), 2)
-        desc = " • ".join([i['Item_Name'] for i in items])
+    def _gather_customer_insights(self, customer_id: str) -> Dict:
+        """🧠 Deep Customer Intelligence Gathering using Customer_Insights & Customer_Preferences"""
+        insights = {
+            'dietary_preference': 'General',
+            'favorite_items': [],
+            'preferred_categories': [],
+            'order_frequency': 'New Customer',
+            'average_order_value': 0,
+            'manual_insights': None
+        }
         
+        try:
+            # 1. Primary Source: Customer_Insights sheet
+            insights_df = self.sheets_client.read_sheet("Customer_Insights")
+            if not insights_df.empty and 'Customer_ID' in insights_df.columns:
+                user_insights = insights_df[insights_df['Customer_ID'].astype(str) == str(customer_id)]
+                if not user_insights.empty:
+                    latest = user_insights.iloc[-1]
+                    insights['dietary_preference'] = latest.get('Dietary', 'General')
+                    insights['favorite_items'] = str(latest.get('Favorites', '')).split(',')
+                    insights['average_order_value'] = float(latest.get('AOV', 0))
+                    insights['order_frequency'] = latest.get('Frequency', 'Occasional Customer')
+                    insights['manual_insights'] = latest.get('Attitude', None)
+                    print(f"✅ Found data in Customer_Insights for {customer_id}")
+                    return insights
+
+            # 2. Fallback: Customer_Preferences sheet (For first-time/new users)
+            prefs_df = self.sheets_client.read_sheet("Customer_Preferences")
+            if not prefs_df.empty and 'Customer_ID' in prefs_df.columns:
+                user_prefs = prefs_df[prefs_df['Customer_ID'].astype(str) == str(customer_id)]
+                if not user_prefs.empty:
+                    latest_pref = user_prefs.iloc[-1]
+                    insights['dietary_preference'] = latest_pref.get('Dietary', 'General')
+                    # Could extract prefered bread/beverage here too if needed
+                    print(f"✅ Falling back to Customer_Preferences for {customer_id}")
+                    
+        except Exception as e:
+            print(f"⚠️ Error gathering insights for {customer_id}: {e}")
+            
+        return insights
+
+    def _generate_ai_super_combos(self, active_items, customer_insights: Dict, num_combos: int) -> List[Dict]:
+        """🎯 Use Gemini AI to create personalized, intelligent combos"""
+        try:
+            import json
+            import pandas as pd
+            
+            # Smart Menu Sampling (up to 60 items for context)
+            menu_sample = active_items[['Item_Name', 'Item_Category', 'Current_Price']].drop_duplicates().head(60).to_dict('records')
+            
+            prompt = f"""
+            You are an expert restaurant combo designer. Create {num_combos} personalized combo meals.
+            
+            CUSTOMER PROFILE:
+            - Dietary Preference: {customer_insights.get('dietary_preference', 'General')}
+            - Order Frequency: {customer_insights.get('order_frequency', 'New Customer')}
+            - Favorite Items: {', '.join(customer_insights.get('favorite_items', [])) or 'None yet'}
+            - Average Order Value: KSh {customer_insights.get('average_order_value', 0):.0f}
+            - Additional Context: {customer_insights.get('manual_insights', 'None')}
+            
+            AVAILABLE MENU:
+            {json.dumps(menu_sample, indent=2)}
+            
+            RULES:
+            1. Each combo must have 2-4 individual items.
+            2. Use EXACT item names from the menu.
+            3. Balance categories (e.g., Grills/Mains + Side + Soup/Dessert).
+            4. Create variety across the {num_combos} combos.
+            5. Design combos between KSh {max(1200, customer_insights.get('average_order_value', 0) * 0.8):.0f} and KSh {max(5000, customer_insights.get('average_order_value', 0) * 2.5):.0f}.
+            
+            Return ONLY a JSON array:
+            [
+              {{
+                "name": "Catchy Combo Name",
+                "items": [
+                  {{"item_name": "Exact Name", "quantity": 1}},
+                  {{"item_name": "Exact Name", "quantity": 1}}
+                ],
+                "insight": "Explain why this is perfect for them (mention their history/taste)",
+                "personalization_score": 95,
+                "is_veg": true
+              }}
+            ]
+            """
+            
+            response = self.gemini_client.call_gemini_with_retry(prompt)
+            if not response: return []
+            
+            # Clean and parse
+            json_str = response.replace("```json", "").replace("```", "").strip()
+            if "[" in json_str and "]" in json_str:
+                data = json.loads(json_str[json_str.find("["):json_str.rfind("]")+1])
+                
+                processed = []
+                import random
+                for i, deal in enumerate(data):
+                    combo_items = []
+                    for it in deal.get("items", []):
+                        it_name = str(it.get('item_name', '')).strip().lower()
+                        # Robust matching
+                        m = active_items[active_items['Item_Name'].str.strip().str.lower() == it_name]
+                        if not m.empty:
+                            row = m.iloc[0].to_dict()
+                            row['quantity'] = it.get('quantity', 1)
+                            combo_items.append(row)
+                        else:
+                            print(f"⚠️ Could not find menu item: '{it_name}' in active_items ({len(active_items)})")
+                            pass # Removed debug print
+                    
+                    if len(combo_items) >= 2:
+                        score = deal.get('personalization_score', 80)
+                        discount = 5 + int(score / 20) # 5-10% discount
+                        
+                        combo_obj = self._create_combo_object(
+                            deal.get("name", "Harvest Special"),
+                            combo_items,
+                            min(15, discount), # cap at 15%
+                            deal.get("insight", "Handpicked for you")
+                        )
+                        combo_obj['personalization_score'] = score
+                        # Fix: Ensure Is_Veg reflects actual items if Gemini returns false
+                        combo_obj['Is_Veg'] = all(str(i.get('Is_Veg', '')).upper() == 'TRUE' for i in combo_items)
+                        processed.append(combo_obj)
+                return processed
+                
+        except Exception as e:
+            print(f"AI Super Combo Error: {e}")
+            traceback.print_exc()
+        return []
+
+    def _create_combo_object(self, name, items, discount_percent, insight):
+        """Create combo object with formatted item description including quantities (for Frontend compatibility)"""
+        total = sum(float(str(i['Current_Price']).replace(',','')) * i.get('quantity', 1) for i in items)
+        price = round(total * (1 - discount_percent/100), 2)
+        
+        # Format description with quantities
+        desc_parts = [f"{i.get('quantity', 1)} {i['Item_Name']}" for i in items]
+        description = " + ".join(desc_parts)
+        
+        # Format items for frontend
+        formatted_items = []
+        for i in items:
+            formatted_items.append({
+                "id": str(i.get("Item_ID", i.get("id"))),
+                "name": i.get("Item_Name", i.get("name")),
+                "price": float(str(i.get("Current_Price", 0)).replace(',','')),
+                "quantity": i.get("quantity", 1),
+                "category": i.get("Item_Category", "")
+            })
+
         import random
         return {
             "Item_ID": f"combo_{random.randint(1000, 9999)}",
             "Item_Name": name,
-            "Item_Description": desc,
+            "name": name,
+            "Item_Description": description,
+            "description": description,
+            "Items": formatted_items,
+            "items": formatted_items,
+            "Combo_Items": formatted_items,
             "Current_Price": price,
+            "price": price,
             "Original_Price": total,
             "Discount_Percent": discount_percent,
             "Savings": round(total - price, 2),
@@ -294,7 +454,8 @@ class RecommendationAgent:
             return "General"
 
     def _get_items_by_category_from_df(self, df, categories, diet, exclude_id):
-        mask = (df['Item_Category'].isin(categories)) & (df['Is_Active'].astype(str).str.lower() == 'true')
+        is_active_mask = df['Is_Active'].astype(str).str.upper().isin(['TRUE', 'ACTIVE', 'YES', '1'])
+        mask = (df['Item_Category'].isin(categories)) & is_active_mask
         
         # Apply dietary filter
         if diet in ["Vegetarian", "Jain", "Vegan"]:
@@ -352,7 +513,7 @@ def save_preferences(req: PreferencesRequest):
 
 @recommendation_router.post("/generate-combos")
 def generate_combos(req: ComboRequest):
-    return {"combos": recommendation_agent.generate_combos(req.num_combos, req.email)}
+    return {"combos": recommendation_agent.generate_combos(req.num_combos, req.customer_id)}
 
 @recommendation_router.get("/offers")
 def get_offers():

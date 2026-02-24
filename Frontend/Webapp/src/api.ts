@@ -96,12 +96,12 @@ export const api = {
         }
     },
 
-    async generateCombos(num: number = 3, email?: string) {
+    async generateCombos(num: number = 3, customerId?: string) {
         try {
             const res = await fetch(`${API_BASE_URL}/generate-combos`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ num_combos: num, email }),
+                body: JSON.stringify({ num_combos: num, customer_id: customerId }),
             });
             return await res.json();
         } catch (e) {

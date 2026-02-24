@@ -12,7 +12,8 @@ import { saveLog } from "@/utils/logger";
 import { api } from "@/api";
 import { MenuItem, Category } from "@/lib/data";
 import { extractDynamicCategories, getMenuItemImage } from "@/lib/categoryUtils";
-import { Ticket, Percent, Gift } from "lucide-react";
+import { Ticket, Percent, Gift, Sparkles, RefreshCw } from "lucide-react";
+import AIComboCard from "@/components/AIComboCard";
 
 export default function HomeScreen() {
   const navigate = useNavigate();
@@ -23,7 +24,9 @@ export default function HomeScreen() {
   const [chefSpecials, setChefSpecials] = useState<MenuItem[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [dynamicCategories, setDynamicCategories] = useState<Category[]>([]);
+  const [aiCombos, setAiCombos] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAiLoading, setIsAiLoading] = useState(false);
 
   // Coupon codes data
   const coupons = [
@@ -148,6 +151,24 @@ export default function HomeScreen() {
 
             setCombos(combosTemp);
             setChefSpecials(chefTemp);
+          }
+
+          // 3. Fetch AI Personalized Combos
+          const targetId = user?.id || "";
+          console.log("🚀 Fetching AI Combos for:", targetId || "guest");
+          setIsAiLoading(true);
+          try {
+            const aiData = await api.generateCombos(3, targetId);
+            console.log("🎁 AI Combo Data Received:", aiData);
+            if (aiData?.combos && aiData.combos.length > 0) {
+              setAiCombos(aiData.combos);
+            } else {
+              console.warn("⚠️ No AI combos returned");
+            }
+          } catch (err) {
+            console.error("❌ Failed to fetch AI combos:", err);
+          } finally {
+            setIsAiLoading(false);
           }
         } catch (e) {
           console.error("❌ Error:", e);
@@ -338,6 +359,50 @@ export default function HomeScreen() {
             <div className="px-0 relative -mt-4 z-10"> {/* Slight negative margin overlap */}
               <OfferCarousel offers={offers} onBannerClick={handleBannerClick} />
             </div>
+
+            {/* AI Harvest Combos - Personalized Bundle Deals */}
+            {(aiCombos.length > 0 || isAiLoading) && (
+              <div id="ai-combos" className="px-4 py-4 scroll-mt-24">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Sparkles className="w-5 h-5 text-orange-500 fill-orange-500" />
+                      <h2 className="text-xl font-black text-gray-900 tracking-tight">AI Harvest Combos</h2>
+                    </div>
+                    <p className="text-xs text-gray-500 font-medium">Personalized deals based on your history & tastes</p>
+                  </div>
+
+                  <button
+                    onClick={async () => {
+                      if (!user?.id) return;
+                      setIsAiLoading(true);
+                      const aiData = await api.generateCombos(3, user.id);
+                      if (aiData?.combos) setAiCombos(aiData.combos);
+                      setIsAiLoading(false);
+                      saveLog(user?.email || "Guest", "REFRESH_AI_COMBOS", "User refreshed personalized combos");
+                    }}
+                    disabled={isAiLoading}
+                    className="p-2 text-orange-600 hover:bg-orange-50 rounded-full transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isAiLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+
+                {isAiLoading ? (
+                  <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="flex-shrink-0 w-80 h-48 bg-gray-100 rounded-2xl animate-pulse" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar snap-x snap-mandatory scroll-smooth">
+                    {aiCombos.map((combo) => (
+                      <AIComboCard key={combo.Item_ID} combo={combo} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* 3. Smart Combos (AI Menu) - Kept separate as it's frontend generated and distinct style */}
             {!isLoading && (isVegMode ? combos.filter(c => c.isVeg === true) : combos).length > 0 && (
