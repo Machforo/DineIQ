@@ -288,7 +288,7 @@ def save_otp_for_email(email, otp, name=None, mobile=None):
 def verify_otp_for_email(email, otp):
     print(">>> Verifying OTP for:", email)
 
-    rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
+    rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET, bypass_cache=True)
 
     entered_hash = sha256(otp)
     now = int(time.time())

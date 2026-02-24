@@ -210,9 +210,9 @@ class SheetsClient:
                 body={"values": values},
             )
             self._execute_with_retry(request)
-
             print(f"✅ Column '{col}' updated ({col_letter})")
 
+        self.invalidate_cache(sheet_name)
         print(f"✅ Partial update completed for sheet '{sheet_name}'.")
 
     # -------------------------------------------------------------------
@@ -230,6 +230,7 @@ class SheetsClient:
             body={"values": [row]},
         )
         self._execute_with_retry(request)
+        self.invalidate_cache(sheet_name)
 
     # -------------------------------------------------------------------
     # ✍️ Update a cell in sheet
@@ -246,6 +247,7 @@ class SheetsClient:
             body={"values": [[value]]},
         )
         self._execute_with_retry(request)
+        self.invalidate_cache(sheet_name)
 
     # -------------------------------------------------------------------
     # 🔠 Utilities
