@@ -86,13 +86,13 @@ export default function HeroBanner({ onOrderNow }: HeroBannerProps) {
             {/* Content */}
             <div className="absolute bottom-0 left-0 right-0 p-6 text-white text-center flex flex-col items-center animate-slide-up">
                 <span className="inline-block px-3 py-1 bg-red-600 text-white text-xs font-bold rounded-full mb-3 uppercase tracking-wider">
-                    Steal Deal of the Day
+                    Harvest Highlights
                 </span>
                 <h1 className="text-4xl md:text-5xl font-black mb-2 leading-tight">
-                    Sizzling <span className="text-yellow-400">Combos</span>
+                    Harvest <span className="text-yellow-400">DineIQ</span>
                 </h1>
                 <p className="text-white/90 text-sm md:text-base font-medium mb-6 max-w-xs mx-auto">
-                    Discover our premium AI-curated family feasts. limited time offer!
+                    Experience the bounty of the valley with our AI-curated organic feasts.
                 </p>
 
                 <button

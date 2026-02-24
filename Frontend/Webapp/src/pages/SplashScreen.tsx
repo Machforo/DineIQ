@@ -51,7 +51,7 @@ export default function SplashScreen() {
       <div className="absolute bottom-12 animate-fade-in">
         <div className="bg-gold-foreground/10 backdrop-blur-sm px-6 py-2 rounded-full">
           <span className="text-sm font-semibold text-gold-foreground">
-            In-Room Dining Experience
+            A Bounty from the Earth
           </span>
         </div>
       </div>

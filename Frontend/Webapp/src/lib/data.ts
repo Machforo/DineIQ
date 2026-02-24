@@ -237,6 +237,6 @@ export const menuItems: MenuItem[] = [
 ];
 
 export const restaurantInfo = {
-  name: "The Royal Kitchen",
-  tagline: "Crafting Culinary Excellence",
+  name: "Harvest DineIQ",
+  tagline: "Experience the Bounty of the Valley",
 };

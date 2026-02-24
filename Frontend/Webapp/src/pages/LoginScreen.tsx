@@ -172,9 +172,10 @@ export default function LoginScreen() {
       <div className="h-[35vh] relative w-full overflow-hidden">
         <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-        <div className="absolute bottom-8 left-6 right-6 text-white animate-fade-in">
-          <h1 className="text-4xl font-black tracking-tighter mb-1">DineIQ <span className="text-[#E23744]">Kitchen</span></h1>
-          <p className="text-gray-300 text-sm font-medium">India's #1 Table Ordering App</p>
+        {/* <div className="absolute bottom-8 left-6 right-6 text-white animate-fade-in"> */}
+        <div className="absolute bottom-8 left-6 right-6 text-white animate-fade-in text-center">
+          <h1 className="text-4xl font-black tracking-tighter mb-1">Harvest <span className="text-[#E23744]">DineIQ</span></h1>
+          <p className="text-gray-300 text-sm font-medium">Bounty from the earth, served with care</p>
         </div>
       </div>
 

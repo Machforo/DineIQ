@@ -24,7 +24,7 @@ export default function OfferCarousel({ offers = [], onBannerClick }: OfferCarou
             <div
               key={offer.id}
               onClick={() => onBannerClick && onBannerClick(offer)}
-              className={`cursor-pointer relative flex-shrink-0 w-[85vw] max-w-[340px] h-40 rounded-2xl overflow-hidden snap-center ${offer.bgColor || 'bg-gray-800'} active:scale-95 transition-transform`}
+              className={`cursor-pointer relative flex-shrink-0 w-[92vw] max-w-[500px] h-48 rounded-2xl overflow-hidden snap-center ${!offer.bgColor?.startsWith('#') ? (offer.bgColor || 'bg-primary') : ''} active:scale-[0.95] transition-transform shadow-lg`}
             >
               <img
                 src={offer.image}

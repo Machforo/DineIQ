@@ -62,8 +62,10 @@ export default function SidebarMenu({ children }: SidebarMenuProps) {
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         {children || (
-          <button className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
-            <Menu className="w-5 h-5 text-foreground" />
+          <button className="w-10 h-10 rounded-full bg-[#E23744] flex items-center justify-center shadow-sm active:scale-95 transition-all">
+            <span className="text-white font-black text-lg leading-none">
+              {guestName?.charAt(0).toUpperCase() || "G"}
+            </span>
           </button>
         )}
       </SheetTrigger>
