@@ -101,7 +101,7 @@ export default function MenuSection({ title, subtitle, items, type }: MenuSectio
             className="flex gap-4 px-4 overflow-x-auto hide-scrollbar snap-x snap-mandatory pb-2 scroll-smooth"
           >
             {filteredItems.map((item) => (
-              <div key={item.id} className="flex-shrink-0 w-[85vw] max-w-[320px] md:w-80 snap-center">
+              <div key={item.id} className="flex-shrink-0 w-[340px] md:w-[380px] snap-center">
                 <DishCard item={item} source={title} />
               </div>
             ))}
