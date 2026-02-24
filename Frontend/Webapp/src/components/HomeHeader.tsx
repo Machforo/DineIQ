@@ -43,19 +43,21 @@ export default function HomeHeader({ onSearch, searchQuery = "" }: HomeHeaderPro
 
         {/* Right Side Actions - Veg Mode Toggle & Review & Cart */}
         <div className="flex items-center gap-2">
-          {/* Review Icon */}
+          {/* Review Button */}
           <button
             onClick={() => navigate("/review")}
-            className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center transition-all active:scale-95"
-            title="Rate your experience"
+            className="px-3 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+            title="You Opinion about us"
           >
-            <Star className="w-5 h-5 text-yellow-500" fill="currentColor" />
+            <Star className="w-4 h-4 text-orange-500" fill="currentColor" />
+            <span className="text-[10px] font-black text-orange-700 uppercase tracking-tight whitespace-nowrap">Rate Us/Complain</span>
           </button>
 
           {/* Cart Icon */}
           <button
             onClick={() => navigate("/cart")}
             className="relative w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center transition-all active:scale-95"
+            title="View Your Cart"
           >
             <ShoppingBag className="w-5 h-5 text-gray-700" />
             {totalItems > 0 && (
