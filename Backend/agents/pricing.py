@@ -102,25 +102,25 @@ class PricingAgent:
             gap = next_t['threshold'] - subtotal
             return {
                 "show": True,
-                "message": f"Add ₹{int(gap)} more to unlock {next_t['discount']}% OFF! 🚀",
+                "message": f"Add KSh {int(gap)} more to unlock {next_t['discount']}% OFF! 🚀",
                 "gap": round(gap, 2)
             }
         return {"show": False, "message": "Max discount reached! 🎉"}
 
     def _calculate_combo_discount(self, cart):
-        """Zomato-style logic: detecting if Main Course + Sides + Drinks are present"""
+        """DineIQ logic: detecting if Main Course + Starters/Sides + Desserts are present"""
         if not cart or len(cart) < 2: return None
         # Normalizing categories for matching
-        cats = [str(i.get('category', '')).title().strip() for i in cart]
+        cats = [str(i.get('category', '')).upper().strip() for i in cart]
         
-        has_main = any(c in ['Main Course', 'Gravy', 'Rice'] for c in cats)
-        has_side = any(c in ['Bread', 'Starter', 'Dryveg'] for c in cats)
-        has_beverage = any(c in ['Beverages', 'Smoothies'] for c in cats)
+        has_main = any(c in ['MAINS FROM THE SEA', 'MAINS FROM THE LAND', 'GRILLS', 'BURGERS & SANDWICHES'] for c in cats)
+        has_side = any(c in ['SIDES', 'STARTERS FROM THE SEA', 'STARTERS FROM THE LAND', 'SOUP', 'STEAMED BAO BUNS'] for c in cats)
+        has_dessert = any(c in ['DESSERTS'] for c in cats)
         
-        if has_main and has_side and has_beverage:
-            return {"eligible": True, "type": "Balanced Feast", "msg": "🎊 Smart Combo: 15% Savings Unlocked!"}
-        elif has_main and (has_side or has_beverage):
-            return {"eligible": True, "type": "Mini Combo", "msg": "🍽️ Smart Combo Applied!"}
+        if has_main and has_side and has_dessert:
+            return {"eligible": True, "type": "Grand Harvest Feast", "msg": "🎊 Smart Combo: 15% Savings Unlocked!"}
+        elif has_main and (has_side or has_dessert):
+            return {"eligible": True, "type": "Harvest Meal", "msg": "🍽️ Smart Combo Applied!"}
         return None
 
     def _get_coupons(self, order_count, subtotal):

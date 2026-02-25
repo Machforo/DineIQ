@@ -1,5 +1,6 @@
 import os
 import traceback
+import pandas as pd
 from typing import List, Dict, Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -42,12 +43,14 @@ class RecommendationAgent:
         
         # Strategic Pairings adapted to current Menu
         self.category_pairings = {
-            'MAINS FROM THE SEA': {'pairs_with': ['SIDES', 'FROM THE GARDEN'], 'message': 'Perfect with a fresh side!'},
-            'GRILLS': {'pairs_with': ['SIDES', 'FROM THE GARDEN'], 'message': 'Complete your grill feast!'},
-            'FROM THE GARDEN': {'pairs_with': ['SIDES', 'SOUP'], 'message': 'Healthy and hearty pairings!'},
-            'STARTERS FROM THE SEA': {'pairs_with': ['GRILLS', 'MAINS FROM THE SEA'], 'message': 'Start with seafood, stay with the sea!'},
-            'STARTERS FROM THE LAND': {'pairs_with': ['GRILLS', 'MAINS FROM THE SEA'], 'message': 'The perfect opening act!'},
-            'SOUP': {'pairs_with': ['FROM THE GARDEN', 'SIDES'], 'message': 'A warm start to your meal!'}
+            'MAINS FROM THE SEA': {'pairs_with': ['SIDES', 'FROM THE GARDEN', 'DESSERTS'], 'message': 'Perfect with a fresh side or sweet ending!'},
+            'GRILLS': {'pairs_with': ['SIDES', 'FROM THE GARDEN', 'DESSERTS'], 'message': 'Complete your grill feast!'},
+            'FROM THE GARDEN': {'pairs_with': ['SIDES', 'SOUP', 'DESSERTS'], 'message': 'Healthy and hearty pairings!'},
+            'STARTERS FROM THE SEA': {'pairs_with': ['GRILLS', 'MAINS FROM THE SEA', 'SIDES'], 'message': 'Start with seafood, stay with the sea!'},
+            'STARTERS FROM THE LAND': {'pairs_with': ['GRILLS', 'MAINS FROM THE SEA', 'MAINS FROM THE LAND'], 'message': 'The perfect opening act!'},
+            'SOUP': {'pairs_with': ['FROM THE GARDEN', 'SIDES', 'STARTERS FROM THE LAND'], 'message': 'A warm start to your meal!'},
+            'SIDES': {'pairs_with': ['MAINS FROM THE SEA', 'GRILLS', 'FROM THE GARDEN'], 'message': 'Great addition to your main course!'},
+            'DESSERTS': {'pairs_with': ['SIDES', 'FROM THE GARDEN'], 'message': 'Sweet treat after your meal!'}
         }
 
     # ---------------------------------------------------------
@@ -61,41 +64,49 @@ class RecommendationAgent:
             # Find current item details
             current_item = next((i for i in menu if str(i.get("id", "")) == str(current_item_id) or i.get("name") == current_item_id), None)
             
-            if not current_item:
-                 # Fallback if item not found by ID, try to find by name match or return generic
-                 return {"ai_pitch": "Explore our bestsellers!", "add_ons": self._get_popular_fallback(menu)}
+            # Optimization: Read full menu DF once for category lookups
+            menu_df = self.sheets_client.read_sheet("Menu")
 
             # Fetch User Preferences
             diet = self._get_user_dietary_pref(email)
 
+            if not current_item:
+                 # Fallback if item not found by ID, try to find by name match or return generic
+                 return {"ai_pitch": "Explore our bestsellers!", "add_ons": self._get_popular_fallback(menu_df, diet)[:3]}
+
             # Strategy 1: Logical Category Pairing
             # Note: menu items from menu_agent might not have 'category' unless we enriched them.
-            # Assuming menu_agent returns minimal info. We might need to fetch full menu df if category is missing.
-            # For now, let's assume we can get category. If not, we fall back.
             
-            # Optimization: Read full menu DF once for category lookups
-            menu_df = self.sheets_client.read_sheet("Menu")
-            full_item_row = menu_df[menu_df['Item_ID'] == str(current_item_id)]
+            full_item_row = menu_df[menu_df['Item_ID'].astype(str).str.strip() == str(current_item_id).strip()]
             
             if full_item_row.empty:
-                 return {"ai_pitch": "Explore our bestsellers!", "add_ons": self._get_popular_fallback(menu)}
+                 return {"ai_pitch": "Explore our bestsellers!", "add_ons": self._get_popular_fallback(menu_df, diet)[:3]}
             
             item_category = full_item_row.iloc[0]['Item_Category']
             item_name = full_item_row.iloc[0]['Item_Name']
 
-            pairing_info = self.category_pairings.get(item_category, {'pairs_with': ['SIDES']})
+            pairing_info = self.category_pairings.get(item_category, {'pairs_with': ['SIDES', 'DESSERTS']})
             pairing_recs = self._get_items_by_category_from_df(menu_df, pairing_info['pairs_with'], diet, str(current_item_id))
 
             # Strategy 2: Frequently Bought Together (Order Items Analysis)
-            # This is expensive to read every time. Ideally cached. 
-            history_recs = [] # self._get_frequently_bought_together(current_item_id, diet) 
-            # Skipping complex history analysis for speed in this migration, falling back to Logic + AI
+            # This uses historical data to find items often ordered with the current item
+            history_recs = self._get_frequently_bought_together(str(current_item_id), diet, menu_df)
             
-            # Deduplicate
-            final_recs = pairing_recs[:3]
+            # Combine and deduplicate
+            final_recs = []
+            seen_ids = {str(current_item_id)}
             
+            # Prioritize history recs, then pairing recs
+            for rec in (history_recs + pairing_recs):
+                rec_id = str(rec.get('id', ''))
+                if rec_id not in seen_ids:
+                    final_recs.append(rec)
+                    seen_ids.add(rec_id)
+                if len(final_recs) >= 3:
+                    break
+
             if not final_recs:
-                final_recs = self._get_popular_fallback(menu)[:3]
+                final_recs = self._get_popular_fallback(menu_df, diet)[:3]
 
             # AI Pitch
             ai_pitch = self._generate_ai_pitch(item_name, item_category, final_recs)
@@ -114,14 +125,22 @@ class RecommendationAgent:
              is_active_mask = menu_df['Is_Active'].astype(str).str.upper().isin(['TRUE', 'ACTIVE', 'YES', '1'])
              upsell_df = menu_df[menu_df['Item_Category'].isin(['DESSERTS', 'SIDES']) & is_active_mask]
              
+             # Randomize a bit to keep it fresh
+             upsell_items = upsell_df.sample(min(len(upsell_df), 10)).head(5) if not upsell_df.empty else upsell_df
+
              return [
                  {
                      "id": row['Item_ID'],
+                     "Item_ID": row['Item_ID'],
                      "name": row['Item_Name'],
-                     "price": float(row['Current_Price']),
-                     "description": row.get('Description', 'Sweet treat')
+                     "Item_Name": row['Item_Name'],
+                     "price": float(str(row['Current_Price']).replace(',', '')),
+                     "Current_Price": float(str(row['Current_Price']).replace(',', '')),
+                     "description": row.get('Item_Description', row.get('Description', 'Delicious add-on')),
+                     "Is_Veg": (str(row.get('Is_Veg', '')).lower() == 'true'),
+                     "Category": row['Item_Category']
                  }
-                 for _, row in upsell_df.head(5).iterrows()
+                 for _, row in upsell_items.iterrows()
              ]
         except:
             return []
@@ -259,7 +278,16 @@ class RecommendationAgent:
                     latest = user_insights.iloc[-1]
                     insights['dietary_preference'] = latest.get('Dietary', 'General')
                     insights['favorite_items'] = str(latest.get('Favorites', '')).split(',')
-                    insights['average_order_value'] = float(latest.get('AOV', 0))
+                    
+                    # Handle non-numeric segments in AOV (e.g., 'High Spender')
+                    aov_val = latest.get('AOV', 0)
+                    try:
+                        insights['average_order_value'] = float(str(aov_val).replace(',', '').strip())
+                    except:
+                        insights['average_order_value'] = 0
+                        # Preserve the segment name for AI processing
+                        insights['aov_segment'] = str(aov_val)
+                        
                     insights['order_frequency'] = latest.get('Frequency', 'Occasional Customer')
                     insights['manual_insights'] = latest.get('Attitude', None)
                     print(f"✅ Found data in Customer_Insights for {customer_id}")
@@ -477,8 +505,111 @@ class RecommendationAgent:
             for _, row in items.iterrows()
         ]
 
-    def _get_popular_fallback(self, menu_list):
-        return menu_list[:3]
+    def _get_frequently_bought_together(self, item_id: str, diet: str, menu_df):
+        """Get items frequently bought together based on order history"""
+        try:
+            order_items_df = self.sheets_client.read_sheet("Order_Items")
+            # Clean data
+            order_items_df['Item_ID'] = order_items_df['Item_ID'].astype(str).str.strip()
+            item_id = str(item_id).strip()
+            
+            # Find orders containing this item
+            order_ids = order_items_df[order_items_df['Item_ID'] == item_id]['Order_ID'].unique()
+            
+            if len(order_ids) == 0:
+                return []
+
+            # Find other items in those orders
+            other_items = order_items_df[
+                (order_items_df['Order_ID'].isin(order_ids)) & 
+                (order_items_df['Item_ID'] != item_id)
+            ]
+            
+            if other_items.empty:
+                return []
+
+            # Get top 3 most frequent items
+            top_item_ids = other_items['Item_ID'].value_counts().head(3).index.tolist()
+            
+            return self._format_items_list(top_item_ids, diet, menu_df, "Popular with this item")
+            
+        except Exception as e:
+            print(f"Error in _get_frequently_bought_together: {e}")
+            return []
+
+    def _format_items_list(self, item_ids, diet, menu_df, tag=""):
+        """Format list of item IDs into recommendation objects"""
+        try:
+            is_active_mask = menu_df['Is_Active'].astype(str).str.upper().isin(['TRUE', 'ACTIVE', 'YES', '1'])
+            active_menu = menu_df[is_active_mask]
+            result = []
+            
+            for item_id in item_ids:
+                match = active_menu[active_menu['Item_ID'].astype(str).str.strip() == str(item_id).strip()]
+                
+                if not match.empty:
+                    row = match.iloc[0]
+                    
+                    # Apply dietary filter
+                    is_veg = (str(row.get('Is_Veg', '')).lower() == 'true')
+                    if diet in ["Vegetarian", "Jain", "Vegan"] and not is_veg:
+                        continue
+                    
+                    result.append({
+                        "id": row['Item_ID'],
+                        "Item_ID": row['Item_ID'],
+                        "name": row['Item_Name'],
+                        "Item_Name": row['Item_Name'],
+                        "price": float(str(row['Current_Price']).replace(',', '')),
+                        "Current_Price": float(str(row['Current_Price']).replace(',', '')),
+                        "Category": row['Item_Category'],
+                        "Is_Veg": is_veg,
+                        "tag": tag
+                    })
+            
+            return result
+        except Exception as e:
+            print(f"Error in _format_items_list: {e}")
+            return []
+
+    def _get_popular_fallback(self, menu_df, diet="General"):
+        """Get popular items as fallback recommendations using Order_Items frequency"""
+        try:
+            order_items_df = self.sheets_client.read_sheet("Order_Items")
+            # Clean data
+            order_items_df['Item_ID'] = order_items_df['Item_ID'].astype(str).str.strip()
+            
+            popular_ids = order_items_df['Item_ID'].value_counts().head(10).index.tolist()
+            recs = self._format_items_list(popular_ids, diet, menu_df, "Bestseller")
+            
+            if recs:
+                return recs
+                
+            # Ultimate fallback if no order history
+            is_active_mask = menu_df['Is_Active'].astype(str).str.upper().isin(['TRUE', 'ACTIVE', 'YES', '1'])
+            active = menu_df[is_active_mask]
+            
+            # Simple dietary filter for fallback
+            if diet in ["Vegetarian", "Jain", "Vegan"]:
+                active = active[active['Is_Veg'].astype(str).str.lower() == 'true']
+
+            return [
+                {
+                    "id": row['Item_ID'],
+                    "Item_ID": row['Item_ID'],
+                    "name": row['Item_Name'],
+                    "Item_Name": row['Item_Name'],
+                    "price": float(str(row['Current_Price']).replace(',', '')),
+                    "Current_Price": float(str(row['Current_Price']).replace(',', '')),
+                    "Category": row['Item_Category'],
+                    "Is_Veg": (str(row.get('Is_Veg', '')).lower() == 'true')
+                }
+                for _, row in active.head(3).iterrows()
+            ]
+            
+        except Exception as e:
+            print(f"Error in _get_popular_fallback: {e}")
+            return []
 
     def _generate_ai_pitch(self, name, cat, recs):
         if not recs: return "Make it a feast with these!"
