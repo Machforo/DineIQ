@@ -148,32 +148,35 @@ export default function AIComboCard({ combo }: ComboCardProps) {
                         <span className="text-lg font-bold text-gray-900">KSh {price}</span>
                     </div>
 
-                    {quantity === 0 ? (
-                        <button
-                            onClick={() => addItem(cartItem, false, "AI Combos")}
-                            className="bg-red-600 text-white font-bold px-6 py-2 rounded-xl shadow-md hover:bg-red-700 transition-colors text-xs uppercase"
-                        >
-                            ADD Item
-                        </button>
-                    ) : (
-                        <div className="flex items-center bg-red-600 rounded-xl shadow-md overflow-hidden h-9">
-                            <button
-                                onClick={() => removeItem(cartItem.id, false, "AI Combos")}
-                                className="w-8 h-full flex items-center justify-center text-white hover:bg-black/10 transition-colors"
-                            >
-                                <Minus className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="text-white font-bold min-w-[28px] text-center text-xs">
-                                {quantity}
-                            </span>
-                            <button
-                                onClick={() => addItem(cartItem, false, "AI Combos")}
-                                className="w-8 h-full flex items-center justify-center text-white hover:bg-black/10 transition-colors"
-                            >
-                                <Plus className="w-3.5 h-3.5" />
-                            </button>
+                    {/* Action Button Row */}
+                    <div className="flex items-center justify-end">
+                        <div className="w-[110px] shadow-sm rounded-xl bg-white overflow-hidden border border-gray-100">
+                            {quantity === 0 ? (
+                                <button
+                                    onClick={() => addItem(cartItem, false, "AI Combos")}
+                                    className="w-full bg-[#E23744] hover:bg-[#c92c37] text-white font-black text-[11px] h-10 rounded-xl uppercase tracking-wider transition-colors shadow-md"
+                                >
+                                    ADD Item
+                                </button>
+                            ) : (
+                                <div className="flex items-center justify-between bg-[#E23744] text-white h-10 rounded-xl px-2 w-full shadow-inner">
+                                    <button
+                                        onClick={() => removeItem(cartItem.id, false, "AI Combos")}
+                                        className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                                    >
+                                        <Minus size={14} strokeWidth={3} />
+                                    </button>
+                                    <span className="font-black text-sm text-white">{quantity}</span>
+                                    <button
+                                        onClick={() => addItem(cartItem, false, "AI Combos")}
+                                        className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                                    >
+                                        <Plus size={14} strokeWidth={3} />
+                                    </button>
+                                </div>
+                            )}
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
         </div>

@@ -15,6 +15,10 @@ import { extractDynamicCategories, getMenuItemImage } from "@/lib/categoryUtils"
 import { Ticket, Percent, Gift, Sparkles, RefreshCw } from "lucide-react";
 import AIComboCard from "@/components/AIComboCard";
 
+
+// Flag for AI vs Smart Combos
+const GENERATE_AI_COMBOS = false;
+
 export default function HomeScreen() {
   const navigate = useNavigate();
   const { isLoggedIn, user, setFullMenu } = useUser();
@@ -22,6 +26,7 @@ export default function HomeScreen() {
   const [offers, setOffers] = useState([]);
   const [combos, setCombos] = useState<MenuItem[]>([]);
   const [chefSpecials, setChefSpecials] = useState<MenuItem[]>([]);
+  const [bestsellers, setBestsellers] = useState<MenuItem[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [dynamicCategories, setDynamicCategories] = useState<Category[]>([]);
   const [aiCombos, setAiCombos] = useState<any[]>([]);
@@ -77,6 +82,7 @@ export default function HomeScreen() {
             const allItems: MenuItem[] = [];
             let combosTemp: MenuItem[] = [];
             let chefTemp: MenuItem[] = [];
+            let bestTemp: MenuItem[] = [];
 
             // Map backend items to frontend format
             const mapToMenuItem = (item: any, category: string): MenuItem => {
@@ -113,11 +119,11 @@ export default function HomeScreen() {
                   const menuItem = mapToMenuItem(item, sectionName);
 
                   // Collect for specific UI sections regardless of duplication in main list
-                  if (sectionName === "Combos" || sectionName.includes("Family")) {
-                    combosTemp.push(menuItem);
-                  }
-                  if (sectionName === "Chef Special" || sectionName === "Bestseller" || sectionName === "Chef's Recommendations") {
+                  if (sectionName === "Chef Special" || sectionName === "Chef's Recommendations" || sectionName === "Chef's Specials") {
                     chefTemp.push(menuItem);
+                  }
+                  if (sectionName === "Bestseller" || sectionName === "Bestsellers") {
+                    bestTemp.push(menuItem);
                   }
 
                   // Deduplicate for the master menuItems list
@@ -137,38 +143,40 @@ export default function HomeScreen() {
 
             const uniqueAllItems = Array.from(itemMap.values());
             console.log(`✅ Loaded ${uniqueAllItems.length} unique items`);
+
+            // Always generate Smart Combos from the available menu items
+            combosTemp = generateSmartCombos(uniqueAllItems);
+
             setFullMenu(uniqueAllItems);
             setMenuItems(uniqueAllItems);
 
-            // Extract dynamic categories from menu sections
+            // Extract dynamic categories from menu sections (Excluding virtual ones)
             const extractedCategories = extractDynamicCategories(sections);
             setDynamicCategories(extractedCategories);
 
-            // Generate smart combos if none exist
-            if (combosTemp.length === 0) {
-              combosTemp = generateSmartCombos(allItems);
-            }
-
             setCombos(combosTemp);
             setChefSpecials(chefTemp);
+            setBestsellers(bestTemp);
           }
 
-          // 3. Fetch AI Personalized Combos
-          const targetId = user?.id || "";
-          console.log("🚀 Fetching AI Combos for:", targetId || "guest");
-          setIsAiLoading(true);
-          try {
-            const aiData = await api.generateCombos(3, targetId);
-            console.log("🎁 AI Combo Data Received:", aiData);
-            if (aiData?.combos && aiData.combos.length > 0) {
-              setAiCombos(aiData.combos);
-            } else {
-              console.warn("⚠️ No AI combos returned");
+          // 3. Fetch AI Personalized Combos (Only if flag is enabled)
+          if (GENERATE_AI_COMBOS) {
+            const targetId = user?.id || "";
+            console.log("🚀 Fetching AI Combos for:", targetId || "guest");
+            setIsAiLoading(true);
+            try {
+              const aiData = await api.generateCombos(3, targetId);
+              console.log("🎁 AI Combo Data Received:", aiData);
+              if (aiData?.combos && aiData.combos.length > 0) {
+                setAiCombos(aiData.combos);
+              } else {
+                console.warn("⚠️ No AI combos returned");
+              }
+            } catch (err) {
+              console.error("❌ Failed to fetch AI combos:", err);
+            } finally {
+              setIsAiLoading(false);
             }
-          } catch (err) {
-            console.error("❌ Failed to fetch AI combos:", err);
-          } finally {
-            setIsAiLoading(false);
           }
         } catch (e) {
           console.error("❌ Error:", e);
@@ -192,8 +200,8 @@ export default function HomeScreen() {
     // Log category selection
     saveLog(user?.email || "Guest", "CATEGORY_CLICK", category);
 
-    // Special Case: Chef Special -> Jump to standalone section
-    if (category === "Chef Special") {
+    // Special Case: Chef Specials -> Jump to standalone section
+    if (category === "Chef Special" || category === "Chef's Specials") {
       const element = document.getElementById("chef-recs");
       if (element) {
         element.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -234,64 +242,79 @@ export default function HomeScreen() {
   const generateSmartCombos = (items: MenuItem[]): MenuItem[] => {
     const combos: MenuItem[] = [];
 
-    // Find items by category
-    const getItemsByCategory = (cat: string) =>
-      items.filter(i => i.category.toLowerCase().includes(cat.toLowerCase()));
+    // Find items by category using project-specific naming
+    const starters = items.filter(i => i.category.toUpperCase().includes('STARTER'));
+    const mains = items.filter(i => i.category.toUpperCase().includes('MAIN'));
+    const grills = items.filter(i => i.category.toUpperCase().includes('GRILL'));
+    const sides = items.filter(i => i.category.toUpperCase().includes('SIDE'));
+    const burgers = items.filter(i => i.category.toUpperCase().includes('BURGER') || i.category.toUpperCase().includes('SANDWICH'));
+    const pasta = items.filter(i => i.category.toUpperCase().includes('PASTA'));
 
-    const riceItems = getItemsByCategory('rice');
-    const gravyItems = getItemsByCategory('gravy');
-    const breadItems = getItemsByCategory('bread');
-    const starterItems = getItemsByCategory('starter');
-
-    // Combo 1: Family Feast (Rice + Gravy + Bread)
-    if (riceItems.length && gravyItems.length && breadItems.length) {
-      const totalPrice = riceItems[0].price + gravyItems[0].price + breadItems[0].price;
+    // Combo 1: Grand Grill Platter (Grill + Starter + Side)
+    if (grills.length && starters.length && sides.length) {
+      const totalPrice = grills[0].price + starters[0].price + sides[0].price;
       combos.push({
-        id: 'combo_1',
-        name: 'Family Feast Combo',
-        description: `${riceItems[0].name} • ${gravyItems[0].name} • ${breadItems[0].name}`,
+        id: 'combo_grill_feast',
+        name: 'Grand Grill Feast',
+        description: `${grills[0].name} • ${starters[0].name} • ${sides[0].name}`,
         price: Math.round(totalPrice * 0.8), // 20% off
-        image: 'https://images.unsplash.com/photo-1585937421612-70a008356fbe',
-        isVeg: riceItems[0].isVeg === true && gravyItems[0].isVeg === true && breadItems[0].isVeg === true,
+        image: grills[0].image,
+        isVeg: grills[0].isVeg === true && starters[0].isVeg === true && sides[0].isVeg === true,
         category: 'Combos',
-        rating: 4.6,
-        ratingCount: 156
+        rating: 4.8,
+        ratingCount: 142
       });
     }
 
-    // Combo 2: Quick Meal (Gravy + Bread)
-    if (gravyItems.length > 1 && breadItems.length > 1) {
-      const totalPrice = gravyItems[1].price + breadItems[1].price;
+    // Combo 2: Quick Harvest Lunch (Burger/Sandwich + Side)
+    if (burgers.length && sides.length) {
+      const totalPrice = burgers[0].price + sides[0].price;
       combos.push({
-        id: 'combo_2',
-        name: 'Quick Meal Combo',
-        description: `${gravyItems[1].name} • ${breadItems[1].name} • Raita`,
+        id: 'combo_quick_lunch',
+        name: 'Quick Harvest Lunch',
+        description: `${burgers[0].name} • ${sides[0].name} • Refreshment`,
         price: Math.round(totalPrice * 0.85), // 15% off
-        image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d',
-        isVeg: gravyItems[1].isVeg === true && breadItems[1].isVeg === true,
+        image: burgers[0].image,
+        isVeg: burgers[0].isVeg === true && sides[0].isVeg === true,
         category: 'Combos',
-        rating: 4.4,
-        ratingCount: 98
+        rating: 4.5,
+        ratingCount: 89
       });
     }
 
-    // Combo 3: Starter + Main (Starter + Rice + Gravy)
-    if (starterItems.length && riceItems.length && gravyItems.length) {
-      const totalPrice = starterItems[0].price + riceItems[0].price + gravyItems[0].price;
+    // Combo 3: Italian Feast (Pasta + Starter)
+    if (pasta.length && starters.length) {
+      const totalPrice = pasta[0].price + starters[0].price;
       combos.push({
-        id: 'combo_3',
-        name: 'Complete Meal Combo',
-        description: `${starterItems[0].name} • ${riceItems[0].name} • ${gravyItems[0].name}`,
-        price: Math.round(totalPrice * 0.75), // 25% off
-        image: 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0',
-        isVeg: starterItems[0].isVeg === true && riceItems[0].isVeg === true && gravyItems[0].isVeg === true,
+        id: 'combo_italian_special',
+        name: 'Italian Harvest Special',
+        description: `${pasta[0].name} • ${starters[0].name}`,
+        price: Math.round(totalPrice * 0.82), // 18% off
+        image: pasta[0].image,
+        isVeg: pasta[0].isVeg === true && starters[0].isVeg === true,
         category: 'Combos',
         rating: 4.7,
-        ratingCount: 234
+        ratingCount: 112
       });
     }
 
-    return combos.slice(0, 3); // Return max 3 combos
+    // Combo 4: Complete Land/Sea Meal (Main + Starter)
+    if (mains.length && starters.length) {
+      const totalPrice = mains[0].price + starters[0].price;
+      combos.push({
+        id: 'combo_complete_meal',
+        name: 'Complete Harvest Meal',
+        description: `${mains[0].name} • ${starters[0].name} • Chef's Choice Side`,
+        price: Math.round(totalPrice * 0.75), // 25% off (Higher value)
+        image: mains[0].image,
+        isVeg: mains[0].isVeg === true && starters[0].isVeg === true,
+        category: 'Combos',
+        rating: 4.9,
+        ratingCount: 201
+      });
+    }
+
+    return combos.slice(0, 3); // Return top 3 dynamic combos
   };
 
   // Re-implementing generateSmartCombos properly to avoid breaking active code
@@ -311,12 +334,17 @@ export default function HomeScreen() {
       const title = offer.title?.toLowerCase() || "";
       const subtitle = offer.subtitle?.toLowerCase() || "";
 
-      if (title.includes("combo") || subtitle.includes("combo")) {
-        const element = document.getElementById("smart-combos");
+      if (title.includes("welcome") || title.includes("offer") || title.includes("combo") || subtitle.includes("combo")) {
+        // Welcome Offer or Combo Banner -> Jump to Combos Section
+        const element = document.getElementById("ai-combos") || document.getElementById("smart-combos");
         if (element) element.scrollIntoView({ behavior: "smooth", block: "center" });
       } else if (title.includes("chef") || subtitle.includes("chef") || title.includes("special")) {
-        // Jump to Chef's Recommendations Section
+        // Jump to Chef's Specials Section
         const element = document.getElementById("chef-recs");
+        if (element) element.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else if (title.includes("best") || title.includes("seller")) {
+        // Jump to Bestsellers Section
+        const element = document.getElementById("bestsellers-section");
         if (element) element.scrollIntoView({ behavior: "smooth", block: "center" });
       } else {
         // Default (Check Menu) -> Jump to First Category (skipping Chef/Bestsellers if needed)
@@ -360,68 +388,12 @@ export default function HomeScreen() {
               <OfferCarousel offers={offers} onBannerClick={handleBannerClick} />
             </div>
 
-            {/* AI Harvest Combos - Personalized Bundle Deals */}
-            {(aiCombos.length > 0 || isAiLoading) && (
-              <div id="ai-combos" className="px-4 py-4 scroll-mt-24">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Sparkles className="w-5 h-5 text-orange-500 fill-orange-500" />
-                      <h2 className="text-xl font-black text-gray-900 tracking-tight">AI Harvest Combos</h2>
-                    </div>
-                    <p className="text-xs text-gray-500 font-medium">Personalized deals based on your history & tastes</p>
-                  </div>
-
-                  <button
-                    onClick={async () => {
-                      if (!user?.id) return;
-                      setIsAiLoading(true);
-                      const aiData = await api.generateCombos(3, user.id);
-                      if (aiData?.combos) setAiCombos(aiData.combos);
-                      setIsAiLoading(false);
-                      saveLog(user?.email || "Guest", "REFRESH_AI_COMBOS", "User refreshed personalized combos");
-                    }}
-                    disabled={isAiLoading}
-                    className="p-2 text-orange-600 hover:bg-orange-50 rounded-full transition-colors disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${isAiLoading ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-
-                {isAiLoading ? (
-                  <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar">
-                    {[1, 2].map((i) => (
-                      <div key={i} className="flex-shrink-0 w-80 h-48 bg-gray-100 rounded-2xl animate-pulse" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar snap-x snap-mandatory scroll-smooth">
-                    {aiCombos.map((combo) => (
-                      <AIComboCard key={combo.Item_ID} combo={combo} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* 3. Smart Combos (AI Menu) - Kept separate as it's frontend generated and distinct style */}
-            {!isLoading && (isVegMode ? combos.filter(c => c.isVeg === true) : combos).length > 0 && (
-              <div id="smart-combos" className="px-3 scroll-mt-24">
-                <MenuSection
-                  title="🎁 Smart Combos"
-                  subtitle="AI-curated combo deals - Save more!"
-                  items={isVegMode ? combos.filter(c => c.isVeg === true) : combos}
-                  type="combos"
-                />
-              </div>
-            )}
-
-            {/* 4. Categories (What's in your mind?) */}
+            {/* 3. Categories (What's in your mind?) */}
             {!isLoading && (
               <div className="bg-transparent py-2">
-
                 <CategoryScroll
                   categories={dynamicCategories.filter(category => {
+                    if (category.name === "Chef Special" || category.name === "Bestseller" || category.name === "Chef's Recommendations" || category.name === "Combos") return false;
                     const categoryItems = menuItems.filter(item => item.category === category.name);
                     return !isVegMode || categoryItems.some(item => item.isVeg === true);
                   })}
@@ -429,6 +401,63 @@ export default function HomeScreen() {
                   selectedCategory={selectedCategory || undefined}
                 />
               </div>
+            )}
+
+            {/* Combined Combo Logic: Follow GENERATE_AI_COMBOS flag */}
+            {GENERATE_AI_COMBOS ? (
+              (aiCombos.length > 0 || isAiLoading) && (
+                <div id="ai-combos" className="py-4 scroll-mt-24 bg-transparent">
+                  <div className="mx-4 mb-4 p-4 rounded-2xl flex items-center justify-between bg-indigo-100">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Sparkles className="w-5 h-5 text-orange-500 fill-orange-500" />
+                        <h2 className="text-xl font-black text-gray-900 tracking-tight">AI Harvest Combos</h2>
+                      </div>
+                      <p className="text-xs text-gray-500 font-medium">Personalized deals based on your history & tastes</p>
+                    </div>
+
+                    <button
+                      onClick={async () => {
+                        if (!user?.id) return;
+                        setIsAiLoading(true);
+                        const aiData = await api.generateCombos(3, user.id);
+                        if (aiData?.combos) setAiCombos(aiData.combos);
+                        setIsAiLoading(false);
+                        saveLog(user?.email || "Guest", "REFRESH_AI_COMBOS", "User refreshed personalized combos");
+                      }}
+                      disabled={isAiLoading}
+                      className="p-2 text-orange-600 hover:bg-orange-50 rounded-full transition-colors disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isAiLoading ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
+
+                  {isAiLoading ? (
+                    <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar">
+                      {[1, 2].map((i) => (
+                        <div key={i} className="flex-shrink-0 w-80 h-48 bg-gray-100 rounded-2xl animate-pulse" />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex gap-4 px-4 overflow-x-auto pb-4 hide-scrollbar snap-x snap-mandatory scroll-smooth">
+                      {aiCombos.map((combo) => (
+                        <AIComboCard key={combo.Item_ID} combo={combo} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            ) : (
+              !isLoading && (isVegMode ? combos.filter(c => c.isVeg === true) : combos).length > 0 && (
+                <div id="smart-combos" className="scroll-mt-24">
+                  <MenuSection
+                    title="🎁 Smart Combos"
+                    subtitle="AI-curated combo deals - Save more!"
+                    items={isVegMode ? combos.filter(c => c.isVeg === true) : combos}
+                    type="combos"
+                  />
+                </div>
+              )
             )}
           </>
         )}
@@ -453,14 +482,26 @@ export default function HomeScreen() {
           </div>
         )}
 
-        {/* Chef's Recommendations (Standalone) */}
+        {/* Chef's Specials (Standalone) */}
         {!isLoading && (isVegMode ? chefSpecials.filter(c => c.isVeg === true) : chefSpecials).length > 0 && !searchQuery && (
-          <div id="chef-recs" className="px-3 scroll-mt-24">
+          <div id="chef-recs" className="scroll-mt-24">
             <MenuSection
-              title="⭐ Chef's Recommendations"
+              title="⭐ Chef's Specials"
               subtitle="Premium dishes handpicked for you"
               items={isVegMode ? chefSpecials.filter(c => c.isVeg === true) : chefSpecials}
               type="chef"
+            />
+          </div>
+        )}
+
+        {/* Bestsellers (Standalone) */}
+        {!isLoading && (isVegMode ? bestsellers.filter(c => c.isVeg === true) : bestsellers).length > 0 && !searchQuery && (
+          <div id="bestsellers-section" className="scroll-mt-24">
+            <MenuSection
+              title="🔥 Bestsellers"
+              subtitle="Most popular picks this week"
+              items={isVegMode ? bestsellers.filter(c => c.isVeg === true) : bestsellers}
+              type="bestseller"
             />
           </div>
         )}
@@ -471,7 +512,7 @@ export default function HomeScreen() {
           if (category.name === "Chef Special" ||
             category.name === "Bestseller" ||
             category.name === "Chef's Recommendations" ||
-            category.name === "Combos") return null;
+            (GENERATE_AI_COMBOS && category.name === "Combos")) return null;
 
           // Filter items for this category
           const categoryItems = menuItems.filter(item => item.category === category.name);

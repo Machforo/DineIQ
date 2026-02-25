@@ -20,8 +20,9 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-export function CartProvider({ children }: { children: ReactNode }) {
-  const { fullMenu } = useUser();
+export default function CartProvider({ children }: { children: ReactNode }) {
+  const { user, fullMenu } = useUser();
+  const userEmail = user?.email || "Guest";
 
   const [items, setItems] = useState<CartItem[]>(() => {
     const saved = localStorage.getItem("dineiq_cart");
@@ -60,7 +61,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // Log combo addition once if not silent
       if (!silent) {
         saveLog(
-          useUser().user?.email || "Guest",
+          userEmail,
           "CART_ADD",
           `${item.name} (Combo) from ${source}`
         );
@@ -75,7 +76,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // Log the addition if not silent
       if (!silent) {
         saveLog(
-          useUser().user?.email || "Guest",
+          userEmail,
           "CART_ADD",
           `${item.name} (Qty: ${newQuantity}) from ${source}`
         );
@@ -100,7 +101,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // Log the removal if not silent
       if (!silent) {
         saveLog(
-          useUser().user?.email || "Guest",
+          userEmail,
           "CART_REMOVE",
           `${existing.name} (New Qty: ${newQuantity}) from ${source}`
         );
@@ -119,6 +120,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems((prev) => {
       const existing = prev.find((i) => i.id === itemId);
       if (!existing) return prev;
+
+      if (!silent) {
+        saveLog(
+          userEmail,
+          "CART_UPDATE",
+          `${existing.name} (New Qty: ${quantity}) from ${source}`
+        );
+      }
 
       if (quantity <= 0) {
         return prev.filter((i) => i.id !== itemId);

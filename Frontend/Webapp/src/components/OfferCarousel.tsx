@@ -24,7 +24,7 @@ export default function OfferCarousel({ offers = [], onBannerClick }: OfferCarou
             <div
               key={offer.id}
               onClick={() => onBannerClick && onBannerClick(offer)}
-              className={`cursor-pointer relative flex-shrink-0 w-[92vw] max-w-[500px] h-48 rounded-2xl overflow-hidden snap-center ${!offer.bgColor?.startsWith('#') ? (offer.bgColor || 'bg-primary') : ''} active:scale-[0.95] transition-transform shadow-lg`}
+              className={`cursor-pointer relative flex-shrink-0 w-[85vw] max-w-[420px] h-48 rounded-2xl overflow-hidden snap-center ${!offer.bgColor?.startsWith('#') ? (offer.bgColor || 'bg-primary') : ''} active:scale-[0.95] transition-transform shadow-lg`}
             >
               <img
                 src={offer.image}
@@ -42,14 +42,11 @@ export default function OfferCarousel({ offers = [], onBannerClick }: OfferCarou
                 </div>
 
                 <div className="flex items-center justify-between">
+                  {/* Discount info hidden as per design */}
                   <div className="flex items-baseline gap-2 hidden">
                     <span className="text-3xl font-black">{offer.discount}</span>
                     <span className="text-sm opacity-80">OFF</span>
                   </div>
-                  <button className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold">
-                    Order Now
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
             </div>

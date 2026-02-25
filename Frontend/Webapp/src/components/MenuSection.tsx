@@ -2,26 +2,28 @@ import { useRef } from "react";
 import { MenuItem } from "@/lib/data";
 import DishCard from "./DishCard";
 import ComboCard from "./ComboCard";
-import { Sparkles, ChefHat, UtensilsCrossed, ChevronLeft, ChevronRight } from "lucide-react";
+import { Sparkles, ChefHat, UtensilsCrossed, ChevronLeft, ChevronRight, Flame } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 
 interface MenuSectionProps {
   title: string;
   subtitle?: string;
   items: MenuItem[];
-  type: "combos" | "chef" | "standard";
+  type: "combos" | "chef" | "standard" | "bestseller";
 }
 
 const sectionIcons = {
   combos: Sparkles,
   chef: ChefHat,
+  bestseller: Flame,
   standard: UtensilsCrossed,
 };
 
-const sectionStyles = {
-  combos: "bg-primary/5",
-  chef: "bg-gold/5",
-  standard: "bg-background",
+const headerStyles = {
+  combos: "bg-rose-100",
+  chef: "bg-amber-100",
+  bestseller: "bg-emerald-100",
+  standard: "bg-slate-100",
 };
 
 export default function MenuSection({ title, subtitle, items, type }: MenuSectionProps) {
@@ -46,13 +48,13 @@ export default function MenuSection({ title, subtitle, items, type }: MenuSectio
   const isHorizontal = type === "combos" || type === "chef";
 
   return (
-    <section className={`py-5 ${sectionStyles[type]}`}>
-      {/* Header */}
-      <div className="px-4 mb-4 flex items-center justify-between">
+    <section className="py-5 bg-transparent">
+      {/* Header Area with Unique Background */}
+      <div className={`mx-4 mb-4 p-4 rounded-2xl flex items-center justify-between ${headerStyles[type]}`}>
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${type === "combos" ? "bg-primary/10" : type === "chef" ? "bg-gold/10" : "bg-muted"
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${type === "combos" ? "bg-red-600/10" : type === "chef" ? "bg-amber-600/10" : type === "bestseller" ? "bg-emerald-600/10" : "bg-muted"
             }`}>
-            <Icon className={`w-5 h-5 ${type === "combos" ? "text-primary" : type === "chef" ? "text-gold" : "text-muted-foreground"
+            <Icon className={`w-5 h-5 ${type === "combos" ? "text-red-600" : type === "chef" ? "text-amber-600" : type === "bestseller" ? "text-emerald-600" : "text-muted-foreground"
               }`} />
           </div>
           <div>
@@ -95,7 +97,7 @@ export default function MenuSection({ title, subtitle, items, type }: MenuSectio
               <ComboCard key={item.id} item={item} source={title} />
             ))}
           </div>
-        ) : type === "chef" ? (
+        ) : type === "chef" || type === "bestseller" ? (
           <div
             ref={scrollRef}
             className="flex gap-4 px-4 overflow-x-auto hide-scrollbar snap-x snap-mandatory pb-2 scroll-smooth"

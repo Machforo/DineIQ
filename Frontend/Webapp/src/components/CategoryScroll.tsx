@@ -25,15 +25,16 @@ export default function CategoryScroll({ categories: dynamicCategories, onSelect
   };
 
   return (
-    <section className="py-5 bg-background">
-      <div className="px-4 mb-4 flex items-center justify-between">
+    <section className="py-5 bg-transparent">
+      {/* Header Area with Unique Background */}
+      <div className="mx-4 mb-4 p-4 rounded-2xl flex items-center justify-between bg-orange-100">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-orange-100">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-orange-600/10">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="20"
               height="20"
-              viewBox="0 0 24 24"
+              viewBox="0 0 20 20"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"

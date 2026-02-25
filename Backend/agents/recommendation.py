@@ -29,6 +29,9 @@ class ComboRequest(BaseModel):
     num_combos: int = 3
     customer_id: Optional[str] = None
 
+# Flag for AI vs Smart Combos
+GENERATE_AI_COMBOS = False
+
 # ---------------------------------------------------------
 # Recommendation Agent Class
 # ---------------------------------------------------------
@@ -150,9 +153,10 @@ class RecommendationAgent:
         try:
             print(f">>> Saving preferences for {email}")
             
-            # 1. Look up User in Customer_Auth to get ID and Name
+            # 1. Look up User in Customer_Auth to get ID and Name (Case-insensitive)
             auth_rows = self.sheets_client.read_sheet_rows("Customer_Auth")
-            user_row = next((r for r in auth_rows if r.get("Customer_Email") == email), None)
+            target_email = email.strip().lower()
+            user_row = next((r for r in auth_rows if str(r.get("Customer_Email", "")).strip().lower() == target_email), None)
             
             if not user_row:
                 print(f"!!! User not found in auth: {email}")
@@ -179,6 +183,14 @@ class RecommendationAgent:
             # Ensure the sheet exists if possible, or just append
             self.sheets_client.append_row("Customer_Preferences", new_row)
             
+            # 4. 🔥 Trigger Categorization Agent safely to update insights (Real-time)
+            try:
+                from agents.categorization import categorize_single_customer
+                print(f"🤖 Triggering background categorization for {customer_id}")
+                categorize_single_customer(customer_id)
+            except Exception as cat_err:
+                print(f"⚠️ Non-critical error triggering categorization: {cat_err}")
+            
             return {"status": "success", "message": "Preferences saved successfully"}
             
         except Exception as e:
@@ -188,6 +200,10 @@ class RecommendationAgent:
 
     def generate_combos(self, num_combos: int = 3, customer_id: str = None) -> List[Dict]:
         """🤖 SUPER AI COMBO GENERATOR - Powered by Gemini with Deep Customer Intelligence"""
+        if not GENERATE_AI_COMBOS:
+            print("ℹ️ AI Combo Generation is disabled via flag.")
+            return []
+            
         try:
             # -------------------------------------------------
             # CACHE CHECK
@@ -444,28 +460,39 @@ class RecommendationAgent:
                 {
                     "id": "c1", 
                     "code": "WELCOME50",
-                    "title": "Welcome Offer",
-                    "subtitle": "On All Combos",
+                    "title": "Smart Combo Deals",
+                    "subtitle": "Best Value Feasts",
                     "discount": "",
                     "discountPercent": 0,
                     "minOrderValue": 0,
                     "bgColor": "gradient-primary",
-                    "image": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=200&fit=crop",
+                    "image": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&h=300&fit=crop",
                     "type": "campaign"
                 },
                 {
                     "id": "c2", 
                     "code": "CHEFSPECIAL",
-                    "title": "Chef's Special",
-                    "subtitle": "Today Only",
+                    "title": "Chef's Specials",
+                    "subtitle": "Today's Handpicked",
                     "discount": "",
                     "discountPercent": 0,
                     "minOrderValue": 0,
                     "bgColor": "gradient-gold",
-                    "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=200&fit=crop",
+                    "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=300&fit=crop",
                     "type": "campaign"
                 },
-                # Add more offers if needed to match main_Sana.py
+                {
+                    "id": "c3", 
+                    "code": "BESTSELLER",
+                    "title": "Bestsellers",
+                    "subtitle": "Most Loved Dishes",
+                    "discount": "",
+                    "discountPercent": 0,
+                    "minOrderValue": 0,
+                    "bgColor": "gradient-orange",
+                    "image": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&h=300&fit=crop",
+                    "type": "campaign"
+                }
             ]
         }
 

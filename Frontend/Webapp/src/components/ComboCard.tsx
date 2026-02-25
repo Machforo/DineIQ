@@ -84,32 +84,34 @@ export default function ComboCard({ item, source = "Combos" }: ComboCardProps) {
           )}
         </div>
 
-        {quantity === 0 ? (
-          <button
-            onClick={() => addItem(item, false, source)}
-            className="bg-card border-2 border-primary text-primary font-bold px-5 py-1.5 rounded-lg shadow-sm hover:bg-primary hover:text-primary-foreground transition-all text-sm"
-          >
-            ADD
-          </button>
-        ) : (
-          <div className="flex items-center gap-1 bg-primary rounded-lg shadow-md overflow-hidden">
-            <button
-              onClick={() => removeItem(item.id, false, source)}
-              className="p-2 text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              <Minus className="w-4 h-4" />
-            </button>
-            <span className="text-primary-foreground font-bold min-w-[24px] text-center">
-              {quantity}
-            </span>
-            <button
-              onClick={() => addItem(item, false, source)}
-              className="p-2 text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
+        <div className="flex-shrink-0 flex flex-col items-center justify-end min-w-[110px]">
+          <div className="w-full shadow-sm rounded-xl bg-white overflow-hidden border border-gray-100">
+            {quantity === 0 ? (
+              <button
+                onClick={() => addItem(item, false, source)}
+                className="w-full bg-[#E23744] hover:bg-[#c92c37] text-white font-black text-[11px] h-10 rounded-xl uppercase tracking-wider transition-colors shadow-md"
+              >
+                ADD Item
+              </button>
+            ) : (
+              <div className="flex items-center justify-between bg-[#E23744] text-white h-10 rounded-xl px-2 w-full shadow-inner">
+                <button
+                  onClick={() => removeItem(item.id, false, source)}
+                  className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <Minus size={14} strokeWidth={3} />
+                </button>
+                <span className="font-black text-sm">{quantity}</span>
+                <button
+                  onClick={() => addItem(item, false, source)}
+                  className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <Plus size={14} strokeWidth={3} />
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

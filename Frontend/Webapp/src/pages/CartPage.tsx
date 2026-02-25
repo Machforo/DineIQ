@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { saveLog } from "@/utils/logger";
 import { getMenuItemImage } from "@/lib/categoryUtils";
+// Flag for AI vs Smart Combos
+const GENERATE_AI_COMBOS = false;
 
 export default function CartPage() {
   const navigate = useNavigate();
@@ -79,8 +81,8 @@ export default function CartPage() {
         if (res?.coupons) setCoupons(res.coupons);
       });
 
-      // 4. Generate AI Combos (Always fetch for visibility)
-      if (items.length >= 1) {
+      // 4. Generate AI Combos (Only if flag is enabled)
+      if (GENERATE_AI_COMBOS && items.length >= 1) {
         // Pass user email for personalization
         const email = user?.email || "test@user.com";
         api.generateCombos(2, email).then(res => {
@@ -126,7 +128,7 @@ export default function CartPage() {
   const getDiscountValue = (coupon: any, price: number) => {
     if (!coupon) return 0;
     if (coupon.type === 'flat') return coupon.discountAmount || 0;
-    if (coupon.type === 'percent' || coupon.type === 'tiered') 
+    if (coupon.type === 'percent' || coupon.type === 'tiered')
       return Math.round(price * ((coupon.discountPercent || 0) / 100));
     return 0;
   };
@@ -484,8 +486,8 @@ export default function CartPage() {
       </div>
 
       {/* --- AI COMBOS (Moved Here) --- */}
-      {/* AI Smart Combos */}
-      {aiCombos.length > 0 && (
+      {/* AI Smart Combos - Only if enabled */}
+      {GENERATE_AI_COMBOS && aiCombos.length > 0 && (
         <div className="px-4 py-2">
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="w-5 h-5 text-purple-600 fill-purple-100" />
