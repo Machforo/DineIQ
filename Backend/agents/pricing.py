@@ -21,8 +21,8 @@ class PricingAgent:
     def get_pricing_strategy(self, subtotal: float, order_count: int, cart_items: List[Dict] = None):
         """Generate comprehensive pricing intelligence for DineIQ"""
         try:
-            subtotal = float(subtotal) if subtotal else 0.0
-            order_count = int(order_count) if order_count else 0
+            subtotal = float(subtotal) if subtotal is not None else 0.0
+            order_count = int(order_count) if order_count is not None else 0
             
             # 1. Loyalty Tier & Rewards Calculation
             tier_info = self._get_loyalty_info(order_count)
@@ -66,7 +66,7 @@ class PricingAgent:
                     "available_coupons": available_coupons,
                     "upsell_nudge": upsell_nudge,
                     "combo_details": combo_info,
-                    "savings_summary": f"💰 You saved ₹{round(discount_amount, 2)} on this order!" if discount_amount > 0 else None
+                    "savings_summary": f"💰 You saved KSh {round(discount_amount, 2)} on this order!" if discount_amount > 0 else None
                 }
             }
         except Exception as e:
@@ -128,17 +128,17 @@ class PricingAgent:
         coupons = []
         
         # 1. Static Campaign Coupons (Rich Data for Frontend)
-        # Matches schema from main_Sana.py for UI compatibility (colors, types)
+        # Adapted for KSh and current loyalty rules
         campaign_coupons = [
             {
-                "code": "DINE50",
-                "title": "Flat ₹50 OFF",
-                "subtitle": "On orders above ₹299",
+                "code": "HARVEST50",
+                "title": "Flat KSh 50 OFF",
+                "subtitle": "On orders above KSh 299",
                 "minOrderValue": 299,
                 "discountAmount": 50,
                 "type": "flat",
                 "color": "from-orange-500 to-red-500",
-                "status": "Available" if subtotal >= 299 else "Add items worth ₹" + str(299-int(subtotal))
+                "status": "Available" if subtotal >= 299 else f"Add items worth KSh {int(299-subtotal)}"
             },
             {
                 "code": "COMBO30",
@@ -151,8 +151,8 @@ class PricingAgent:
                 "status": "Available" if subtotal >= 199 else "Locked"
             },
             {
-                "code": "FIRST100",
-                "title": "₹100 OFF",
+                "code": "WELCOME100",
+                "title": "KSh 100 OFF",
                 "subtitle": "First order bonus",
                 "minOrderValue": 399,
                 "discountAmount": 100,
@@ -161,9 +161,9 @@ class PricingAgent:
                 "status": "Available" if order_count == 0 else "New Users Only"
             },
              {
-                "code": "PARTY20",
+                "code": "FEAST20",
                 "title": "Flat 20% OFF",
-                "subtitle": "On orders above ₹1000",
+                "subtitle": "On orders above KSh 1000",
                 "minOrderValue": 1000,
                 "discountPercent": 20,
                 "type": "percent",
@@ -174,15 +174,14 @@ class PricingAgent:
         
         # 2. Add Dynamic Tier Coupons if met
         for t in self.discount_tiers:
-            # Overlap check: if code exists in campaigns, skip or merge?
             # For simplicity, we stick to the nice campaign ones above as defaults.
             # But let's add the dynamic ones if they are NOT in the static list
             if not any(c['code'] == t['name'] for c in campaign_coupons):
-                status = "Unlocked ✅" if subtotal >= t['threshold'] else f"Add ₹{int(t['threshold']-subtotal)} more 🔒"
+                status = "Unlocked ✅" if subtotal >= t['threshold'] else f"Add KSh {int(t['threshold']-subtotal)} more 🔒"
                 coupons.append({
                     "code": t['name'], 
                     "title": f"{t['discount']}% OFF",
-                    "subtitle": f"Above ₹{t['threshold']}",
+                    "subtitle": f"Above KSh {t['threshold']}",
                     "discountPercent": t['discount'],
                     "minOrderValue": t['threshold'],
                     "type": "tiered",

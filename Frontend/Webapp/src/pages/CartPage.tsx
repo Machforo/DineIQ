@@ -126,7 +126,8 @@ export default function CartPage() {
   const getDiscountValue = (coupon: any, price: number) => {
     if (!coupon) return 0;
     if (coupon.type === 'flat') return coupon.discountAmount || 0;
-    if (coupon.type === 'percent') return Math.round(price * ((coupon.discountPercent || 0) / 100));
+    if (coupon.type === 'percent' || coupon.type === 'tiered') 
+      return Math.round(price * ((coupon.discountPercent || 0) / 100));
     return 0;
   };
 

@@ -99,11 +99,24 @@ async def get_pricing_strategy(req: PricingRequest):
         cart_items_normalized.append(normalized)
 
     subtotal = sum(i["Current_Price"] * i["quantity"] for i in cart_items_normalized)
-    order_count = 0 
     
-    # TODO: Fetch real order count from Sheets for Loyalty logic
-    # rows = sheets_client.read_sheet(ORDERS_SHEET)
-    # filter by email...
+    # Fetch real order count from Sheets for accurate coupon/loyalty eligibility
+    order_count = 0
+    try:
+        # Get customer ID from email
+        auth_rows = sheets_client.read_sheet_rows("Customer_Auth")
+        target_email = req.customer_email.strip().lower()
+        user_row = next((r for r in auth_rows if str(r.get("Customer_Email", "")).strip().lower() == target_email), None)
+        
+        if user_row:
+            customer_id = user_row.get("Customer_ID")
+            # Count existing orders for this customer
+            all_orders = sheets_client.read_sheet_rows(ORDERS_SHEET)
+            order_count = sum(1 for o in all_orders if o.get("Customer_ID") == customer_id)
+            print(f">>> Customer {customer_id} has {order_count} previous orders")
+    except Exception as e:
+        print(f">>> Error fetching order count for coupons: {e}")
+        order_count = 0
     
     return pricing_agent.get_pricing_strategy(subtotal, order_count, cart_items_normalized)
 
