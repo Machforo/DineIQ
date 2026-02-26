@@ -10,7 +10,6 @@ import requests
 import re
 
 # import agents and services classes
-from services.sheets import SheetsClient
 from services.llm import GeminiClient
 from services.dependencies import sheets as _sheets_singleton, gemini_menu as _gemini_singleton
 

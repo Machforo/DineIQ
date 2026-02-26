@@ -8,12 +8,11 @@ import os
 # import datetime
 
 # Services & Agents
-from services.sheets import SheetsClient
+from services.dependencies import sheets as sheets_client
 from agents.pricing import PricingAgent
 
 order_router = APIRouter()
 pricing_agent = PricingAgent()
-sheets_client = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
 
 ORDERS_SHEET = "Orders"
 ORDER_ITEMS_SHEET = "Order_Items"

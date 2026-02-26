@@ -18,7 +18,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from services.sheets import SheetsClient
 from services.dependencies import sheets as sheets_client
 from services.dependencies import gemini_dietary as gemini_client, gemini_chat_inf as gemini_client_2
 

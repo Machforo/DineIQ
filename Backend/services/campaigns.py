@@ -22,8 +22,7 @@ load_dotenv()
 # ---------------------------------------------------------
 # Sheets Client
 # ---------------------------------------------------------
-from services.sheets import SheetsClient
-sheets_client = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
+from services.dependencies import sheets as sheets_client
 
 CAMPAIGNS_SHEET = "Campaigns"
 MAX_MESSAGES = 10

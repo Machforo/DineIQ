@@ -15,8 +15,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-from services.sheets import SheetsClient
-sheets_client = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
+from services.dependencies import sheets as sheets_client
 
 from services.email import GmailClient
 
