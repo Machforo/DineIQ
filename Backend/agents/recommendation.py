@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 # Centralized Singletons
-from services.dependencies import sheets as _sheets, gemini_common as _gemini_combos, gemini_common as _gemini_pitch
+from services.dependencies import sheets as _sheets, gemini_common as _gemini_combos, groq_common as _groq_pitch
 from agents.menu import get_menu_agent
 
 # ---------------------------------------------------------
@@ -30,7 +30,7 @@ class ComboRequest(BaseModel):
     customer_id: Optional[str] = None
 
 # Flag for AI vs Smart Combos
-GENERATE_AI_COMBOS = False
+GENERATE_AI_COMBOS = True
 
 # ---------------------------------------------------------
 # Recommendation Agent Class
@@ -40,8 +40,7 @@ class RecommendationAgent:
         self.spreadsheet_id = os.getenv("SPREADSHEET_ID")
         self.sheets_client   = _sheets
         self.gemini_combos   = _gemini_combos   # combo generation  → GEMINI_API_KEY_COMMON
-        self.gemini_pitch    = _gemini_pitch     # add-on AI pitch   → GEMINI_API_KEY_COMMON
-        self.gemini_client   = _gemini_combos    # convenience alias used by generate_combos
+        self.groq_pitch    = _groq_pitch     # add-on AI pitch   → GROQ_API_KEY
         self.menu_agent = get_menu_agent()
         
         # Strategic Pairings adapted to current Menu
@@ -368,7 +367,7 @@ class RecommendationAgent:
             ]
             """
             
-            response = self.gemini_client.call_gemini_with_retry(prompt)
+            response = self.gemini_combos.call_gemini_with_retry(prompt)
             if not response: return []
             
             # Clean and parse
@@ -643,7 +642,7 @@ class RecommendationAgent:
         try:
             rec_name = recs[0]['name']
             prompt = f"Write a 1-line appetizing pitch for adding {rec_name} to {name} ({cat}). Max 12 words."
-            return self.gemini_pitch.call_gemini_with_retry(prompt) or "Perfect pairing!"
+            return self.groq_pitch.call_groq_with_retry(prompt) or "Perfect pairing!"
         except:
             return "Perfect combo for your meal! 🍱"
 

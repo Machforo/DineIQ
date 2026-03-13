@@ -17,7 +17,7 @@ import AIComboCard from "@/components/AIComboCard";
 
 
 // Flag for AI vs Smart Combos
-const GENERATE_AI_COMBOS = false;
+const GENERATE_AI_COMBOS = true;
 
 export default function HomeScreen() {
   const navigate = useNavigate();

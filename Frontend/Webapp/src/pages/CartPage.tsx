@@ -22,7 +22,7 @@ import {
 import { saveLog } from "@/utils/logger";
 import { getMenuItemImage } from "@/lib/categoryUtils";
 // Flag for AI vs Smart Combos
-const GENERATE_AI_COMBOS = false;
+const GENERATE_AI_COMBOS = true;
 
 export default function CartPage() {
   const navigate = useNavigate();

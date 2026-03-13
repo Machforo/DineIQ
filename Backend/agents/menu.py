@@ -10,8 +10,7 @@ import requests
 import re
 
 # import agents and services classes
-from services.llm import GeminiClient
-from services.dependencies import sheets as _sheets_singleton, gemini_menu as _gemini_singleton
+from services.dependencies import sheets as _sheets_singleton, gemini_menu as _gemini_singleton, groq_menu as _groq_singleton
 
 # ---------------------------------------------------------
 # Load environment variables
@@ -40,6 +39,7 @@ class MenuAgent:
         # Use centralized singletons — no new connections created
         self.sheets_client = _sheets_singleton
         self.gemini_client  = _gemini_singleton
+        self.groq_client    = _groq_singleton
 
         # Helper Data (Migrated from menu_agent.py)
         self.category_images = {
@@ -330,8 +330,8 @@ class MenuAgent:
         print("\nFormatting the Menu")
         formatted_menu = []
 
-        # Heuristic: top 30% Gemini-ranked items are considered AOV/Attitude aligned
-        if "gemini_rank" in menu_df.columns and not menu_df.empty:
+        # Heuristic: top 30% Groq-ranked items are considered AOV/Attitude aligned
+        if "groq_rank" in menu_df.columns and not menu_df.empty:
             rank_threshold = max(1, int(len(menu_df) * 0.3))
         else:
             rank_threshold = None
@@ -346,11 +346,11 @@ class MenuAgent:
             if row.get("is_favorite", False):
                 matches.append("Favorites")
 
-            # Dietary (implicit — Gemini already filtered)
+            # Dietary (implicit — GROQ already filtered)
             matches.append("Dietary")
 
-            # AOV / Attitude (implicit via Gemini ranking)
-            if rank_threshold is not None and row.get("gemini_rank", 9999) < rank_threshold:
+            # AOV / Attitude (implicit via GROQ ranking)
+            if rank_threshold is not None and row.get("groq_rank", 9999) < rank_threshold:
                 matches.extend(["AOV", "Attitude"])
 
             formatted_menu.append({
@@ -377,7 +377,7 @@ class MenuAgent:
         already derived in Customer_Insights sheet.
 
         HARD RULE:
-        - Dietary preference is a strict filter (handled by Gemini).
+        - Dietary preference is a strict filter (handled by GROQ).
 
         SOFT RULES:
         - Favorites
@@ -451,7 +451,7 @@ class MenuAgent:
         print()
 
         # -------------------------------------------------
-        # 3️⃣ PREPARE SAFE MENU (Gemini decides dietary)
+        # 3️⃣ PREPARE SAFE MENU (GROQ decides dietary)
         # -------------------------------------------------
         menu_items_for_llm = [
             {
@@ -469,25 +469,25 @@ class MenuAgent:
         }
 
         # -------------------------------------------------
-        # 4️⃣ GEMINI: FILTER + RANK (STRICT DIETARY)
+        # 4️⃣ GROQ: FILTER + RANK (STRICT DIETARY)
         # -------------------------------------------------
-        ranked_names = self.rank_menu_items_with_gemini(
+        ranked_names = self.rank_menu_items_with_groq(
             menu_items=menu_items_for_llm,
             customer_profile=customer_profile,
         )
 
         if not ranked_names:
-            print("\nNo response from LLM, Returning Original Menu")
+            print("\nNo response from Groq, Returning Original Menu")
             return self.format_menu(menu_df)
 
-        print("Ranking the menu items returned by LLM")
+        print("Ranking the menu items returned by Groq")
 
-        # Keep only items Gemini approved
+        # Keep only items Groq approved
         menu_df = menu_df[
             menu_df["Item_Name"].isin(ranked_names)
         ].copy()
 
-        menu_df["gemini_rank"] = menu_df["Item_Name"].apply(
+        menu_df["groq_rank"] = menu_df["Item_Name"].apply(
             lambda x: ranked_names.index(x)
         )
 
@@ -514,7 +514,7 @@ class MenuAgent:
         # -------------------------------------------------
         print("Sorting the menu items based on rank")
         menu_df = menu_df.sort_values(
-            by=["is_favorite", "gemini_rank"],
+            by=["is_favorite", "groq_rank"],
             ascending=[False, True],
         )
 
@@ -526,15 +526,15 @@ class MenuAgent:
 
     
     # -------------------------------------------------------------------
-    # 🤖 Gemini-based ranking (SAFE + INTERPRETIVE)
+    # 🤖 Groq-based ranking (SAFE + INTERPRETIVE)
     # -------------------------------------------------------------------
-    def rank_menu_items_with_gemini(
+    def rank_menu_items_with_groq(
         self,
         menu_items: list[dict],
         customer_profile: dict
     ) -> list[str]:
         """
-        Uses Gemini to:
+        Uses Groq to:
         1. Remove items violating dietary preference
         2. Rank remaining items using AOV + Attitude
         """
@@ -587,8 +587,8 @@ class MenuAgent:
     - No explanation, no markdown
     """
 
-        gemini_client = self.gemini_client   # reuse singleton — do NOT create a new instance here
-        response = gemini_client.call_gemini_with_retry(prompt)
+        groq_client = self.groq_client   # reuse singleton — do NOT create a new instance here
+        response = groq_client.call_groq_with_retry(prompt)
 
         if not response:
             return item_names
