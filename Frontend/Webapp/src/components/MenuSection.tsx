@@ -45,7 +45,7 @@ export default function MenuSection({ title, subtitle, items, type }: MenuSectio
     }
   };
 
-  const isHorizontal = type === "combos" || type === "chef";
+  const isHorizontal = type === "combos" || type === "chef" || type === "bestseller";
 
   return (
     <section className="py-5 bg-transparent">
