@@ -17,7 +17,9 @@ import {
   PlusCircle,
   Gift,
   Ticket,
-  Star
+  Star,
+  ChevronRight,
+  Percent
 } from "lucide-react";
 import { saveLog } from "@/utils/logger";
 import { getMenuItemImage } from "@/lib/categoryUtils";
@@ -48,9 +50,12 @@ export default function CartPage() {
 
       const fetchRecs = async () => {
         const res = await api.fetchRecommendations(user?.email || "", lastItem.id);
-        if (res && res.smart_recommendations) {
-          setRecommendations(res.smart_recommendations.add_ons || []);
-          setAiPitch(res.smart_recommendations.ai_pitch || "Pairs well with your order!");
+        if (res) {
+          // Handle both legacy (smart_recommendations) and new (direct) formats
+          const adds = res.smart_recommendations?.add_ons || res.add_ons || [];
+          const pitch = res.smart_recommendations?.ai_pitch || res.ai_pitch || "Pairs well with your order!";
+          setRecommendations(adds);
+          setAiPitch(pitch);
         }
       };
 
@@ -74,7 +79,9 @@ export default function CartPage() {
 
       // 3. Fetch Upsells & Coupons
       api.fetchUpsellItems().then(res => {
-        if (res?.upsells) setUpsells(res.upsells);
+        // Backend returns either { upsells: [] } or just []
+        const upArr = res?.upsells || (Array.isArray(res) ? res : []);
+        setUpsells(upArr);
       });
 
       api.fetchCoupons().then(res => {
@@ -94,6 +101,34 @@ export default function CartPage() {
       setNudge(null);
     }
   }, [items.length, user?.email]); // Re-run when item count changes
+
+  // Auto-Apply Coupon Logic (Adapted from Sana_DineIQ)
+  useEffect(() => {
+    if (coupons.length > 0 && !selectedCoupon) {
+      let bestCoupon = null;
+      let maxDiscount = 0;
+
+      coupons.forEach(coupon => {
+        if ((coupon.minOrderValue || 0) <= totalPrice) {
+          let discount = 0;
+          if (coupon.type === 'flat') {
+            discount = coupon.discountAmount || 0;
+          } else if (coupon.type === 'percent' || coupon.type === 'tiered') {
+            discount = Math.round(totalPrice * ((coupon.discountPercent || 0) / 100));
+          }
+          if (discount > maxDiscount) {
+            maxDiscount = discount;
+            bestCoupon = coupon;
+          }
+        }
+      });
+
+      if (bestCoupon) {
+        setSelectedCoupon(bestCoupon);
+      }
+    }
+  }, [coupons, totalPrice, selectedCoupon]);
+
   useEffect(() => {
     if (selectedCoupon && totalPrice < (selectedCoupon.minOrderValue || 0)) {
       setSelectedCoupon(null);
@@ -283,7 +318,11 @@ export default function CartPage() {
 
           return (
             <div className="pl-4 animate-fade-in">
-              <h3 className="font-bold text-gray-800 text-sm mb-2">Pairs well with your order</h3>
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles className="w-4 h-4 text-primary" />
+                <h3 className="font-bold text-gray-800 text-sm">Pairs well with your order</h3>
+              </div>
+              <p className="text-xs text-gray-600 mb-3 block">{aiPitch || "Perfect pairings for your meal"}</p>
               <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 pr-4">
                 {uniqueRecs.map((rec) => (
                   <div key={rec.Item_ID} className="flex-shrink-0 w-36 bg-white rounded-lg p-2 border border-gray-100 shadow-sm">
@@ -315,16 +354,14 @@ export default function CartPage() {
           const allUpsells: any[] = [];
           const seenIds = new Set(recommendations.map(r => r.Item_ID)); // Don't repeat what's in "Pairs well"
 
-          Object.entries(upsells).forEach(([category, items]: [string, any]) => {
-            if (Array.isArray(items)) {
-              items.forEach(item => {
-                if (!seenIds.has(item.Item_ID)) {
-                  allUpsells.push({ ...item, upsellCategory: category });
-                  seenIds.add(item.Item_ID);
-                }
-              });
-            }
-          });
+          if (Array.isArray(upsells)) {
+            upsells.forEach(item => {
+              if (!seenIds.has(item.Item_ID)) {
+                allUpsells.push(item);
+                seenIds.add(item.Item_ID);
+              }
+            });
+          }
 
           if (allUpsells.length === 0) return null;
 
@@ -332,7 +369,10 @@ export default function CartPage() {
           // For now, let's just show them uniquely
           return (
             <div className="pl-4 animate-fade-in">
-              <h3 className="font-bold text-gray-800 text-sm mb-2">Something sweet?</h3>
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-4 h-4 text-pink-500 fill-pink-100" />
+                <h3 className="font-bold text-gray-800 text-sm">You may also like</h3>
+              </div>
               <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 pr-4">
                 {allUpsells.map((rec) => (
                   <div key={rec.Item_ID} className="flex-shrink-0 w-36 bg-white rounded-lg p-2 border border-gray-100 shadow-sm">
@@ -362,34 +402,41 @@ export default function CartPage() {
       <div className="px-4 py-3 bg-gray-50/50">
         <div
           onClick={() => setShowCoupons(!showCoupons)}
-          className="bg-white border-2 border-dashed border-gray-200 rounded-xl p-3 flex items-center justify-between cursor-pointer active:scale-95 transition-transform"
+          className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 shadow-sm border border-blue-100 flex items-center justify-between cursor-pointer active:scale-[0.99] transition-all"
         >
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${selectedCoupon ? 'bg-green-50' : 'bg-blue-50'}`}>
-              <Ticket className={`w-5 h-5 ${selectedCoupon ? 'text-green-600' : 'text-blue-600'}`} />
+            <div className="bg-white p-2 rounded-full shadow-sm text-blue-600">
+              <Percent className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-bold text-gray-800 text-sm">
-                {selectedCoupon ? `Coupon Applied: ${selectedCoupon.code}` : "Apply Coupon"}
-              </h4>
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider">
-                {selectedCoupon ? selectedCoupon.title : "Save more on this order"}
+              <h3 className="font-bold text-gray-800 text-sm">Use Coupons</h3>
+              <p className="text-xs text-gray-500 font-medium">
+                {selectedCoupon
+                  ? <span className="text-green-600">Applied: {selectedCoupon.code}</span>
+                  : "Deals & Offers available"}
               </p>
             </div>
           </div>
-          {selectedCoupon ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedCoupon(null);
-              }}
-              className="text-red-500 font-bold text-xs uppercase hover:bg-red-50 px-2 py-1 rounded"
-            >
-              Remove
-            </button>
-          ) : (
-            <span className="text-blue-600 font-bold text-xs uppercase">Select</span>
-          )}
+          <div className="flex items-center gap-1 text-blue-600">
+            {selectedCoupon ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedCoupon(null);
+                }}
+                className="text-red-500 font-bold text-xs uppercase hover:bg-red-50 px-2 py-1 rounded"
+              >
+                Remove
+              </button>
+            ) : (
+              <>
+                <span className="text-xs font-bold uppercase tracking-wide">
+                  Apply
+                </span>
+                <ChevronRight className="w-4 h-4" />
+              </>
+            )}
+          </div>
         </div>
 
         {/* Coupon Nudge Progress */}
@@ -490,116 +537,25 @@ export default function CartPage() {
       {GENERATE_AI_COMBOS && aiCombos.length > 0 && (
         <div className="px-4 py-2">
           <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-5 h-5 text-purple-600 fill-purple-100" />
-            <h3 className="font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600">
+            <Sparkles className="w-4 h-4 text-purple-600 fill-purple-100" />
+            <h3 className="font-bold text-gray-800 text-sm">
               Smart Deals For You
             </h3>
           </div>
 
           <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-4 -mx-4 px-4 snap-x">
-            {aiCombos.map((combo) => {
-              // Calculate quantity from cart items
-              const cartItem = items.find(i => i.id === combo.Item_ID);
-              const quantity = cartItem ? cartItem.quantity : 0;
-
-              // Calculate specific 3% logic for display if applicable
-              const isCustomized = combo.Discount_Percent === 3 || combo.Discount_Percent === 4;
-
-              return (
-                <div key={combo.Item_ID} className="bg-card rounded-2xl p-4 shadow-sm border border-border flex-shrink-0 w-72 snap-center overflow-hidden">
-                  {/* Image */}
-                  <div className="relative h-36 -mx-4 -mt-4 mb-3">
-                    <img
-                      src={getMenuItemImage(combo)}
-                      alt={combo.Item_Name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = '/placeholder.svg';
-                      }}
-                    />
-                    {/* Savings badge - Update to customized text if needed */}
-                    {combo.Savings > 0 && (
-                      <div className="absolute top-3 left-3 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded-lg shadow-md">
-                        {isCustomized ? 'Custom 3% OFF' : `Save KSh ${combo.Savings}`}
-                      </div>
-                    )}
-                    {/* AI badge */}
-                    {(combo.Is_Personalized || combo.Insight) && (
-                      <div className="absolute top-3 right-3 bg-card/90 backdrop-blur-sm text-foreground text-[10px] font-semibold px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
-                        <Sparkles className="w-3 h-3 text-purple-500" />
-                        {combo.Insight || "AI Pick"}
-                      </div>
-                    )}
+            {aiCombos.map((combo) => (
+              <div key={combo.Item_ID} className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 flex-shrink-0 w-64 snap-center">
+                <img src={getMenuItemImage(combo)} className="w-full h-32 object-cover rounded-lg mb-2" />
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-bold text-sm text-gray-900 line-clamp-1">{combo.Item_Name}</h4>
+                    <p className="text-xs text-gray-500">KSh {combo.Current_Price}</p>
                   </div>
-
-                  {/* Content */}
-                  <div className="flex items-start gap-2 mb-2">
-                    <div className={`w-3 h-3 border rounded-sm flex items-center justify-center flex-shrink-0 mt-1 ${combo.Is_Veg ? 'border-green-600' : 'border-red-500'}`}>
-                      <div className={`w-1.5 h-1.5 rounded-full ${combo.Is_Veg ? 'bg-green-600' : 'bg-red-500'}`} />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-foreground text-base leading-tight">{combo.Item_Name}</h3>
-                      {isCustomized && (
-                        <p className="text-[10px] text-purple-600 font-medium">✨ Personalized for you</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Combo items (Description) */}
-                  <p className="text-xs text-muted-foreground line-clamp-2 mb-3 font-medium">
-                    {combo.Combo_Items ? combo.Combo_Items.join(" • ") : combo.Item_Description}
-                  </p>
-
-                  {/* Pricing Calculation Display */}
-                  <div className="flex items-center justify-between mt-auto">
-                    <div>
-                      {isCustomized ? (
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-gray-500">
-                            KSh {combo.Original_Price} - 3%
-                          </span>
-                          <span className="text-lg font-bold text-foreground">
-                            KSh {combo.Current_Price}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col">
-                          <span className="text-xs text-gray-400 line-through">KSh {combo.Original_Price}</span>
-                          <span className="text-lg font-bold text-foreground">KSh {combo.Current_Price}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {quantity === 0 ? (
-                      <button
-                        onClick={() => handleAddRecommendation(combo)}
-                        className="bg-card border-2 border-primary text-primary font-bold px-5 py-1.5 rounded-lg shadow-sm hover:bg-primary hover:text-primary-foreground transition-all text-sm"
-                      >
-                        ADD
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-1 bg-primary rounded-lg shadow-md overflow-hidden">
-                        <button
-                          onClick={() => updateQuantity(combo.Item_ID, quantity - 1)}
-                          className="p-2 text-primary-foreground hover:bg-primary/90 transition-colors"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
-                        <span className="text-primary-foreground font-bold min-w-[24px] text-center">
-                          {quantity}
-                        </span>
-                        <button
-                          onClick={() => updateQuantity(combo.Item_ID, quantity + 1)}
-                          className="p-2 text-primary-foreground hover:bg-primary/90 transition-colors"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <button onClick={() => handleAddRecommendation(combo)} className="bg-primary/5 text-primary text-xs font-bold px-3 py-1 rounded uppercase border border-primary/20 hover:bg-primary/10 transition-colors">ADD</button>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
       )}
