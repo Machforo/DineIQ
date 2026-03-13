@@ -740,11 +740,42 @@ class MenuAgent:
                     'Dietary_Type': 'Veg' if is_veg else 'Non-Veg'
                 }
 
-            # 1. YOUR FAVORITES
-            if email and not orders_df.empty and not order_items_df.empty:
+            # --- Personalization Sections ---
+            customer_id = None
+            if email:
                 try:
-                    # Filter Orders by Email (part of Customer_ID usually)
-                    matching_orders = orders_df[orders_df['Customer_ID'].str.contains(email.split('@')[0], case=False, na=False)]
+                    auth_rows = self.sheets_client.read_sheet_rows("Customer_Auth")
+                    target_email = email.strip().lower()
+                    user_row = next((r for r in auth_rows if str(r.get("Customer_Email", "")).strip().lower() == target_email), None)
+                    if user_row:
+                        customer_id = user_row.get("Customer_ID")
+                except: pass
+                if not customer_id: customer_id = email.split('@')[0]
+
+            # 0. CURATED FOR YOU (Dynamic Menu - Vertical List)
+            if email and customer_id and not orders_df.empty and not order_items_df.empty:
+                try:
+                    matching_orders = orders_df[orders_df['Customer_ID'].astype(str) == str(customer_id)]
+                    if not matching_orders.empty:
+                        user_order_items = order_items_df[order_items_df['Order_ID'].isin(matching_orders['Order_ID'])]
+                        item_counts = user_order_items['Item_ID'].value_counts()
+                        
+                        # Filter active menu items that were ordered
+                        curated_df = active_df[active_df['Item_ID'].isin(item_counts.index)].copy()
+                        if not curated_df.empty:
+                            curated_df['Order_Frequency'] = curated_df['Item_ID'].map(item_counts).fillna(0)
+                            curated_df['Price_Numeric'] = pd.to_numeric(curated_df['Current_Price'], errors='coerce').fillna(0)
+                            
+                            # Sort by Frequency DESC, then Price DESC
+                            sorted_curated = curated_df.sort_values(by=['Order_Frequency', 'Price_Numeric'], ascending=[False, False])
+                            menu_sections["Curated for You"] = [format_item(row) for _, row in sorted_curated.head(15).iterrows()]
+                except Exception as e:
+                    print(f"Stats Error (Curated): {e}")
+
+            # 1. YOUR FAVORITES
+            if email and customer_id and not orders_df.empty and not order_items_df.empty:
+                try:
+                    matching_orders = orders_df[orders_df['Customer_ID'].astype(str) == str(customer_id)]
                     if not matching_orders.empty:
                         past_items = order_items_df[order_items_df['Order_ID'].isin(matching_orders['Order_ID'])]['Item_Name'].unique()
                         fav_items = active_df[active_df['Item_Name'].isin(past_items)]

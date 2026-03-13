@@ -27,6 +27,7 @@ export default function HomeScreen() {
   const [combos, setCombos] = useState<MenuItem[]>([]);
   const [chefSpecials, setChefSpecials] = useState<MenuItem[]>([]);
   const [bestsellers, setBestsellers] = useState<MenuItem[]>([]);
+  const [curatedItems, setCuratedItems] = useState<MenuItem[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [dynamicCategories, setDynamicCategories] = useState<Category[]>([]);
   const [aiCombos, setAiCombos] = useState<any[]>([]);
@@ -83,6 +84,7 @@ export default function HomeScreen() {
             let combosTemp: MenuItem[] = [];
             let chefTemp: MenuItem[] = [];
             let bestTemp: MenuItem[] = [];
+            let curatedTemp: MenuItem[] = [];
 
             // Map backend items to frontend format
             const mapToMenuItem = (item: any, category: string): MenuItem => {
@@ -125,6 +127,9 @@ export default function HomeScreen() {
                   if (sectionName === "Bestseller" || sectionName === "Bestsellers") {
                     bestTemp.push(menuItem);
                   }
+                  if (sectionName === "Curated for You") {
+                    curatedTemp.push(menuItem);
+                  }
 
                   // Deduplicate for the master menuItems list
                   // We prefer the first category assignment unless it's a virtual one
@@ -157,6 +162,7 @@ export default function HomeScreen() {
             setCombos(combosTemp);
             setChefSpecials(chefTemp);
             setBestsellers(bestTemp);
+            setCuratedItems(curatedTemp);
           }
 
           // 3. Fetch AI Personalized Combos (Only if flag is enabled)
@@ -506,12 +512,25 @@ export default function HomeScreen() {
           </div>
         )}
 
+        {/* Curated for You (DYNAMIC - Vertical) */}
+        {!isLoading && curatedItems.length > 0 && !searchQuery && (
+          <div id="curated-section" className="scroll-mt-24 px-3">
+            <MenuSection
+              title="✨ Curated for You"
+              subtitle="Your favorite picks sorted by frequency"
+              items={isVegMode ? curatedItems.filter(c => c.isVeg === true) : curatedItems}
+              type="standard"
+            />
+          </div>
+        )}
+
         {/* MAIN MENU SECTIONS (Dynamic Categories - Browse Mode) */}
         {!isLoading && !searchQuery && dynamicCategories.map((category) => {
           // Skip standalone / virtual sections to avoid duplication in main menu flow
           if (category.name === "Chef Special" ||
             category.name === "Bestseller" ||
             category.name === "Chef's Recommendations" ||
+            category.name === "Curated for You" ||
             (GENERATE_AI_COMBOS && category.name === "Combos")) return null;
 
           // Filter items for this category
