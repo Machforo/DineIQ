@@ -139,7 +139,8 @@ const ChatbotPage = () => {
         id: `msg-ai-${Date.now()}`,
         role: 'ai',
         content: data.response,
-        timestamp: new Date()
+        timestamp: new Date(),
+        combos: data.combos && data.combos.length > 0 ? data.combos : undefined,
       };
 
       setMessages(prev => [...prev, aiMessage]);
@@ -276,7 +277,7 @@ const ChatbotPage = () => {
       <div className="flex-1 overflow-y-auto container mx-auto px-4 py-6">
         <div className="max-w-4xl mx-auto">
           {messages.map(msg => (
-            <ChatMessage key={msg.id} message={msg} />
+            <ChatMessage key={msg.id} message={msg} onSend={handleSendMessage} />
           ))}
           <div ref={messagesEndRef} />
         </div>

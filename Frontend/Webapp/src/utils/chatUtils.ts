@@ -1,9 +1,24 @@
 // src/utils/chatUtils.ts
+export interface ComboIngredient {
+  name: string;
+  price: number;
+  item_id?: string;
+}
+
+export interface ChatCombo {
+  id: string;
+  name: string;
+  items: ComboIngredient[];
+  totalPrice: number;
+  savings?: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'ai' | 'user';
   content: string;
   timestamp: Date;
+  combos?: ChatCombo[];
 }
 
 export interface ClientInfo {

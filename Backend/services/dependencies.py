@@ -17,6 +17,7 @@ load_dotenv()
 
 from services.sheets import SheetsClient
 from services.llm import GeminiClient
+from services.llm import GroqClient
 
 # ----------------------------------------------------------
 # 1. Google Sheets — single connection for the whole app
@@ -44,7 +45,8 @@ sheets = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
 #      GEMINI_API_KEY_COMMON
 # ----------------------------------------------------------
 gemini_menu      = GeminiClient(api_key=os.getenv("GEMINI_API_KEY_MENU"))
-gemini_chatbot   = GeminiClient(api_key=os.getenv("GEMINI_API_KEY_CHATBOT"))
+# gemini_chatbot   = GeminiClient(api_key=os.getenv("GEMINI_API_KEY_CHATBOT"))
 gemini_chat_inf  = GeminiClient(api_key=os.getenv("GEMINI_API_KEY_CHAT_INSIGHTS"))
 gemini_dietary   = GeminiClient(api_key=os.getenv("GEMINI_API_KEY_DIETARY_INSIGHTS"))
 gemini_common    = GeminiClient(api_key=os.getenv("GEMINI_API_KEY_COMMON"))
+groq_chatbot     = GroqClient(api_key=os.getenv("GROQ_API_KEY"))

@@ -4,14 +4,16 @@
 # Library and Packages Import
 # ---------------------------------------------------------
 import os
-# import re
+import re
+import json
+import asyncio
+import time
 from fastapi import APIRouter
 from pydantic import BaseModel
-# from datetime import datetime, timezone
 
-# -------------------------------------------------------------------
-# 🔧 SETUP KEYS and URLs
-# -------------------------------------------------------------------
+# ---------------------------------------------------------
+# SETUP KEYS
+# ---------------------------------------------------------
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -21,7 +23,7 @@ SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID", "").strip()
 # ---------------------------------------------------------
 # Centralized Singletons
 # ---------------------------------------------------------
-from services.dependencies import sheets as sheets_client, gemini_chatbot as gemini_client
+from services.dependencies import sheets as sheets_client, groq_chatbot as groq_client
 
 # ---------------------------------------------------------
 # Menu Agent (singleton via menu.py)
@@ -37,12 +39,51 @@ CUSTOMER_AUTH_SHEET = "Customer_Auth"
 # ---------------------------------------------------------
 chatbot_router = APIRouter()
 
+# ── Menu cache (avoids repeated Google Sheets round-trips) ───────────────────
+_menu_cache: list[dict] = []
+_menu_cache_ts: float   = 0.0
+MENU_CACHE_TTL: int     = 300   # seconds (5 minutes)
+
+def get_cached_menu() -> list[dict]:
+    global _menu_cache, _menu_cache_ts
+    if _menu_cache and (time.time() - _menu_cache_ts) < MENU_CACHE_TTL:
+        print(f"✅ Menu from cache ({len(_menu_cache)} items)")
+        return _menu_cache
+    print("🔄 Fetching fresh menu from Sheets...")
+    _menu_cache    = menu_agent.get_menu()
+
+    # Enrich the base menu_agent.get_menu() with isVeg for the chatbot filter
+    # Main project menu.py doesn't have a direct _is_veg_item on the dictionary returned
+    # so we will use the description to guess if it's missing
+    for item in _menu_cache:
+        if "isVeg" not in item:
+            name_desc = (str(item.get("name", "")) + " " + str(item.get("description", ""))).lower()
+            non_veg = ['chicken', 'mutton', 'fish', 'egg', 'meat', 'prawn', 'lamb', 'pork', 'beef']
+            item["isVeg"] = not any(nv in name_desc for nv in non_veg)
+            item["category"] = "General" # Safe default
+            item["id"] = ""
+
+    _menu_cache_ts = time.time()
+    return _menu_cache
+
 # ---------------------------------------------------------
 # REQUEST / RESPONSE MODELS
 # ---------------------------------------------------------
 class FrontendChatItem(BaseModel):
     role: str
     text: str
+
+class ComboIngredient(BaseModel):
+    name: str
+    price: float
+    item_id: str = ""
+
+class ComboData(BaseModel):
+    id: str
+    name: str
+    items: list[ComboIngredient]
+    totalPrice: float
+    savings: float = 0.0
 
 class ChatRequest(BaseModel):
     chatHistory: list[FrontendChatItem]
@@ -54,6 +95,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
+    combos: list[ComboData] = []   # ← structured combos for frontend cards
 
 class ChatSession(BaseModel):
     clientId: str
@@ -68,17 +110,13 @@ class ChatSession(BaseModel):
 # ---------------------------------------------------------
 # SYSTEM PROMPT
 # ---------------------------------------------------------
-# ---------------------------------------------------------
-# SYSTEM PROMPT
-# ---------------------------------------------------------
-SYSTEM_PROMPT = """
-You are a highly professional restaurant concierge AI assistant for DineIQ.
+SYSTEM_PROMPT = """You are Harvest by DineIQ, an elegant and warm AI concierge for a premium farm-to-table restaurant experience.
 
 Your Objectives:
 - Respond politely, warmly, and naturally.
 - Always address the client by their name (if known).
 - Maintain memory of previous chat messages.
-- Tone: Friendly, concise, human-like, professional.
+- Tone: Helpful, welcoming, and knowledgeable. Use a few elegant emojis (🌿, 🥗, 🍲, 🥖).
 - Provide accurate and helpful information based on the menu.
 - Ask for Name, Email, or Phone if not yet provided, to help identify the customer.
 
@@ -91,42 +129,204 @@ Strict Rules for User Status:
 2. RECOGNIZED BUT NOT LOGGED IN (Identified by Email/Phone):
    - Address them by name.
    - You MUST politely ask them to LOGIN to access their full profile and personalized offers.
-   - Do NOT suggest SIGNUP or REGISTRATION, as they already have an account.
    - Assure them that this chat IS being saved to their account.
 
 3. GUEST (Unregistered):
    - ONLY if the user is not found in the database, politely suggest they SIGN UP.
    - Warn them strictly that "Chat history is NOT saved for guests".
-   - If they refuse, help them normally but remind them occasionally.
 
 General Rules:
-- Use menu data if provided.
-- Do NOT invent menu items or prices.
-- You are not here to take orders (redirect to "Place Order" page).
-- Return ONLY the reply message (no JSON, no metadata).
+1. ONLY mention items that appear in the MENU block. Never invent items or prices.
+2. For vegan/veg queries: ONLY suggest [VEG] items.
+3. Language: Use descriptive, appetizing, and sophisticated language. Focus on "freshness", "organic quality", and "local flavors".
+4. Return ONLY the reply message (no JSON, no metadata).
+5. Do NOT take orders (redirect to "Place Order" page).
+
+For COMBO suggestions:
+- Hand-pick 2–3 harmonious pairings and give them "Harvest" inspired names.
+- List each included item with its price.
+- Format each combo clearly separated by decorative lines.
 """
 
 # ---------------------------------------------------------
-# MENU INTENT DETECTION
+# STEP 1 — INTENT CLASSIFIER (LLM-powered, no hardcoded keywords)
 # ---------------------------------------------------------
-MENU_KEYWORDS = [
-    "menu", "dish", "food", "eat", "price", "cost", 
-    "veg", "non veg", "vegetarian", "recommend", 
-    "order", "special", "hungry", "diet", "cuisine"
+INTENT_SYSTEM = """You are an intent classifier for a restaurant chatbot.
+
+Given the user's latest message and recent chat history, return ONLY a valid JSON object like:
+{
+  "action": "suggest_items" | "suggest_combos" | "general",
+  "filters": ["veg", "spicy", "dessert", "drinks", "starter"],
+  "veg_only": true | false,
+  "summary": "one sentence describing what the user wants"
+}
+
+Rules:
+- action = "suggest_combos" → user wants a meal bundle / combo deal
+- action = "suggest_items"  → user wants dish recommendations (even if they say "food", "spicy", "vegan", etc.)
+- action = "general"        → greeting, reservation, complaints, or anything NOT about the menu
+- filters: list of relevant keywords (category names, flavour tags, dietary tags)
+- veg_only: true ONLY if user explicitly mentions veg/vegan/vegetarian
+- Return ONLY raw JSON. No markdown. No explanation."""
+
+def classify_intent(user_message: str, history: list[FrontendChatItem]) -> dict:
+    """Use Groq to classify what the user wants — no hardcoded keywords."""
+    recent = history[-4:] if len(history) > 4 else history
+    history_text = "\n".join(
+        f"{'User' if h.role == 'user' else 'Assistant'}: {h.text}" for h in recent
+    )
+    prompt = f"""{INTENT_SYSTEM}
+
+Recent conversation:
+{history_text}
+
+Latest user message: {user_message}
+
+JSON:"""
+
+    raw = groq_client.call_groq_with_retry(prompt)
+    print(f"🧠 Intent raw: {raw}")
+
+    try:
+        clean = re.sub(r"```(?:json)?", "", raw or "").strip().strip("`")
+        return json.loads(clean)
+    except Exception:
+        return {"action": "general", "filters": [], "veg_only": False, "summary": user_message}
+
+# ---------------------------------------------------------
+# STEP 2 — TOOL: Fetch and filter menu
+# ---------------------------------------------------------
+def fetch_filtered_menu(filters: list[str], veg_only: bool) -> list[dict]:
+    """Return filtered menu — from cache, Google Sheets only hit once per 5 min."""
+    menu = get_cached_menu()
+
+    # Drop zero-price items
+    menu = [item for item in menu if item.get("price") and float(item.get("price", 0)) > 0]
+
+    # Apply veg filter
+    if veg_only:
+        menu = [item for item in menu if item.get("isVeg")]
+
+    # Apply category / keyword filters
+    if filters:
+        filter_lower = [f.lower() for f in filters]
+        filtered = [
+            item for item in menu
+            if any(
+                kw in item.get("name", "").lower() or kw in item.get("category", "").lower()
+                for kw in filter_lower
+            )
+        ]
+        menu = filtered if filtered else menu
+
+    return menu
+
+def format_menu_for_llm(menu: list[dict], max_items: int = 60) -> str:
+    """Format menu list into a clean text block for the LLM prompt."""
+    lines = []
+    for item in menu[:max_items]:
+        name     = item.get("name", "Unknown")
+        price    = item.get("price", 0)
+        category = item.get("category", "")
+        veg      = "[VEG]" if item.get("isVeg") else "[NON-VEG]"
+        lines.append(f"• {name} — ₹{price} {veg} [{category}]")
+    return "\n".join(lines)
+
+# ---------------------------------------------------------
+# STRUCTURED COMBO GENERATOR — returns JSON for frontend cards
+# ---------------------------------------------------------
+COMBO_JSON_PROMPT = """
+You are a menu combo builder.
+
+Given the menu below, create 2-3 combo meals.
+Return ONLY a valid JSON array, nothing else:
+[
+  {
+    "id": "combo_1",
+    "name": "Creative Combo Name",
+    "items": [
+      {"name": "Exact Item Name from Menu", "price": 350},
+      {"name": "Another Item", "price": 200}
+    ],
+    "totalPrice": 550,
+    "savings": 0
+  }
 ]
 
-def is_menu_query(message: str) -> bool:
-    msg = message.lower()
-    return any(word in msg for word in MENU_KEYWORDS)
+RULES:
+- Use ONLY items from the MENU. Do NOT invent items.
+- totalPrice = sum of all item prices.
+- Each combo should have 2-4 items.
+- Give elegant, Harvest-inspired names like "Field & Forest Feast", "Bounty of the Valley".
+- Return valid JSON array only, no markdown, no explanation.
+"""
+
+def generate_structured_combos(menu: list[dict], menu_text: str, user_request: str) -> list[dict]:
+    """Ask Groq to return structured combo JSON from the real menu, then enrich with real Item_IDs."""
+    prompt = f"{COMBO_JSON_PROMPT}\n\nUser requested: {user_request}\n\nMENU:\n{menu_text}\n\nJSON:"
+    raw = groq_client.call_groq_with_retry(prompt)
+    print(f"🧩 Raw combo JSON: {raw[:300] if raw else 'None'}...")
+
+    # Build a name → {id, price} lookup from real menu for post-processing
+    name_lookup: dict[str, dict] = {}
+    for item in menu:
+        clean = item.get("name", "").strip().lower()
+        name_lookup[clean] = {"id": item.get("id", ""), "price": float(item.get("price") or 0)}
+
+    def find_item(item_name: str) -> dict:
+        """Fuzzy-match item name against real menu entries."""
+        clean_name = re.sub(r"^\d+x?\s*|x?\d+\s*$", "", item_name).strip().lower()
+        if clean_name in name_lookup:
+            return name_lookup[clean_name]
+
+        best_match = None
+        max_len = 0
+        for menu_key, info in name_lookup.items():
+            if clean_name in menu_key or menu_key in clean_name:
+                if len(menu_key) > max_len:
+                    best_match = info
+                    max_len = len(menu_key)
+
+        if best_match:
+            return best_match
+
+        print(f"⚠️ Item ID lookup failed for: '{item_name}' (cleaned: '{clean_name}')")
+        return {"id": "", "price": 0}
+
+    try:
+        clean = re.sub(r"```(?:json)?", "", raw or "").strip().strip("`")
+        start = clean.find("[")
+        end   = clean.rfind("]") + 1
+        if start == -1 or end == 0:
+            return []
+        combos = json.loads(clean[start:end])
+
+        # Enrich each ingredient with real item_id and real price from Sheets
+        for combo in combos:
+            enriched_items = []
+            total = 0.0
+            for ing in combo.get("items", []):
+                info = find_item(ing.get("name", ""))
+                real_price = info["price"] if info["price"] > 0 else float(ing.get("price", 0))
+                item_id    = info["id"] or ""
+                enriched_items.append({
+                    "name":    ing.get("name"),
+                    "price":   real_price,
+                    "item_id": item_id,
+                })
+                total += real_price
+            combo["items"]      = enriched_items
+            combo["totalPrice"] = round(total, 2)
+
+        return combos
+    except Exception as e:
+        print(f"⚠️ Combo JSON parse error: {e}")
+        return []
 
 # ---------------------------------------------------------
 # Helper: Find customer in Customer_Auth
 # ---------------------------------------------------------
 def get_customer_details(email: str | None, phone: str | None, client_id: str | None):
-    """
-    Returns full customer dict if found (Name, Email, Phone, ID).
-    Otherwise returns None.
-    """
     if not email and not phone and not client_id:
         return None
 
@@ -160,15 +360,10 @@ def get_customer_details(email: str | None, phone: str | None, client_id: str | 
 
     return None
 
-
 # ---------------------------------------------------------
-# Helper: FORMAT PROMT FOR GEMINI
+# Helper: FORMAT PROMPT FOR LLM
 # ---------------------------------------------------------
 def build_prompt(history, system_prompt, client_name, user_message, menu_context=""):
-    """
-    Convert chat history into a single text prompt
-    for LLM service.
-    """
     lines = [system_prompt.replace("{clientName}", client_name), "\nConversation:\n"]
 
     for item in history:
@@ -179,11 +374,11 @@ def build_prompt(history, system_prompt, client_name, user_message, menu_context
         lines.append("\nAvailable Menu Items:")
         lines.append(menu_context)
 
-    # latest message
     lines.append(f"User: {user_message}")
     lines.append("Assistant:")
 
     return "\n".join(lines)
+
 
 # -----------------------------
 # Health Check (Optional)
@@ -193,11 +388,11 @@ def health():
     return {"chatbot backend deployment status": "ok"}
 
 # ---------------------------------------------------------
-# LLM CHAT ENDPOINT
+# LLM CHAT ENDPOINT (3-step loop)
 # ---------------------------------------------------------
 @chatbot_router.post("/llm-chat", response_model=ChatResponse)
 async def llm_chat(req: ChatRequest):
-    print("\n🔥 /llm-chat endpoint HIT")
+    print("\n🔥 /llm-chat endpoint HIT (Agentic Loop)")
 
     try:
         # 1️⃣ Check if customer exists based on provided details
@@ -213,78 +408,89 @@ async def llm_chat(req: ChatRequest):
             # --- USER IS REGISTERED ---
             db_name = customer.get("Customer_Name", "Valued Customer")
             db_email = customer.get("Customer_Email", "")
-            db_id = customer.get("Customer_ID", "")
             
             # Use DB name if we have it
             if db_name:
                 real_client_name = db_name
 
             if req.clientId:
-                # 🟢 LOGGED IN
+                # LOGGED IN
                 print(f"✅ User Logged In: {real_client_name}")
-                user_context_instruction = (
-                    f"User STATUS: LOGGED IN.\n"
-                    f"Name: {real_client_name}.\n"
-                    f"INSTRUCTION: Address them warmly by name. Do NOT ask for login/signup."
-                )
+                user_context_instruction = f"User STATUS: LOGGED IN.\nName: {real_client_name}.\nINSTRUCTION: Address them warmly by name. Do NOT ask for login/signup."
             else:
-                # 🟡 RECOGNIZED BUT NOT LOGGED IN
+                # RECOGNIZED BUT NOT LOGGED IN
                 print(f"⚠️ User Registered but NOT Logged In: {real_client_name}")
-                user_context_instruction = (
-                    f"User STATUS: REGISTERED BUT NOT LOGGED IN.\n"
-                    f"Name: {real_client_name}.\n"
-                    f"Email Matches: {db_email}.\n"
-                    f"INSTRUCTION: Address them by name. You MUST politely ask them to LOGIN for the best experience. "
-                    f"Assure them that this chat IS being saved to their account."
-                )
+                user_context_instruction = f"User STATUS: REGISTERED BUT NOT LOGGED IN.\nName: {real_client_name}.\nEmail Matches: {db_email}.\nINSTRUCTION: Address them by name. You MUST politely ask them to LOGIN for the best experience. Assure them that this chat IS being saved to their account."
         else:
-            # 🔴 NOT REGISTERED / GUEST
-             print("❌ User NOT Registered / Guest")
-             user_context_instruction = (
-                 f"User STATUS: GUEST (Unregistered).\n"
-                 f"Name provided: {real_client_name}.\n"
-                 f"INSTRUCTION: You MUST politely suggest they SIGN UP. "
-                 f"Warn them that 'Chat history is NOT saved for guests'. "
-                 f"Reference the Sign Up page."
-             )
+            # NOT REGISTERED / GUEST
+            print("❌ User NOT Registered / Guest")
+            user_context_instruction = f"User STATUS: GUEST (Unregistered).\nName provided: {real_client_name}.\nINSTRUCTION: You MUST politely suggest they SIGN UP. Warn them that 'Chat history is NOT saved for guests'. Reference the Sign Up page."
 
-        # 2️⃣ Detect menu intent
-        menu_context = ""
+        # 2️⃣ STEP 1: Classify intent with Groq
+        print("🔍 Classifying intent...")
+        intent = classify_intent(req.userMessage, req.chatHistory)
+        action  = intent.get("action", "general")
+        filters = intent.get("filters", [])
+        veg_only = intent.get("veg_only", False)
+        print(f"✅ Intent: action={action}, filters={filters}, veg_only={veg_only}")
 
-        if is_menu_query(req.userMessage):
-            print("🍽️ Menu query detected")
-            menu = menu_agent.get_menu()
+        # 3️⃣ STEP 2: Get filtered menu from cache
+        menu = []
+        menu_text = ""
+        if action in ("suggest_items", "suggest_combos"):
+            try:
+                menu = fetch_filtered_menu(filters, veg_only)
+                menu_text = format_menu_for_llm(menu)
+                print(f"🍽️ {len(menu)} menu items ready for LLM")
+            except Exception as e:
+                print(f"❌ Menu fetch error: {e}")
 
-            menu_lines = []
-            for item in menu:
-                price = item.get("price")
-                price_str = f"₹{price}" if price else "Price on request"
-                menu_lines.append(f"- {item['name']} ({price_str})")
-
-            menu_context = "\n".join(menu_lines)
-
-        # 3️⃣ Build final prompt
-        # Append logic instruction to system prompt
+        # 4️⃣ Build final prompt
         enhanced_system_prompt = f"{SYSTEM_PROMPT}\n\nCURRENT USER CONTEXT:\n{user_context_instruction}"
 
-        prompt = build_prompt(
+        reply_prompt = build_prompt(
             req.chatHistory,
             enhanced_system_prompt,
             real_client_name,
             req.userMessage,
-            menu_context
+            menu_text
         )
 
-        # 4️⃣ Call LLM service
-        ai_reply = gemini_client.call_gemini_with_retry(prompt)
+        # 5️⃣ STEP 3: Parallel Groq calls for Combos and Reply
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        print("🚀 Starting Groq calls...")
+        if action == "suggest_combos" and menu_text:
+            combo_task = loop.run_in_executor(
+                None, generate_structured_combos, menu, menu_text, req.userMessage
+            )
+            reply_task = loop.run_in_executor(
+                None, groq_client.call_groq_with_retry, reply_prompt
+            )
+            structured_combos, ai_reply = await asyncio.gather(combo_task, reply_task)
+            print(f"✅ Parallel done: {len(structured_combos)} combos + reply")
+        else:
+            structured_combos = []
+            ai_reply = await loop.run_in_executor(
+                None, groq_client.call_groq_with_retry, reply_prompt
+            )
 
         if not ai_reply:
             raise Exception("Empty response from LLM")
 
-        return ChatResponse(response=ai_reply)
+        return ChatResponse(
+            response=ai_reply,
+            combos=[ComboData(**c) for c in structured_combos] if structured_combos else []
+        )
 
     except Exception as e:
-        print("❌ LLM error:", e)
+        print("❌ Agent error in llm_chat:", e)
+        import traceback
+        traceback.print_exc()
         return ChatResponse(response="Sorry, I'm having trouble connecting right now.")
 
 # ---------------------------------------------------------
@@ -299,7 +505,6 @@ def generate_next_chat_id():
     max_num = 0
 
     for r in rows:
-        import re
         chat_id = r.get("Chat_ID", "")
         match = re.search(r"Chat_(\d+)", chat_id)
         if match:
@@ -312,9 +517,6 @@ def generate_next_chat_id():
 # ---------------------------------------------------------
 # SAVE CHAT SESSION ENDPOINT
 # ---------------------------------------------------------
-# ---------------------------------------------------------
-# SAVE CHAT SESSION ENDPOINT
-# ---------------------------------------------------------
 @chatbot_router.post("/save-chat")
 async def save_chat(session: ChatSession):
     """
@@ -322,7 +524,6 @@ async def save_chat(session: ChatSession):
     customer exists in Customer_Auth sheet.
     """
     print("\n🔥 /save-chat endpoint HIT")
-    # print("📥 Received chat session:", session.model_dump())
 
     try:
         # 1️⃣ Find existing customer (Try ID first, then email, then phone)
@@ -338,7 +539,6 @@ async def save_chat(session: ChatSession):
                 "message": "Customer not registered. Chat not saved."
             }
 
-        # If found, but session didn't have ID, we now know the ID
         print(f"✅ Customer Identified: {customer_name} ({customer_id})")
 
         # 2️⃣ Generate next Chat ID
@@ -351,7 +551,6 @@ async def save_chat(session: ChatSession):
             chat_datetime = datetime.now().isoformat()
 
         # 4️⃣ Prepare row
-        # Schema: Chat_ID, Customer_ID, Customer_Name, Customer_Phone, Customer_Email, Date_Time, Transcript
         row = [
             chat_id,
             customer_id,
@@ -379,11 +578,3 @@ async def save_chat(session: ChatSession):
             "status": "error",
             "message": str(e)
         }
-
-# ---------------------------------------------------------
-# Python-based port reading
-# ---------------------------------------------------------
-# if __name__ == "__main__":
-#     import os, uvicorn
-#     port = int(os.environ.get("PORT", 8080))
-#     uvicorn.run("app:app", host="0.0.0.0", port=port)
