@@ -36,25 +36,46 @@ export default function CartProvider({ children }: { children: ReactNode }) {
   const addItem = (item: MenuItem, silent: boolean = false, source: string = "Menu") => {
     // If it's a combo, deconstruct it into individual items
     if (item.isCombo && item.comboItems && item.comboItems.length > 0) {
-      item.comboItems.forEach(componentName => {
-        // Clean the component name (remove multipliers like "2x", "2 ")
-        const cleanName = componentName.replace(/^\d+x?\s+/, '').trim().toLowerCase();
+      item.comboItems.forEach((componentString) => {
+        let itemId = "";
+        let itemName = componentString;
+        let itemPrice = 0;
 
-        // Find matching item in fullMenu
-        const matchedItem = fullMenu.find(m => m.name.toLowerCase() === cleanName);
+        // Check if it's the encoded "ID||Name||Price" format from the Chatbot
+        if (componentString.includes("||")) {
+          const parts = componentString.split("||");
+          if (parts.length === 3) {
+            itemId = parts[0];
+            itemName = parts[1];
+            itemPrice = parseFloat(parts[2]) || 0;
+          }
+        }
+
+        // Clean the component name (remove multipliers like "2x", "2 ") if not in ID||Name mode
+        const cleanName = itemName.replace(/^\d+x?\s+/, "").trim().toLowerCase();
+
+        // Find matching item in fullMenu (Prefer ID match if we have it, else name)
+        const matchedItem = fullMenu.find((m) =>
+          itemId ? m.id === itemId : m.name.toLowerCase() === cleanName
+        );
 
         if (matchedItem) {
-          addItem(matchedItem, true); // Keep silent while deconstructing combo
+          // If we had a specific price in the string (e.g. from AI combo), use it if provided,
+          // otherwise fallback to the matched item's price.
+          addItem({ ...matchedItem, price: itemPrice > 0 ? itemPrice : matchedItem.price }, true);
         } else {
-          // Fallback: If not found in fullMenu, add it as a new standard item with a placeholder ID
-          addItem({
-            ...item,
-            id: `ind-${Date.now()}-${Math.random()}`,
-            name: componentName,
-            isCombo: false,
-            comboItems: [],
-            price: 0,
-          }, true);
+          // Fallback: If not found in fullMenu, add it as a new standard item
+          addItem(
+            {
+              ...item,
+              id: itemId || `ind-${Date.now()}-${Math.random()}`,
+              name: itemName,
+              isCombo: false,
+              comboItems: [],
+              price: itemPrice,
+            },
+            true
+          );
         }
       });
 

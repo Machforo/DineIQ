@@ -140,7 +140,7 @@ function ComboCard({ combo }: { combo: ChatCombo }) {
     setAdded(true);
     toast({
       title: "Added to cart! 🛒",
-      description: `${combo.name} — ₹${combo.totalPrice}`,
+      description: `${combo.name} — KSh ${combo.totalPrice}`,
     });
   };
 
@@ -165,7 +165,7 @@ function ComboCard({ combo }: { combo: ChatCombo }) {
               <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
               {item.name}
             </span>
-            <span className="text-sm font-bold text-gray-800">₹{item.price}</span>
+            <span className="text-sm font-bold text-gray-800">KSh {item.price}</span>
           </div>
         ))}
       </div>
@@ -174,9 +174,9 @@ function ComboCard({ combo }: { combo: ChatCombo }) {
       <div className="px-4 py-3 border-t border-gray-50 flex items-center justify-between mt-1">
         <div>
           <p className="text-[10px] text-gray-400 uppercase tracking-wide">Combo Total</p>
-          <p className="text-lg font-black text-gray-900">₹{combo.totalPrice}</p>
+          <p className="text-lg font-black text-gray-900">KSh {combo.totalPrice}</p>
           {(combo.savings ?? 0) > 0 && (
-            <p className="text-[10px] text-green-600 font-bold">You save ₹{combo.savings}!</p>
+            <p className="text-[10px] text-green-600 font-bold">You save KSh {combo.savings}!</p>
           )}
         </div>
 

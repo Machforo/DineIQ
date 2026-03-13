@@ -301,12 +301,14 @@ class MenuAgent:
                 price_val = row.get("Current_Price")
                 price = float(price_val) if price_val and str(price_val).strip() != "" else None
                 results.append({
+                    "id": str(row.get("Item_ID", "")),
                     "name": str(row.get("Item_Name", "")),
                     "price": price,
                     "description": str(row.get("Item_Description", ""))
                 })
             except (ValueError, TypeError):
                 results.append({
+                    "id": str(row.get("Item_ID", "")),
                     "name": str(row.get("Item_Name", "")),
                     "price": None,
                     "description": str(row.get("Item_Description", ""))

@@ -61,7 +61,8 @@ def get_cached_menu() -> list[dict]:
             non_veg = ['chicken', 'mutton', 'fish', 'egg', 'meat', 'prawn', 'lamb', 'pork', 'beef']
             item["isVeg"] = not any(nv in name_desc for nv in non_veg)
             item["category"] = "General" # Safe default
-            item["id"] = ""
+            if "id" not in item:
+                item["id"] = ""
 
     _menu_cache_ts = time.time()
     return _menu_cache
@@ -229,14 +230,14 @@ def format_menu_for_llm(menu: list[dict], max_items: int = 60) -> str:
         price    = item.get("price", 0)
         category = item.get("category", "")
         veg      = "[VEG]" if item.get("isVeg") else "[NON-VEG]"
-        lines.append(f"• {name} — ₹{price} {veg} [{category}]")
+        lines.append(f"• {name} — KSh {price} {veg} [{category}]")
     return "\n".join(lines)
 
 # ---------------------------------------------------------
 # STRUCTURED COMBO GENERATOR — returns JSON for frontend cards
 # ---------------------------------------------------------
 COMBO_JSON_PROMPT = """
-You are a menu combo builder.
+You are a menu combo builder for a premium restaurant in Kenya. All prices are in KSh.
 
 Given the menu below, create 2-3 combo meals.
 Return ONLY a valid JSON array, nothing else:
