@@ -44,11 +44,11 @@ sheets = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
 #      GEMINI_API_KEY_DIETARY_INSIGHTS
 #      GEMINI_API_KEY_COMMON
 # ----------------------------------------------------------
-gemini_menu      = GeminiClient(api_key=os.getenv("GEMINI_API_KEY_MENU"))
-# gemini_chatbot   = GeminiClient(api_key=os.getenv("GEMINI_API_KEY_CHATBOT"))
-gemini_chat_inf  = GeminiClient(api_key=os.getenv("GEMINI_API_KEY_CHAT_INSIGHTS"))
-gemini_dietary   = GeminiClient(api_key=os.getenv("GEMINI_API_KEY_DIETARY_INSIGHTS"))
-gemini_common    = GeminiClient(api_key=os.getenv("GEMINI_API_KEY_COMMON"))
+gemini_menu         = GeminiClient(api_key=os.getenv("GEMINI_API_KEY_MENU"))
+# gemini_chatbot      = GeminiClient(api_key=os.getenv("GEMINI_API_KEY_CHATBOT"))
+gemini_chat_inf     = GeminiClient(api_key=os.getenv("GEMINI_API_KEY_CHAT_INSIGHTS"))
+gemini_dietary      = GeminiClient(api_key=os.getenv("GEMINI_API_KEY_DIETARY_INSIGHTS"))
+gemini_common       = GeminiClient(api_key=os.getenv("GEMINI_API_KEY_COMMON"))
 groq_menu           = GroqClient(api_key=os.getenv("GROQ_API_KEY"))
-groq_chatbot     = GroqClient(api_key=os.getenv("GROQ_API_KEY"))
+groq_chatbot        = GroqClient(api_key=os.getenv("GROQ_API_KEY"))
 groq_common         = GroqClient(api_key=os.getenv("GROQ_API_KEY"))

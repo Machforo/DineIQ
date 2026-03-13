@@ -47,17 +47,32 @@ export const api = {
     },
 
     // Get Recommendations (Pairing)
-    fetchRecommendations: async (email: string, itemId: string) => {
+    fetchRecommendations: async (email: string, itemId: string, skipPitch: boolean = false) => {
         try {
             const response = await fetch(`${API_BASE_URL}/item-addons`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ customer_email: email, item_id: itemId }),
+                body: JSON.stringify({ customer_email: email, item_id: itemId, skip_pitch: skipPitch }),
             });
             return await response.json();
         } catch (error) {
             console.error("Fetch Recs Error:", error);
             return null;
+        }
+    },
+
+    // Get AI Pitch separately
+    fetchAiPitch: async (itemName: string, category: string, recommendations: any[]) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/ai-pitch`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ item_name: itemName, category, recommendations }),
+            });
+            return await response.json();
+        } catch (error) {
+            console.error("Fetch AI Pitch Error:", error);
+            return { ai_pitch: "Perfect pairing!" };
         }
     },
 

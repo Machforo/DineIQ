@@ -54,11 +54,12 @@ class RecommendationAgent:
             'SIDES': {'pairs_with': ['MAINS FROM THE SEA', 'GRILLS', 'FROM THE GARDEN'], 'message': 'Great addition to your main course!'},
             'DESSERTS': {'pairs_with': ['SIDES', 'FROM THE GARDEN'], 'message': 'Sweet treat after your meal!'}
         }
+        self._combo_cache = {}
 
     # ---------------------------------------------------------
     # Core Logic
     # ---------------------------------------------------------
-    def get_recommendations(self, email: str, current_item_id: str):
+    def get_recommendations(self, email: str, current_item_id: str, skip_pitch: bool = False):
         """Advanced Hybrid Recommendations: History + Category Intelligence"""
         try:
             menu = self.menu_agent.get_menu() # Get active menu
@@ -110,10 +111,14 @@ class RecommendationAgent:
             if not final_recs:
                 final_recs = self._get_popular_fallback(menu_df, diet)[:3]
 
-            # AI Pitch
-            ai_pitch = self._generate_ai_pitch(item_name, item_category, final_recs)
+            # AI Pitch - Only if not skipped
+            ai_pitch = ""
+            if not skip_pitch:
+                ai_pitch = self._generate_ai_pitch(item_name, item_category, final_recs)
+            else:
+                ai_pitch = "Pairs great with your meal!"
 
-            return {"ai_pitch": ai_pitch, "add_ons": final_recs}
+            return {"ai_pitch": ai_pitch, "add_ons": final_recs, "item_name": item_name, "category": item_category}
 
         except Exception as e:
             traceback.print_exc()
@@ -207,9 +212,6 @@ class RecommendationAgent:
             # -------------------------------------------------
             # CACHE CHECK
             # -------------------------------------------------
-            if not hasattr(self, '_combo_cache'):
-                self._combo_cache = {}
-            
             cache_key = f"{customer_id}_{num_combos}"
             import pandas as pd
             import time
@@ -299,7 +301,7 @@ class RecommendationAgent:
                     try:
                         insights['average_order_value'] = float(str(aov_val).replace(',', '').strip())
                     except:
-                        insights['average_order_value'] = 0
+                        insights['average_order_value'] = 0.0
                         # Preserve the segment name for AI processing
                         insights['aov_segment'] = str(aov_val)
                         
@@ -656,9 +658,20 @@ recommendation_agent = RecommendationAgent()
 # API Endpoints
 # ---------------------------------------------------------
 
+class PitchRequest(BaseModel):
+    item_name: str
+    category: str
+    recommendations: List[dict]
+
+# ... existing code ...
+
 @recommendation_router.post("/item-addons")
-def get_item_addons(req: AddonRequest):
-    return recommendation_agent.get_recommendations(req.customer_email, req.item_id)
+def get_item_addons(req: AddonRequest, skip_pitch: bool = False):
+    return recommendation_agent.get_recommendations(req.customer_email, req.item_id, skip_pitch=skip_pitch)
+
+@recommendation_router.post("/ai-pitch")
+def get_ai_pitch(req: PitchRequest):
+    return {"ai_pitch": recommendation_agent._generate_ai_pitch(req.item_name, req.category, req.recommendations)}
 
 @recommendation_router.get("/upsell-items")
 def get_upsell_items():

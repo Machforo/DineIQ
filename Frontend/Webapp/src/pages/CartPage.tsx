@@ -49,13 +49,20 @@ export default function CartPage() {
       const lastItem = items[items.length - 1];
 
       const fetchRecs = async () => {
-        const res = await api.fetchRecommendations(user?.email || "", lastItem.id);
+        // 1. Fetch recommended items first (fast)
+        const res = await api.fetchRecommendations(user?.email || "", lastItem.id, true);
         if (res) {
-          // Handle both legacy (smart_recommendations) and new (direct) formats
           const adds = res.smart_recommendations?.add_ons || res.add_ons || [];
-          const pitch = res.smart_recommendations?.ai_pitch || res.ai_pitch || "Pairs well with your order!";
           setRecommendations(adds);
-          setAiPitch(pitch);
+          
+          // 2. Fetch AI Pitch in background (slow)
+          const itemName = res.item_name || lastItem.name;
+          const category = res.category || lastItem.category;
+          if (adds.length > 0) {
+            api.fetchAiPitch(itemName, category, adds).then(pitchRes => {
+              if (pitchRes?.ai_pitch) setAiPitch(pitchRes.ai_pitch);
+            });
+          }
         }
       };
 
