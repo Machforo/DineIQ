@@ -171,5 +171,29 @@ export const api = {
             console.error("Fetch Latest Review Error:", e);
             return null;
         }
+    },
+
+    async callWaiter(tableNumber: number | string, customerName: string) {
+        try {
+            const res = await fetch(`${API_BASE_URL}/call-waiter`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ table_number: tableNumber, customer_name: customerName }),
+            });
+            return await res.json();
+        } catch (e) {
+            console.error("Call Waiter Error:", e);
+            return null;
+        }
+    },
+
+    async fetchActiveOrder(tableNumber: number | string) {
+        try {
+            const res = await fetch(`${API_BASE_URL}/active-order/${tableNumber}`);
+            return await res.json();
+        } catch (e) {
+            console.error("Fetch Active Order Error:", e);
+            return null;
+        }
     }
 };

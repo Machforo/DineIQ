@@ -12,8 +12,32 @@ import { saveLog } from "@/utils/logger";
 import { api } from "@/api";
 import { MenuItem, Category } from "@/lib/data";
 import { extractDynamicCategories, getMenuItemImage } from "@/lib/categoryUtils";
-import { Ticket, Percent, Gift, Sparkles, RefreshCw } from "lucide-react";
+import { Ticket, Percent, Gift, Sparkles, RefreshCw, Bell, UtensilsCrossed, Clock, ShoppingBag, Receipt } from "lucide-react";
 import AIComboCard from "@/components/AIComboCard";
+
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   DESIGN TOKENS
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+const Z = {
+  red:       "#E23744",
+  redDark:   "#C0303C",
+  redLight:  "#FFF1F2",
+  redMid:    "#FDDCDE",
+  amber:     "#F59E0B",
+  dark:      "#1C1C1C",
+  charcoal:  "#3D3D3D",
+  mid:       "#696969",
+  muted:     "#9E9E9E",
+  line:      "#EFEFEF",
+  lineLight: "#F7F7F7",
+  surface:   "#F8F8F8",
+  white:     "#FFFFFF",
+  green:     "#1BA672",
+  greenBg:   "#EBF9F4",
+  blue:      "#3B82F6",
+  blueBg:    "#EFF6FF",
+  purple:    "#8B5CF6",
+};
 
 
 // Flag for AI vs Smart Combos
@@ -21,7 +45,7 @@ const GENERATE_AI_COMBOS = true;
 
 export default function HomeScreen() {
   const navigate = useNavigate();
-  const { isLoggedIn, user, setFullMenu } = useUser();
+  const { isLoggedIn, user, tableNumber: ctxTable, setFullMenu } = useUser();
 
   const [offers, setOffers] = useState([]);
   const [combos, setCombos] = useState<MenuItem[]>([]);
@@ -33,6 +57,12 @@ export default function HomeScreen() {
   const [aiCombos, setAiCombos] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [activeOrder, setActiveOrder] = useState<any>(null);
+  const [showBill, setShowBill] = useState(false);
+  const [showWaiterMsg, setShowWaiterMsg] = useState(false);
+
+  const tableNo = ctxTable || localStorage.getItem("dineiq_table_number") || "1";
+  const userName = user?.name || "Guest";
 
   // Coupon codes data
   const coupons = [
@@ -132,11 +162,11 @@ export default function HomeScreen() {
                     setAiCombos(aiData.combos);
                   }
                 })
-                .catch(err => console.error("❌ Failed to fetch AI combos:", err));
+                .catch(err => console.error("âŒ Failed to fetch AI combos:", err));
             }
           }
         } catch (e) {
-          console.error("❌ Error loading Home Screen data:", e);
+          console.error("âŒ Error loading Home Screen data:", e);
         } finally {
           setIsLoading(false);
         }
@@ -145,6 +175,36 @@ export default function HomeScreen() {
       loadData();
     }
   }, [isLoggedIn, navigate, user]);
+
+  useEffect(() => {
+    if (!tableNo) return;
+    api.fetchActiveOrder(tableNo).then((res: any) => {
+      if (res?.order) setActiveOrder(res.order);
+    });
+    // Poll for status updates every 30s
+    const interval = setInterval(() => {
+        api.fetchActiveOrder(tableNo).then((res: any) => {
+            if (res?.order) setActiveOrder(res.order);
+        });
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [tableNo]);
+
+  const handleCallWaiter = async () => {
+    await api.callWaiter(tableNo, userName);
+    setShowWaiterMsg(true);
+  };
+
+  const handleGetBill = () => {
+    if (activeOrder) setShowBill(true);
+  };
+
+  const handleOrderStatus = () => {
+    const element = document.getElementById("active-order-strip");
+    if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
 
   /* --- Navigation & Filtering Logic --- */
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -213,7 +273,7 @@ export default function HomeScreen() {
       combos.push({
         id: 'combo_grill_feast',
         name: 'Grand Grill Feast',
-        description: `${grills[0].name} • ${starters[0].name} • ${sides[0].name}`,
+        description: `${grills[0].name} â€¢ ${starters[0].name} â€¢ ${sides[0].name}`,
         price: Math.round(totalPrice * 0.8), // 20% off
         image: grills[0].image,
         isVeg: grills[0].isVeg === true && starters[0].isVeg === true && sides[0].isVeg === true,
@@ -229,7 +289,7 @@ export default function HomeScreen() {
       combos.push({
         id: 'combo_quick_lunch',
         name: 'Quick Harvest Lunch',
-        description: `${burgers[0].name} • ${sides[0].name} • Refreshment`,
+        description: `${burgers[0].name} â€¢ ${sides[0].name} â€¢ Refreshment`,
         price: Math.round(totalPrice * 0.85), // 15% off
         image: burgers[0].image,
         isVeg: burgers[0].isVeg === true && sides[0].isVeg === true,
@@ -245,7 +305,7 @@ export default function HomeScreen() {
       combos.push({
         id: 'combo_italian_special',
         name: 'Italian Harvest Special',
-        description: `${pasta[0].name} • ${starters[0].name}`,
+        description: `${pasta[0].name} â€¢ ${starters[0].name}`,
         price: Math.round(totalPrice * 0.82), // 18% off
         image: pasta[0].image,
         isVeg: pasta[0].isVeg === true && starters[0].isVeg === true,
@@ -261,7 +321,7 @@ export default function HomeScreen() {
       combos.push({
         id: 'combo_complete_meal',
         name: 'Complete Harvest Meal',
-        description: `${mains[0].name} • ${starters[0].name} • Chef's Choice Side`,
+        description: `${mains[0].name} â€¢ ${starters[0].name} â€¢ Chef's Choice Side`,
         price: Math.round(totalPrice * 0.75), // 25% off (Higher value)
         image: mains[0].image,
         isVeg: mains[0].isVeg === true && starters[0].isVeg === true,
@@ -346,8 +406,25 @@ export default function HomeScreen() {
               }
             }} />
 
+            {/* 2b. Currently Dining Section - Closer to banner */}
+            <div className="mt-3 px-4">
+                <DineInBar 
+                    tableNo={tableNo} 
+                    userName={userName}
+                    onCallWaiter={handleCallWaiter}
+                    onGetBill={handleGetBill}
+                    onOrderStatus={handleOrderStatus}
+                />
+            </div>
+
+            {activeOrder && (
+                <div id="active-order-strip" className="mt-2">
+                    <ActiveOrderBadge order={activeOrder} />
+                </div>
+            )}
+
             {/* 2. Offers (Discount Cards) */}
-            <div className="px-0 relative -mt-4 z-10"> {/* Slight negative margin overlap */}
+            <div className="px-0 relative mt-4 z-10">
               <OfferCarousel offers={offers} onBannerClick={handleBannerClick} />
             </div>
 
@@ -391,7 +468,7 @@ export default function HomeScreen() {
               !isLoading && (isVegMode ? combos.filter(c => c.isVeg === true) : combos).length > 0 && (
                 <div id="smart-combos" className="scroll-mt-24">
                   <MenuSection
-                    title="🎁 Smart Combos"
+                    title="ðŸŽ Smart Combos"
                     subtitle="AI-curated combo deals - Save more!"
                     items={isVegMode ? combos.filter(c => c.isVeg === true) : combos}
                     type="combos"
@@ -426,7 +503,7 @@ export default function HomeScreen() {
         {!isLoading && (isVegMode ? chefSpecials.filter(c => c.isVeg === true) : chefSpecials).length > 0 && !searchQuery && (
           <div id="chef-recs" className="scroll-mt-24">
             <MenuSection
-              title="⭐ Chef's Specials"
+              title="â­ Chef's Specials"
               subtitle="Premium dishes handpicked for you"
               items={isVegMode ? chefSpecials.filter(c => c.isVeg === true) : chefSpecials}
               type="chef"
@@ -438,7 +515,7 @@ export default function HomeScreen() {
         {!isLoading && (isVegMode ? bestsellers.filter(c => c.isVeg === true) : bestsellers).length > 0 && !searchQuery && (
           <div id="bestsellers-section" className="scroll-mt-24">
             <MenuSection
-              title="🔥 Bestsellers"
+              title="ðŸ”¥ Bestsellers"
               subtitle="Most popular picks this week"
               items={isVegMode ? bestsellers.filter(c => c.isVeg === true) : bestsellers}
               type="bestseller"
@@ -450,7 +527,7 @@ export default function HomeScreen() {
         {!isLoading && curatedItems.length > 0 && !searchQuery && (
           <div id="curated-section" className="scroll-mt-24 px-3">
             <MenuSection
-              title="✨ Curated for You"
+              title="âœ¨ Curated for You"
               subtitle="Your favorite picks sorted by frequency"
               items={isVegMode ? curatedItems.filter(c => c.isVeg === true) : curatedItems}
               type="standard"
@@ -495,7 +572,7 @@ export default function HomeScreen() {
         {/* Empty State */}
         {!isLoading && searchQuery && displayedItems.length === 0 && (
           <div className="p-12 text-center">
-            <div className="text-6xl mb-4">🍽️</div>
+            <div className="text-6xl mb-4">ðŸ½ï¸</div>
             <p className="text-xl font-semibold text-gray-700">No items found</p>
             <button onClick={() => { setSearchQuery(""); }} className="text-orange-600 font-bold mt-2">Clear Search</button>
           </div>
@@ -511,7 +588,297 @@ export default function HomeScreen() {
       >
         <AIButton />
       </div>
-      <CartBar />
+
+      {/* Overlays */}
+      {showWaiterMsg && <WaiterToast onDone={() => setShowWaiterMsg(false)} />}
+      {showBill && activeOrder && (
+        <BillModal 
+          order={activeOrder} 
+          tableNo={Number(tableNo)} 
+          onClose={() => setShowBill(false)} 
+        />
+      )}
+
+      {/* Global Styles for ported components */}
+      <style>{`
+        @keyframes pulseGreen {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+        @keyframes cartSlideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        .dinebar {
+          background: linear-gradient(135deg, #1A1A1A 0%, #2C1A0E 100%);
+          border-radius: 18px;
+          overflow: hidden;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+          position: relative;
+        }
+        .dinebar::before {
+          content: '';
+          position: absolute; inset: 0; pointer-events: none;
+          background: 
+            radial-gradient(circle at 15% 50%, rgba(245,158,11,0.18) 0%, transparent 55%),
+            radial-gradient(circle at 85% 20%, rgba(226,55,68,0.14) 0%, transparent 50%);
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+      `}</style>
     </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
+   PORTED COMPONENTS FROM SANA V2
+───────────────────────────────────────────────────────── */
+
+const WaiterToast = ({ onDone }: { onDone: () => void }) => {
+  useEffect(() => {
+    const t = setTimeout(onDone, 3000);
+    return () => clearTimeout(t);
+  }, [onDone]);
+  return (
+    <div style={{
+      position: "fixed", top: 100, left: "50%", transform: "translateX(-50%)",
+      zIndex: 400, background: Z.dark, color: "#fff",
+      padding: "12px 20px", borderRadius: 14,
+      display: "flex", alignItems: "center", gap: 10,
+      boxShadow: "0 8px 32px rgba(0,0,0,.24)",
+      animation: "fade-in .25s ease", whiteSpace: "nowrap",
+      maxWidth: "calc(100vw - 32px)",
+    }}>
+      <Bell style={{ width: 16, height: 16, color: Z.amber, flexShrink: 0 }} />
+      <span style={{ fontSize: 13, fontWeight: 700 }}>Waiter is on the way! 🙌</span>
+    </div>
+  );
+};
+
+const DineInBar = ({
+  tableNo, userName, onCallWaiter, onGetBill, onOrderStatus,
+}: {
+  tableNo: string | number;
+  userName: string;
+  onCallWaiter: () => void;
+  onGetBill: () => void;
+  onOrderStatus: () => void;
+}) => (
+  <div className="dinebar">
+    <div style={{
+      position: "relative",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "12px 16px",
+      gap: 8,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(245,158,11,.18)", border: "1px solid rgba(245,158,11,.3)",
+        }}>
+          <UtensilsCrossed style={{ width: 18, height: 18, color: Z.amber }} />
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <p style={{
+            fontSize: 10, fontWeight: 600, letterSpacing: ".12em",
+            textTransform: "uppercase", color: "rgba(255,255,255,.42)",
+            lineHeight: 1, marginBottom: 3,
+          }}>Currently Dining</p>
+          <p style={{
+            fontSize: 15, fontWeight: 700, color: "#fff",
+            lineHeight: 1.2,
+          }}>
+            {userName !== "Guest" ? userName.split(" ")[0] : "Guest"} · Table {tableNo}
+          </p>
+        </div>
+      </div>
+
+      <div style={{
+        display: "flex", alignItems: "center", gap: 5, flexShrink: 0,
+        padding: "5px 12px", borderRadius: 99,
+        background: "rgba(27,166,114,.22)", border: "1px solid rgba(27,166,114,.38)",
+      }}>
+        <span style={{
+          width: 6, height: 6, borderRadius: "50%",
+          background: Z.green, display: "block", flexShrink: 0,
+          animation: "pulseGreen 1.7s infinite",
+        }} />
+        <span style={{ fontSize: 11, fontWeight: 700, color: Z.green }}>Active</span>
+      </div>
+    </div>
+
+    <div style={{
+      display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
+      borderTop: "1px solid rgba(255,255,255,.07)",
+    }}>
+      {[
+        { Icon: Bell,        label: "Call Waiter",  action: onCallWaiter  },
+        { Icon: Clock,       label: "Order Status", action: onOrderStatus },
+        { Icon: ShoppingBag, label: "Get Bill",     action: onGetBill     },
+      ].map(({ Icon, label, action }, i) => (
+        <button
+          key={label}
+          onClick={action}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center",
+            gap: 6, padding: "11px 4px",
+            background: "none", border: "none", cursor: "pointer",
+            color: "rgba(255,255,255,.55)",
+            borderRight: i < 2 ? "1px solid rgba(255,255,255,.07)" : "none",
+            transition: "color .15s",
+          }}
+        >
+          <Icon style={{ width: 14, height: 14, flexShrink: 0 }} />
+          <span style={{ fontSize: 11, fontWeight: 600 }}>{label}</span>
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
+const ActiveOrderBadge = ({ order }: { order: any }) => (
+  <div style={{
+    margin: "0 12px",
+    borderRadius: 14,
+    background: "rgba(27,166,114,.13)",
+    border: "1px solid rgba(27,166,114,.28)",
+    padding: "10px 14px",
+  }}>
+    <div style={{
+      display: "flex", alignItems: "center",
+      justifyContent: "space-between", marginBottom: 6,
+      flexWrap: "wrap", gap: 4,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <ShoppingBag style={{ width: 13, height: 13, color: Z.green, flexShrink: 0 }} />
+        <span style={{ fontSize: 12, fontWeight: 800, color: Z.green }}>Order Placed</span>
+        <span style={{
+          fontSize: 10, fontWeight: 700, color: Z.green,
+          background: "rgba(27,166,114,.15)", padding: "1px 7px", borderRadius: 99,
+        }}>{order.status}</span>
+      </div>
+      <span style={{ fontSize: 12, fontWeight: 700, color: Z.dark }}>
+        KSh {Number(order.total).toLocaleString()}
+      </span>
+    </div>
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      {order.items.slice(0, 3).map((item: any, i: number) => (
+        <span key={i} style={{
+          fontSize: 10, fontWeight: 600, color: Z.charcoal,
+          background: Z.white, border: `1px solid ${Z.line}`,
+          padding: "2px 8px", borderRadius: 99,
+          maxWidth: "calc(33% - 4px)",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>
+          {item.quantity}× {item.name}
+        </span>
+      ))}
+      {order.items.length > 3 && (
+        <span style={{ fontSize: 10, fontWeight: 600, color: Z.muted, padding: "2px 4px" }}>
+          +{order.items.length - 3} more
+        </span>
+      )}
+    </div>
+  </div>
+);
+
+const BillModal = ({ order, tableNo, onClose }: {
+  order: any; tableNo: number; onClose: () => void;
+}) => {
+  const taxes    = Math.round(order.total * 0.05);
+  const subtotal = order.total - taxes;
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: "fixed", inset: 0, zIndex: 300,
+        background: "rgba(0,0,0,.5)", backdropFilter: "blur(3px)",
+      }} />
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 301,
+        background: "#fff", borderRadius: "24px 24px 0 0",
+        padding: "20px 16px env(safe-area-inset-bottom, 24px)",
+        boxShadow: "0 -8px 40px rgba(0,0,0,.18)",
+        animation: "cartSlideUp .32s cubic-bezier(.22,1,.36,1)",
+        maxHeight: "85vh", overflowY: "auto",
+      }} className="hide-scrollbar">
+        <div style={{
+          width: 40, height: 4, borderRadius: 99,
+          background: Z.line, margin: "0 auto 18px",
+        }} />
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10, marginBottom: 18,
+        }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 12, background: Z.redLight,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}>
+            <Receipt style={{ width: 18, height: 18, color: Z.red }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 16, fontWeight: 800, color: Z.dark }}>Your Bill</p>
+            <p style={{
+              fontSize: 11, color: Z.muted,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
+              Table {tableNo} · {order.timestamp}
+            </p>
+          </div>
+          <button onClick={onClose} style={{
+            background: Z.lineLight, border: "none", cursor: "pointer",
+            width: 32, height: 32, borderRadius: 99, flexShrink: 0,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 18, color: Z.mid,
+          }}>×</button>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          {order.items.map((item: any, i: number) => (
+            <div key={i} style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "9px 0", borderBottom: `1px solid ${Z.lineLight}`, gap: 8,
+            }}>
+              <span style={{
+                fontSize: 13, color: Z.charcoal, fontWeight: 600,
+                flex: 1, minWidth: 0,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {item.quantity}× {item.name}
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: Z.dark, flexShrink: 0 }}>
+                KSh {(item.price * item.quantity).toLocaleString()}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div style={{
+          background: Z.surface, borderRadius: 14,
+          padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8,
+        }}>
+          {[
+            { label: "Subtotal",         val: `KSh ${subtotal.toLocaleString()}`, green: false },
+            { label: "GST & Taxes (5%)", val: `KSh ${taxes.toLocaleString()}`,    green: false },
+            { label: "Delivery",         val: "FREE",                             green: true  },
+          ].map(({ label, val, green }) => (
+            <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+              <span style={{ fontSize: 12, color: Z.muted }}>{label}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: green ? Z.green : Z.charcoal }}>
+                {val}
+              </span>
+            </div>
+          ))}
+          <div style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            paddingTop: 10, borderTop: `1.5px solid ${Z.line}`, marginTop: 4, gap: 8,
+          }}>
+            <span style={{ fontSize: 15, fontWeight: 800, color: Z.dark }}>Grand Total</span>
+            <span style={{ fontSize: 17, fontWeight: 900, color: Z.red }}>
+              KSh {order.total.toLocaleString()}
+            </span>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

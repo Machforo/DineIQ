@@ -69,8 +69,8 @@ class OrderRequest(BaseModel):
     cart_items: List[CartItem]
     discount_amount: float = 0.0
     final_total: float
-    payment_method: str = "Cash"
     instructions: Optional[str] = None
+    table_number: Optional[str] = None
 
 # ---------------------------------------------------------
 # Endpoints
@@ -167,7 +167,8 @@ async def place_order(req: OrderRequest):
             customer_name,
             req.final_total,
             timestamp,
-            "CREATED"
+            "CREATED",
+            req.table_number or "N/A"
         ]
         sheets_client.append_row(ORDERS_SHEET, order_row)
         
@@ -277,3 +278,68 @@ async def get_order_history(email: str):
 @order_router.get("/coupons")
 def get_coupons():
     return {"coupons": pricing_agent._get_coupons(0, 0)}
+
+@order_router.post("/call-waiter")
+async def call_waiter(req: dict):
+    """Logs a waiter call request to a new Waiter_Calls sheet."""
+    import datetime
+    timestamp = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    table_number = req.get("table_number", "Unknown")
+    customer_name = req.get("customer_name", "Guest")
+    
+    try:
+        # Create row in Waiter_Calls sheet
+        # Make sure to add this sheet manually in GSheets with headers:
+        # [Call_ID, Table_Number, Customer_Name, Called_At, Status]
+        call_id = _get_next_sequential_id("Waiter_Calls", "Call_ID", "Call")
+        row = [call_id, table_number, customer_name, timestamp, "PENDING"]
+        sheets_client.append_row("Waiter_Calls", row)
+        return {"status": "success", "message": "Waiter has been notified"}
+    except Exception as e:
+        print(f"Call Waiter Error: {e}")
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail="Failed to call waiter")
+
+
+@order_router.get("/active-order/{table_number}")
+async def get_active_order(table_number: str):
+    """Fetches the most recent active order for a table."""
+    try:
+        all_orders = sheets_client.read_sheet_rows(ORDERS_SHEET)
+        all_items  = sheets_client.read_sheet_rows(ORDER_ITEMS_SHEET)
+
+        # Filter orders for this table, sorted by most recent
+        table_orders = [
+            o for o in all_orders
+            if str(o.get("Table_Number", "")) == str(table_number)
+        ]
+
+        if not table_orders:
+            return {"order": None}
+
+        # Get the latest order
+        latest = table_orders[-1]
+        order_id = latest.get("Order_ID")
+
+        items = [
+            {
+                "name":     itm.get("Item_Name", "Unknown"),
+                "quantity": int(itm.get("Item_Quantity", 1)),
+                "price":    float(itm.get("Item_Price", 0)),
+            }
+            for itm in all_items
+            if itm.get("Order_ID") == order_id
+        ]
+
+        return {
+            "order": {
+                "id":        order_id,
+                "status":    latest.get("Order_Status", "CREATED"),
+                "total":     float(latest.get("Order_Price", 0)),
+                "timestamp": latest.get("Order_Created_DateTime", ""),
+                "items":     items,
+            }
+        }
+    except Exception as e:
+        print(f"Active Order Error: {e}")
+        return {"order": None}

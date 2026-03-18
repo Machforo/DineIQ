@@ -20,7 +20,8 @@ const Payment = () => {
   const { clearCart } = useCart();
 
   // Cart se data receive karna
-  const { totalAmount, cartItems, instructions } = location.state || { totalAmount: 0, cartItems: [], instructions: "" };
+  const { totalAmount, cartItems, instructions, tableNumber: stateTable } = location.state || { totalAmount: 0, cartItems: [], instructions: "", tableNumber: "" };
+  const currentTable = stateTable || useUser().tableNumber;
 
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [loading, setLoading] = useState(false);
@@ -40,7 +41,8 @@ const Payment = () => {
       final_total: totalAmount,
       discount_amount: 0,
       payment_method: 'CASH',
-      instructions: instructions
+      instructions: instructions,
+      table_number: currentTable
     };
 
     try {
@@ -94,7 +96,8 @@ const Payment = () => {
       final_total: totalAmount,
       discount_amount: 0,
       payment_method: 'ONLINE',
-      instructions: instructions
+      instructions: instructions,
+      table_number: currentTable
     };
     // Start placing order in background immediately
     paymentPromiseRef.current = api.placeOrder(orderData);
@@ -111,7 +114,8 @@ const Payment = () => {
           final_total: totalAmount,
           discount_amount: 0,
           payment_method: 'ONLINE',
-          instructions: instructions
+          instructions: instructions,
+          table_number: currentTable
         };
         paymentPromiseRef.current = api.placeOrder(orderData);
       }
