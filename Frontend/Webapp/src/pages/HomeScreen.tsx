@@ -19,24 +19,24 @@ import AIComboCard from "@/components/AIComboCard";
    DESIGN TOKENS
 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const Z = {
-  red:       "#E23744",
-  redDark:   "#C0303C",
-  redLight:  "#FFF1F2",
-  redMid:    "#FDDCDE",
-  amber:     "#F59E0B",
-  dark:      "#1C1C1C",
-  charcoal:  "#3D3D3D",
-  mid:       "#696969",
-  muted:     "#9E9E9E",
-  line:      "#EFEFEF",
+  red: "#E23744",
+  redDark: "#C0303C",
+  redLight: "#FFF1F2",
+  redMid: "#FDDCDE",
+  amber: "#F59E0B",
+  dark: "#1C1C1C",
+  charcoal: "#3D3D3D",
+  mid: "#696969",
+  muted: "#9E9E9E",
+  line: "#EFEFEF",
   lineLight: "#F7F7F7",
-  surface:   "#F8F8F8",
-  white:     "#FFFFFF",
-  green:     "#1BA672",
-  greenBg:   "#EBF9F4",
-  blue:      "#3B82F6",
-  blueBg:    "#EFF6FF",
-  purple:    "#8B5CF6",
+  surface: "#F8F8F8",
+  white: "#FFFFFF",
+  green: "#1BA672",
+  greenBg: "#EBF9F4",
+  blue: "#3B82F6",
+  blueBg: "#EFF6FF",
+  purple: "#8B5CF6",
 };
 
 
@@ -133,7 +133,7 @@ export default function HomeScreen() {
             Object.entries(sections).forEach(([category, items]: [string, any[]]) => {
               const mapped = items.map(item => mapToMenuItem(item, category));
               allItems.push(...mapped);
-              
+
               if (category === "Chef Special" || category === "Chef's Recommendations") chefTemp.push(...mapped);
               else if (category === "Bestseller") bestTemp.push(...mapped);
               else if (category === "Curated for You") curatedTemp.push(...mapped);
@@ -183,9 +183,9 @@ export default function HomeScreen() {
     });
     // Poll for status updates every 30s
     const interval = setInterval(() => {
-        api.fetchActiveOrder(tableNo).then((res: any) => {
-            if (res?.order) setActiveOrder(res.order);
-        });
+      api.fetchActiveOrder(tableNo).then((res: any) => {
+        if (res?.order) setActiveOrder(res.order);
+      });
     }, 30000);
     return () => clearInterval(interval);
   }, [tableNo]);
@@ -202,7 +202,7 @@ export default function HomeScreen() {
   const handleOrderStatus = () => {
     const element = document.getElementById("active-order-strip");
     if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   };
 
@@ -392,7 +392,7 @@ export default function HomeScreen() {
             {/* 1. Hero Banner */}
             <HeroBanner onOrderNow={() => {
               saveLog(user?.email || "Guest", "VIEW_MENU_BANNER_CLICK", "User clicked Check Menu in Hero Banner");
-              
+
               const curatedSection = document.getElementById("curated-section");
               if (curatedSection) {
                 curatedSection.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -408,19 +408,19 @@ export default function HomeScreen() {
 
             {/* 2b. Currently Dining Section - Closer to banner */}
             <div className="mt-3 px-4">
-                <DineInBar 
-                    tableNo={tableNo} 
-                    userName={userName}
-                    onCallWaiter={handleCallWaiter}
-                    onGetBill={handleGetBill}
-                    onOrderStatus={handleOrderStatus}
-                />
+              <DineInBar
+                tableNo={tableNo}
+                userName={userName}
+                onCallWaiter={handleCallWaiter}
+                onGetBill={handleGetBill}
+                onOrderStatus={handleOrderStatus}
+              />
             </div>
 
             {activeOrder && (
-                <div id="active-order-strip" className="mt-2">
-                    <ActiveOrderBadge order={activeOrder} />
-                </div>
+              <div id="active-order-strip" className="mt-2">
+                <ActiveOrderBadge order={activeOrder} />
+              </div>
             )}
 
             {/* 2. Offers (Discount Cards) */}
@@ -503,7 +503,7 @@ export default function HomeScreen() {
         {!isLoading && (isVegMode ? chefSpecials.filter(c => c.isVeg === true) : chefSpecials).length > 0 && !searchQuery && (
           <div id="chef-recs" className="scroll-mt-24">
             <MenuSection
-              title="â­ Chef's Specials"
+              title="👨‍🍳 Chef's Specials"
               subtitle="Premium dishes handpicked for you"
               items={isVegMode ? chefSpecials.filter(c => c.isVeg === true) : chefSpecials}
               type="chef"
@@ -515,7 +515,7 @@ export default function HomeScreen() {
         {!isLoading && (isVegMode ? bestsellers.filter(c => c.isVeg === true) : bestsellers).length > 0 && !searchQuery && (
           <div id="bestsellers-section" className="scroll-mt-24">
             <MenuSection
-              title="ðŸ”¥ Bestsellers"
+              title="🔥 Bestsellers"
               subtitle="Most popular picks this week"
               items={isVegMode ? bestsellers.filter(c => c.isVeg === true) : bestsellers}
               type="bestseller"
@@ -527,10 +527,10 @@ export default function HomeScreen() {
         {!isLoading && curatedItems.length > 0 && !searchQuery && (
           <div id="curated-section" className="scroll-mt-24 px-3">
             <MenuSection
-              title="âœ¨ Curated for You"
+              title="✨ Curated for You"
               subtitle="Your favorite picks sorted by frequency"
               items={isVegMode ? curatedItems.filter(c => c.isVeg === true) : curatedItems}
-              type="standard"
+              type="curated"
             />
           </div>
         )}
@@ -592,10 +592,10 @@ export default function HomeScreen() {
       {/* Overlays */}
       {showWaiterMsg && <WaiterToast onDone={() => setShowWaiterMsg(false)} />}
       {showBill && activeOrder && (
-        <BillModal 
-          order={activeOrder} 
-          tableNo={Number(tableNo)} 
-          onClose={() => setShowBill(false)} 
+        <BillModal
+          order={activeOrder}
+          tableNo={Number(tableNo)}
+          onClose={() => setShowBill(false)}
         />
       )}
 
@@ -714,9 +714,9 @@ const DineInBar = ({
       borderTop: "1px solid rgba(255,255,255,.07)",
     }}>
       {[
-        { Icon: Bell,        label: "Call Waiter",  action: onCallWaiter  },
-        { Icon: Clock,       label: "Order Status", action: onOrderStatus },
-        { Icon: ShoppingBag, label: "Get Bill",     action: onGetBill     },
+        { Icon: Bell, label: "Call Waiter", action: onCallWaiter },
+        { Icon: Clock, label: "Order Status", action: onOrderStatus },
+        { Icon: ShoppingBag, label: "Get Bill", action: onGetBill },
       ].map(({ Icon, label, action }, i) => (
         <button
           key={label}
@@ -787,7 +787,7 @@ const ActiveOrderBadge = ({ order }: { order: any }) => (
 const BillModal = ({ order, tableNo, onClose }: {
   order: any; tableNo: number; onClose: () => void;
 }) => {
-  const taxes    = Math.round(order.total * 0.05);
+  const taxes = Math.round(order.total * 0.05);
   const subtotal = order.total - taxes;
   return (
     <>
@@ -857,9 +857,9 @@ const BillModal = ({ order, tableNo, onClose }: {
           padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8,
         }}>
           {[
-            { label: "Subtotal",         val: `KSh ${subtotal.toLocaleString()}`, green: false },
-            { label: "GST & Taxes (5%)", val: `KSh ${taxes.toLocaleString()}`,    green: false },
-            { label: "Delivery",         val: "FREE",                             green: true  },
+            { label: "Subtotal", val: `KSh ${subtotal.toLocaleString()}`, green: false },
+            { label: "GST & Taxes (5%)", val: `KSh ${taxes.toLocaleString()}`, green: false },
+            { label: "Delivery", val: "FREE", green: true },
           ].map(({ label, val, green }) => (
             <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
               <span style={{ fontSize: 12, color: Z.muted }}>{label}</span>

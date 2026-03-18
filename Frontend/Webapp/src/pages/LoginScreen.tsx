@@ -91,7 +91,7 @@ function ScanFrame({ success }: { success: boolean }) {
 
 // ------------------------------------------------------------------------------
 // -- QR STEP -------------------------------------------------------------------
-// Camera is NOT auto-started � user taps the button first (fixes slow load).
+// Camera is NOT auto-started — user taps the button first (fixes slow load).
 // ------------------------------------------------------------------------------
 function QRStep({ onTableConfirmed }: { onTableConfirmed: (n: number) => void }) {
   const [scanStatus, setScanStatus] = useState<"idle" | "ready" | "scanning" | "success" | "error">("idle");
@@ -101,7 +101,7 @@ function QRStep({ onTableConfirmed }: { onTableConfirmed: (n: number) => void })
   const [manualVal,  setManualVal]  = useState("");
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
-  // Cleanup only � no auto-start
+  // Cleanup only — no auto-start
   useEffect(() => {
     return () => { scannerRef.current?.stop().catch(() => {}); };
   }, []);
@@ -146,7 +146,7 @@ function QRStep({ onTableConfirmed }: { onTableConfirmed: (n: number) => void })
 
   const handleManual = () => {
     const n = parseInt(manualVal.trim(), 10);
-    if (!n || n < 1 || n > 999) { setErrorMsg("Enter a valid table number (1�999)."); return; }
+    if (!n || n < 1 || n > 999) { setErrorMsg("Enter a valid table number (1–999)."); return; }
     setTableFound(n);
     setScanStatus("success");
     setTimeout(() => onTableConfirmed(n), 1400);
@@ -289,7 +289,7 @@ function QRStep({ onTableConfirmed }: { onTableConfirmed: (n: number) => void })
           color: Z.red, fontSize: 13, fontWeight: 700,
           fontFamily: "inherit", padding: "2px 0",
         }}>
-          Enter table number manually ?
+          Enter table number manually →
         </button>
       ) : (
         <motion.div
@@ -328,7 +328,7 @@ function QRStep({ onTableConfirmed }: { onTableConfirmed: (n: number) => void })
                 transition: "all 0.2s",
               }}
             >
-              Go ?
+              Go →
             </button>
           </div>
           {errorMsg && (
@@ -343,7 +343,7 @@ function QRStep({ onTableConfirmed }: { onTableConfirmed: (n: number) => void })
         display: "flex", alignItems: "flex-start", gap: 8, width: "100%",
         padding: "10px 12px", borderRadius: 10, background: Z.surface,
       }}>
-        <span style={{ fontSize: 15, flexShrink: 0 }}>??</span>
+        <span style={{ fontSize: 15, flexShrink: 0 }}>📋</span>
         <span style={{ fontSize: 12, color: Z.sub, lineHeight: 1.6 }}>
           Each table has a unique QR on the menu stand. Scan it to identify
           your seat and start ordering.
@@ -448,7 +448,7 @@ function GreenTick() {
     <motion.div initial={{ scale:0 }} animate={{ scale:1 }} exit={{ scale:0 }}
       style={{ width:22, height:22, borderRadius:"50%", background:Z.green,
                display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <span style={{ fontSize:11, color:"#fff", fontWeight:900 }}>?</span>
+      <span style={{ fontSize:11, color:"#fff", fontWeight:900 }}>✓</span>
     </motion.div>
   );
 }
@@ -578,12 +578,12 @@ function OtpStep({
       </div>
 
       <RedButton onClick={() => onVerify(filled)} disabled={filled.length < 6} loading={isLoading}>
-        Verify & Continue ?
+        Verify & Continue →
       </RedButton>
 
       <div style={{ display:"flex", alignItems:"flex-start", gap:8, marginTop:16,
                     padding:"12px 14px", borderRadius:10, background:Z.surface }}>
-        <span style={{ fontSize:16, flexShrink:0 }}>??</span>
+        <span style={{ fontSize:16, flexShrink:0 }}>🔒</span>
         <span style={{ fontSize:12, color:Z.sub, lineHeight:1.55 }}>
           Your details are safe. We never share them with anyone.
         </span>
@@ -662,7 +662,7 @@ export default function LoginScreen() {
       setTableNumber(parseInt(t, 10));
       setPhase("auth");
     } else {
-      // ? Key matches UserContext
+      // ✅ Key matches UserContext
       const saved = localStorage.getItem("dineiq_table_number");
       if (saved) {
         setTableNumber(parseInt(saved));
@@ -673,7 +673,7 @@ export default function LoginScreen() {
 
   const getTable = () => tableNumber ?? 1;
 
-  // ? Key matches UserContext
+  // ✅ Key matches UserContext
   const handleTableConfirmed = (n: number) => {
     localStorage.setItem("dineiq_table_number", String(n));
     setTableNumber(n);
@@ -813,7 +813,7 @@ export default function LoginScreen() {
     finally { setIsLoading(false); }
   };
 
-  // ? Key matches UserContext
+  // ✅ Key matches UserContext
   const handleGuest = () => {
     const t = getTable();
     localStorage.setItem("dineiq_table_number", String(t));
@@ -921,7 +921,7 @@ export default function LoginScreen() {
                           value={mobile} autoFocus
                           onChange={(e: any) => setMobile(e.target.value.replace(/\D/g, ""))}
                           placeholder="Enter 10-digit number"
-                          prefix={<span style={{ fontSize: 14, fontWeight: 700, color: Z.text, whiteSpace: "nowrap" }}>???? +91</span>}
+                          prefix={<span style={{ fontSize: 14, fontWeight: 700, color: Z.text, whiteSpace: "nowrap" }}>🇮🇳 +91</span>}
                           suffix={<AnimatePresence>{phoneValid && <GreenTick />}</AnimatePresence>}
                         />
                       ) : (
@@ -950,7 +950,7 @@ export default function LoginScreen() {
                         disabled={loginMethod === "phone" ? !phoneValid : !emailValid}
                         loading={isLoading}
                       >
-                        {loginMethod === "phone" ? "Login to Order ?" : "Send OTP ?"}
+                        {loginMethod === "phone" ? "Login to Order →" : "Send OTP →"}
                       </RedButton>
                       <Divider text="New here?" />
                       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -958,17 +958,17 @@ export default function LoginScreen() {
                           Create an Account
                         </GhostButton>
                         <GhostButton onClick={handleGuest}>
-                          <span style={{ fontSize: 17 }}>??</span> Continue as Guest
+                          <span style={{ fontSize: 17 }}>👤</span> Continue as Guest
                         </GhostButton>
                       </div>
                     </motion.div>
                   )}
 
-                  {/* LOGIN step 2 � OTP */}
+                  {/* LOGIN step 2 — OTP */}
                   {tab === "login" && step === 2 && (
                     <OtpStep key="login-otp" email={email}
                       title="Enter Login OTP" subtitle="6-digit code sent to"
-                      editLabel="? Change email" onEdit={() => setStep(1)}
+                      editLabel="← Change email" onEdit={() => setStep(1)}
                       onVerify={handleLoginOTPVerify} isLoading={isLoading}
                     />
                   )}
@@ -1014,7 +1014,7 @@ export default function LoginScreen() {
                           label="Mobile Number" type="tel" maxLength={10} value={mobile}
                           onChange={(e: any) => setMobile(e.target.value.replace(/\D/g, ""))}
                           placeholder="10-digit number"
-                          prefix={<span style={{ fontSize: 14, fontWeight: 700, color: Z.text, whiteSpace: "nowrap" }}>???? +91</span>}
+                          prefix={<span style={{ fontSize: 14, fontWeight: 700, color: Z.text, whiteSpace: "nowrap" }}>🇮🇳 +91</span>}
                           suffix={<AnimatePresence>{phoneValid && <GreenTick />}</AnimatePresence>}
                         />
                       </div>
@@ -1025,18 +1025,18 @@ export default function LoginScreen() {
                         <span style={{ color: Z.red, fontWeight: 600, cursor: "pointer" }}>Privacy Policy</span>
                       </p>
                       <RedButton onClick={handleRegisterSendOtp} disabled={!registerReady} loading={isLoading}>
-                        Send OTP ?
+                        Send OTP →
                       </RedButton>
                       <Divider text="Have an account?" />
                       <GhostButton onClick={() => resetToTab("login")}>Log in instead</GhostButton>
                     </motion.div>
                   )}
 
-                  {/* REGISTER step 2 � OTP */}
+                  {/* REGISTER step 2 — OTP */}
                   {tab === "register" && step === 2 && (
                     <OtpStep key="reg-otp" email={email}
                       title="Verify Your Email" subtitle="6-digit code sent to"
-                      editLabel="? Change details" onEdit={() => setStep(1)}
+                      editLabel="← Change details" onEdit={() => setStep(1)}
                       onVerify={handleRegisterVerify} isLoading={isLoading}
                     />
                   )}
