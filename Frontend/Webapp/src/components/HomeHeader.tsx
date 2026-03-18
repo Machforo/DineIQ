@@ -1,20 +1,62 @@
 import { useUser } from "@/contexts/UserContext";
-import { Search, Mic, MapPin, ShoppingBag, Star } from "lucide-react";
+import { Search, Mic, MicOff, MapPin, ShoppingBag, Star, User, Bell } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 import SidebarMenu from "./SidebarMenu";
+import { useState, useRef, useCallback } from "react";
 
 interface HomeHeaderProps {
   onSearch?: (query: string) => void;
   searchQuery?: string;
 }
 
+const useVoiceSearch = (onResult: (text: string) => void) => {
+  const [listening, setListening] = useState(false);
+  const recRef = useRef<any>(null);
+
+  const toggle = useCallback(() => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Voice search not supported in this browser.");
+      return;
+    }
+    if (listening) {
+      recRef.current?.stop();
+      setListening(false);
+      return;
+    }
+    const rec = new SpeechRecognition();
+    recRef.current = rec;
+    rec.lang = "en-US";
+    rec.interimResults = false;
+    rec.onresult = (e: any) => {
+      const txt = e.results[0][0].transcript;
+      onResult(txt);
+      setListening(false);
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    rec.start();
+    setListening(true);
+  }, [listening, onResult]);
+
+  return { listening, toggle };
+};
+
 export default function HomeHeader({ onSearch, searchQuery = "" }: HomeHeaderProps) {
   // 'tableNumber' को context से निकाला
   const { guestName, isVegMode, toggleVegMode, tableNumber } = useUser();
   const { totalItems } = useCart();
   const navigate = useNavigate();
+
+  const handleVoiceResult = (text: string) => {
+    console.log("🎤 Voice Result:", text);
+    onSearch?.(text);
+  };
+
+  const { listening, toggle } = useVoiceSearch(handleVoiceResult);
 
   return (
     <header className="bg-white sticky top-0 z-40 pb-3 transition-all shadow-[0_4px_20px_-4px_rgba(0,0,0,0.08)]">
@@ -23,25 +65,42 @@ export default function HomeHeader({ onSearch, searchQuery = "" }: HomeHeaderPro
       <div className="flex items-center justify-between px-4 pt-4 pb-3">
         <div className="flex items-center gap-3">
 
-          {/* Hamburger Menu */}
-          <SidebarMenu />
+          <div className="flex items-center gap-2.5">
+            {/* User Avatar Initials / Sidebar Menu */}
+            <SidebarMenu>
+              <button
+                className="w-[38px] h-[38px] rounded-xl bg-gradient-to-br from-[#E23744] to-[#C0303C] border-2 border-[#FDDCDE] shadow-[0_2px_8px_rgba(226,55,68,0.3)] flex items-center justify-center text-white text-sm font-black shrink-0 transition-transform active:scale-95"
+              >
+                {(!guestName || guestName.toLowerCase() === "guest")
+                  ? <User className="w-[18px] h-[18px] text-white" />
+                  : guestName.slice(0, 2).toUpperCase()}
+              </button>
+            </SidebarMenu>
 
-          <div className="flex flex-col">
-            {/* --- LOCATION BADGE (Table vs Dine In) --- */}
-            <div className="flex items-center gap-1 text-[10px] font-extrabold text-[#E23744] uppercase tracking-widest bg-red-50 px-2 py-0.5 rounded-full w-fit mb-0.5">
-              <MapPin size={10} className="text-[#E23744]" fill="currentColor" />
+            <div className="flex flex-col">
+              <h1 className="text-base font-extrabold text-gray-900 tracking-tight leading-none mb-1">
+                Hi, {guestName || "Guest"} 👋
+              </h1>
 
-              {/* Logic: Table Number hai to wo dikhao, nahi to 'DINE IN' */}
-              {tableNumber ? `TABLE #${tableNumber}` : "DINE IN"}
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 tracking-wide">
+                <MapPin size={10} className="text-[#E23744]" fill="currentColor" />
+                {tableNumber ? (
+                  <>
+                    <span className="text-[#E23744] font-bold">Table {tableNumber}</span>
+                    <span>· Harvest & Ember</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-[#E23744] font-bold">Dine In</span>
+                    <span>· Harvest & Ember</span>
+                  </>
+                )}
+              </div>
             </div>
-
-            <h1 className="text-xl font-black text-gray-900 tracking-tight leading-none">
-              Hi, {guestName?.split(" ")[0] || "Guest"} 👋
-            </h1>
           </div>
         </div>
 
-        {/* Right Side Actions - Veg Mode Toggle & Review & Cart */}
+        {/* Right Side Actions - Review, Cart, Veg Mode & Notifications */}
         <div className="flex items-center gap-2">
           {/* Review Button */}
           <button
@@ -67,6 +126,7 @@ export default function HomeHeader({ onSearch, searchQuery = "" }: HomeHeaderPro
             )}
           </button>
 
+          {/* Veg Mode Toggle (Filter) */}
           <div className="bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-full flex flex-col items-center justify-center">
             <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-1">VEG</span>
             <Switch
@@ -75,25 +135,39 @@ export default function HomeHeader({ onSearch, searchQuery = "" }: HomeHeaderPro
               className="h-4 w-7 data-[state=checked]:bg-green-600 border-none shadow-sm"
             />
           </div>
+
+          {/* Notification Bell */}
+          <button
+            className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center transition-all active:scale-95 shadow-sm"
+            title="Notifications"
+          >
+            <Bell className="w-5 h-5 text-gray-700" />
+          </button>
         </div>
       </div>
 
       {/* Search row */}
       <div className="px-4">
-        <div className="relative shadow-sm group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#E23744]" strokeWidth={2.5} />
+        <div className="relative flex items-center bg-gray-50 border-[1.5px] border-gray-100 rounded-xl transition-all focus-within:border-[#E23744] focus-within:ring-4 focus-within:ring-[#E23744]/10 h-[42px]">
+          <Search className="absolute left-3 w-[15px] h-[15px] text-gray-400" strokeWidth={2.5} />
           <input
             type="text"
             value={searchQuery}
-            placeholder="Search 'Rice', 'Pizza'..."
+            placeholder="Search for dishes, cuisines…"
             onChange={(e) => {
               console.log("⌨️ Input Change:", e.target.value);
               onSearch?.(e.target.value);
             }}
-            className="w-full h-[50px] pl-12 pr-12 rounded-xl bg-white border border-gray-200 text-gray-800 placeholder:text-gray-400 font-bold focus:outline-none focus:border-[#E23744] focus:ring-1 focus:ring-[#E23744] shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all"
+            className="w-full h-full pl-[36px] pr-12 bg-transparent border-none text-[13px] font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
           />
-          <button className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors">
-            <Mic className="w-5 h-5 text-[#E23744]" />
+          <button
+            onClick={toggle}
+            className={`absolute right-1 w-9 h-9 rounded-lg flex items-center justify-center transition-all border-none cursor-pointer ${listening ? 'bg-[#E23744] animate-pulse' : 'bg-transparent hover:bg-gray-200'}`}
+          >
+            {listening
+              ? <MicOff className="w-4 h-4 text-white" />
+              : <Mic className="w-4 h-4 text-gray-600" />
+            }
           </button>
         </div>
       </div>
