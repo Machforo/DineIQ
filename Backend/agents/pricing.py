@@ -5,9 +5,9 @@ class PricingAgent:
     def __init__(self):
         # Pricing rules (Zomato-style logic) 
         self.discount_tiers = [
-            {"threshold": 500, "discount": 5, "name": "DINE5"},
-            {"threshold": 800, "discount": 10, "name": "DINE10"},
-            {"threshold": 1200, "discount": 15, "name": "DINE15"}
+            {"threshold": 1500, "discount": 5, "name": "DINE5"},
+            {"threshold": 3000, "discount": 10, "name": "DINE10"},
+            {"threshold": 5000, "discount": 15, "name": "DINE15"}
         ]
         
         # Loyalty Tiers structure 

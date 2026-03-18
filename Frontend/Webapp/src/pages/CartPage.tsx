@@ -107,7 +107,7 @@ export default function CartPage() {
       setRecommendations([]);
       setNudge(null);
     }
-  }, [items.length, user?.email]); // Re-run when item count changes
+  }, [items.length, totalPrice, user?.email]); // Re-run when item count or total changes
 
   // Auto-Apply Coupon Logic (Adapted from Sana_DineIQ)
   useEffect(() => {
@@ -303,12 +303,28 @@ export default function CartPage() {
       {/* --- RECOMENDATIONS SECTION (Zomato Style) --- */}
 
       {/* --- PRICING NUDGE (NEW) --- */}
-      {/* We need state for nudge, fetched via useEffect on [items] */}
-      {/* Since I can't add state easily with replace_file_content without rewriting the whole component top, 
-          I will assume the user accepts a slightly larger edit or I should have done multi_replace. 
-          Actually, I need to add state and useEffect for `nudge`.
-          Let's verify lines 16-43 to see where to inject `nudge` state.
-      */}
+      {nudge && (
+        <div className="px-4 py-2">
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-3 shadow-sm flex items-center gap-3 animate-fade-in">
+            <div className="bg-white p-2 rounded-full shadow-sm">
+              <Sparkles className="w-5 h-5 text-amber-500" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-orange-800 leading-tight">
+                {nudge.message || "Add more items to get a special discount!"}
+              </p>
+              {nudge.show && nudge.progress_percentage !== undefined && (
+                <div className="mt-2 h-2 w-full bg-amber-100/50 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-500 rounded-full" 
+                    style={{ width: `${nudge.progress_percentage}%` }} 
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {/* --- ADD MORE ITEMS (Upsells & Recommendations) --- */}
       <div className="py-2 space-y-4">
 
