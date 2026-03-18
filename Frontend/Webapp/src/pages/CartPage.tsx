@@ -26,6 +26,14 @@ import { getMenuItemImage } from "@/lib/categoryUtils";
 // Flag for AI vs Smart Combos
 const GENERATE_AI_COMBOS = true;
 
+const PageStyle = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');
+    .cart-page-wrapper { font-family: 'DM Sans', sans-serif !important; }
+    .cart-page-wrapper * { font-family: 'DM Sans', sans-serif !important; }
+  `}</style>
+);
+
 export default function CartPage() {
   const navigate = useNavigate();
   const { items, updateQuantity, removeItem, totalPrice, addItem } = useCart();
@@ -191,16 +199,19 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <header className="bg-card sticky top-0 z-30 shadow-sm">
-          <div className="flex items-center gap-4 px-4 py-4">
+      <div className="min-h-screen bg-[#F8F8F8] flex flex-col cart-page-wrapper">
+        <PageStyle />
+        <header className="sticky top-0 z-30 border-b border-white/10"
+          style={{ background: 'linear-gradient(135deg, #1A1A1A 0%, #2C1A0E 100%)', padding: '48px 16px 18px' }}>
+          <div className="flex items-center gap-3">
             <button
               onClick={() => navigate("/home")}
-              className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center"
+              className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
+              style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)' }}
             >
-              <ArrowLeft className="w-5 h-5 text-foreground" />
+              <ArrowLeft className="w-5 h-5 text-white" />
             </button>
-            <h1 className="text-xl font-bold text-foreground">Your Cart</h1>
+            <h1 className="text-lg font-extrabold text-white tracking-tight">Your Cart</h1>
           </div>
         </header>
 
@@ -224,20 +235,31 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-36">
-      {/* Header */}
-      <header className="bg-card sticky top-0 z-30 shadow-sm">
-        <div className="flex items-center gap-4 px-4 py-4">
+    <div className="min-h-screen bg-[#F8F8F8] pb-36 cart-page-wrapper">
+      <PageStyle />
+      {/* Header aligned with Sana V2 */}
+      <header className="sticky top-0 z-30 border-b border-white/10"
+        style={{ background: 'linear-gradient(135deg, #1A1A1A 0%, #2C1A0E 100%)', padding: '48px 16px 18px' }}>
+        <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/home")}
-            className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center"
+            className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
+            style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)' }}
           >
-            <ArrowLeft className="w-5 h-5 text-foreground" />
+            <ArrowLeft className="w-5 h-5 text-white" />
           </button>
-          <h1 className="text-xl font-bold text-foreground">Your Cart</h1>
-          <span className="ml-auto text-sm text-muted-foreground">
-            {items.length} items
-          </span>
+          <div>
+            <h1 className="text-lg font-extrabold text-white leading-tight">Your Cart</h1>
+            <p className="text-[11px] text-white/50 mt-0.5">
+              {items.length} items · Table {tableNumber}
+            </p>
+          </div>
+          <div className="ml-auto px-3 py-1 rounded-full border border-red-500/40"
+            style={{ background: 'rgba(226,55,68,0.22)' }}>
+            <span className="text-xs font-bold text-[#FF8B94]">
+              KSh {totalPrice.toLocaleString()}
+            </span>
+          </div>
         </div>
       </header>
 
@@ -246,52 +268,67 @@ export default function CartPage() {
         {items.map((item) => (
           <div
             key={item.id}
-            className="bg-card rounded-2xl p-4 shadow-sm flex gap-4"
+            className="bg-white p-3.5 flex gap-3 transition-shadow"
+            style={{ borderRadius: '20px', border: '1.5px solid #EFEFEF', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}
           >
             {/* Image */}
-            <img
-              src={getMenuItemImage(item)}
-              alt={item.name}
-              className="w-20 h-20 rounded-xl object-cover"
-            />
+            <div className="w-20 h-20 rounded-[14px] overflow-hidden flex-shrink-0">
+              <img
+                src={getMenuItemImage(item)}
+                alt={item.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
 
             {/* Details */}
-            <div className="flex-1">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <div className={item.isVeg ? "badge-veg" : "badge-nonveg"} />
-                    <h3 className="font-semibold text-foreground">{item.name}</h3>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <div style={{
+                      width: 13, height: 13, borderRadius: 3, flexShrink: 0,
+                      border: `2.5px solid ${item.isVeg ? '#1BA672' : '#C8102E'}`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      <div style={{
+                        width: 6, height: 6, borderRadius: "50%",
+                        background: item.isVeg ? '#1BA672' : '#C8102E',
+                      }} />
+                    </div>
+                    <h3 className="text-[13px] font-bold text-[#1C1C1C] truncate">{item.name}</h3>
                   </div>
-                  <p className="text-lg font-bold text-foreground mt-1">
-                    KSh {item.price * item.quantity}
+                  <p className="text-sm font-black text-[#1C1C1C]">
+                    KSh {(item.price * item.quantity).toLocaleString()}
                   </p>
                 </div>
                 <button
                   onClick={() => removeItem(item.id)}
-                  className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                  className="w-7 h-7 rounded-lg bg-[#F7F7F7] flex items-center justify-center transition-colors"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3.5 h-3.5 text-[#9E9E9E]" />
                 </button>
               </div>
 
-              {/* Quantity Controls */}
+              {/* Quantity Controls - Red Theme */}
               <div className="flex items-center justify-end mt-2">
-                <div className="flex items-center gap-3 bg-secondary rounded-xl px-2">
+                <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl shadow-lg shadow-red-500/20"
+                  style={{ background: '#E23744' }}>
                   <button
                     onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                    className="w-8 h-8 flex items-center justify-center text-primary"
+                    className="w-5 h-5 rounded-md flex items-center justify-center text-white transition-all active:bg-white/30"
+                    style={{ background: 'rgba(255,255,255,0.22)' }}
                   >
-                    <Minus className="w-4 h-4" />
+                    <Minus className="w-3 h-3" />
                   </button>
-                  <span className="font-bold text-foreground w-6 text-center">
+                  <span className="text-[13px] font-black text-white min-w-[20px] text-center">
                     {item.quantity}
                   </span>
                   <button
                     onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                    className="w-8 h-8 flex items-center justify-center text-primary"
+                    className="w-5 h-5 rounded-md flex items-center justify-center text-white transition-all active:bg-white/30"
+                    style={{ background: 'rgba(255,255,255,0.22)' }}
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-3 h-3" />
                   </button>
                 </div>
               </div>
@@ -340,29 +377,32 @@ export default function CartPage() {
           if (uniqueRecs.length === 0) return null;
 
           return (
-            <div className="pl-4 animate-fade-in">
-              <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="w-4 h-4 text-primary" />
-                <h3 className="font-bold text-gray-800 text-sm">Pairs well with your order</h3>
+            <div className="pl-4">
+              <div className="flex items-center gap-1.5 mb-2">
+                <p className="text-[13px] font-extrabold text-[#1C1C1C]">🍽️ Pairs well with your order</p>
               </div>
-              <p className="text-xs text-gray-600 mb-3 block">{aiPitch || "Perfect pairings for your meal"}</p>
-              <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 pr-4">
+              <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 pr-4 snap-x snap-mandatory">
                 {uniqueRecs.map((rec) => (
-                  <div key={rec.Item_ID} className="flex-shrink-0 w-36 bg-white rounded-lg p-2 border border-gray-100 shadow-sm">
-                    <div className="relative mb-2">
-                      <img src={getMenuItemImage(rec) || "https://images.unsplash.com/photo-1546833999-b9f581a1996d"} className="w-full h-24 object-cover rounded-md" />
-                      <div className={`absolute top-1 right-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${rec.Is_Veg ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                  <div key={rec.Item_ID} className="flex-shrink-0 w-36 bg-white overflow-hidden snap-start"
+                    style={{ borderRadius: '16px', border: '1.5px solid #EFEFEF', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                    <div className="relative h-24">
+                      <img src={getMenuItemImage(rec) || "https://images.unsplash.com/photo-1546833999-b9f581a1996d"} className="w-full h-full object-cover" />
+                      <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold"
+                        style={{ background: rec.Is_Veg ? '#EBF9F4' : '#FFF0F0', color: rec.Is_Veg ? '#1BA672' : '#E23744' }}>
                         {rec.Is_Veg ? "VEG" : "NON"}
                       </div>
-                      <button
-                        onClick={() => handleAddRecommendation(rec)}
-                        className="absolute -bottom-3 right-2 bg-white shadow-md text-green-600 font-bold px-3 py-1 rounded-md text-xs border border-green-100 uppercase">
-                        ADD
-                      </button>
                     </div>
-                    <div className="mt-4">
-                      <p className="text-sm font-bold text-gray-800 line-clamp-1">{rec.Item_Name}</p>
-                      <p className="text-xs text-gray-500">KSh {rec.Current_Price}</p>
+                    <div className="p-2.5">
+                      <p className="text-[12px] font-bold text-[#1C1C1C] line-clamp-1 mb-1">{rec.Item_Name}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[12px] font-black text-[#1C1C1C]">KSh {rec.Current_Price}</span>
+                        <button
+                          onClick={() => handleAddRecommendation(rec)}
+                          className="bg-[#E23744] text-white px-2.5 py-1 rounded-lg text-[10px] font-black tracking-tight"
+                        >
+                          ADD
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -391,25 +431,25 @@ export default function CartPage() {
           // Group back if we want to keep categories, or just show a curated list
           // For now, let's just show them uniquely
           return (
-            <div className="pl-4 animate-fade-in">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-4 h-4 text-pink-500 fill-pink-100" />
-                <h3 className="font-bold text-gray-800 text-sm">You may also like</h3>
+            <div className="pl-4">
+              <div className="flex items-center gap-1.5 mb-2">
+                <p className="text-[13px] font-extrabold text-[#1C1C1C]">✨ You may also like</p>
               </div>
-              <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 pr-4">
+              <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 pr-4 snap-x snap-mandatory">
                 {allUpsells.map((rec) => (
-                  <div key={rec.Item_ID} className="flex-shrink-0 w-36 bg-white rounded-lg p-2 border border-gray-100 shadow-sm">
-                    <div className="relative mb-2">
-                      <img src={getMenuItemImage(rec)} className="w-full h-24 object-cover rounded-md" />
+                  <div key={rec.Item_ID} className="flex-shrink-0 w-36 bg-white overflow-hidden snap-start"
+                    style={{ borderRadius: '16px', border: '1.5px solid #EFEFEF', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                    <div className="relative h-24">
+                      <img src={getMenuItemImage(rec)} className="w-full h-full object-cover" />
                       <button
                         onClick={() => handleAddRecommendation(rec)}
-                        className="absolute -bottom-3 right-2 bg-white shadow-md text-green-600 font-bold px-3 py-1 rounded-md text-xs border border-green-100 uppercase">
+                        className="absolute -bottom-3 right-2 bg-white shadow-md text-[#E23744] font-black px-3 py-1 rounded-lg text-[10px] border border-red-50/50 uppercase">
                         ADD
                       </button>
                     </div>
-                    <div className="mt-4">
-                      <p className="text-sm font-bold text-gray-800 line-clamp-1">{rec.Item_Name}</p>
-                      <p className="text-xs text-gray-500">KSh {rec.Current_Price}</p>
+                    <div className="p-2.5 mt-3">
+                      <p className="text-[12px] font-bold text-[#1C1C1C] line-clamp-1 mb-0.5">{rec.Item_Name}</p>
+                      <p className="text-[12px] font-black text-[#1C1C1C]">KSh {rec.Current_Price}</p>
                     </div>
                   </div>
                 ))}
@@ -422,41 +462,47 @@ export default function CartPage() {
 
 
       {/* --- COUPONS & OFFERS --- */}
-      <div className="px-4 py-3 bg-gray-50/50">
+      <div className="px-4 py-3">
         <div
           onClick={() => setShowCoupons(!showCoupons)}
-          className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 shadow-sm border border-blue-100 flex items-center justify-between cursor-pointer active:scale-[0.99] transition-all"
+          className="bg-white p-3.5 flex items-center justify-between cursor-pointer active:shadow-md transition-all"
+          style={{
+            borderRadius: '16px',
+            border: selectedCoupon ? '1.5px solid #1BA672' : '1.5px dashed #EFEFEF',
+            backgroundColor: selectedCoupon ? '#EBF9F4' : '#FFFFFF'
+          }}
         >
           <div className="flex items-center gap-3">
-            <div className="bg-white p-2 rounded-full shadow-sm text-blue-600">
-              <Percent className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+              style={{ background: selectedCoupon ? '#EBF9F4' : '#FFF1F2' }}>
+              <Percent style={{ width: 16, height: 16, color: selectedCoupon ? '#1BA672' : '#E23744' }} />
             </div>
             <div>
-              <h3 className="font-bold text-gray-800 text-sm">Use Coupons</h3>
-              <p className="text-xs text-gray-500 font-medium">
-                {selectedCoupon
-                  ? <span className="text-green-600">Applied: {selectedCoupon.code}</span>
-                  : "Deals & Offers available"}
+              <p className="text-[13px] font-bold text-[#1C1C1C]">
+                {selectedCoupon ? `✅ ${selectedCoupon.code} Applied` : "Use Coupons"}
+              </p>
+              <p className="text-[11px] text-[#9E9E9E] font-medium">
+                {selectedCoupon ? `Saving KSh ${discountValue}` : "Deals & Offers available"}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1 text-blue-600">
+          <div className="flex items-center gap-1 text-[#E23744]">
             {selectedCoupon ? (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setSelectedCoupon(null);
                 }}
-                className="text-red-500 font-bold text-xs uppercase hover:bg-red-50 px-2 py-1 rounded"
+                className="text-[11px] font-bold uppercase"
               >
                 Remove
               </button>
             ) : (
               <>
-                <span className="text-xs font-bold uppercase tracking-wide">
+                <span className="text-xs font-bold uppercase tracking-wide text-[#9E9E9E]">
                   Apply
                 </span>
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4 text-[#9E9E9E]" />
               </>
             )}
           </div>
@@ -585,52 +631,63 @@ export default function CartPage() {
 
       {/* Cooking Instructions */}
       <div className="px-4 py-4">
-        <div className="bg-card rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <ChefHat className="w-5 h-5 text-primary" />
-            <h3 className="font-semibold text-foreground">Cooking Instructions</h3>
+        <div className="bg-white rounded-[20px] overflow-hidden shadow-sm border border-[#EFEFEF]">
+          <div className="flex items-center gap-2 p-4 border-b border-[#F7F7F7]"
+            style={{ background: 'rgba(245,158,11,0.08)' }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.2)' }}>
+              <ChefHat className="w-4 h-4 text-[#F59E0B]" />
+            </div>
+            <h3 className="font-bold text-[#1C1C1C] text-sm">Cooking Instructions</h3>
           </div>
-          <Textarea
-            value={instructions}
-            onChange={(e) => setInstructions(e.target.value)}
-            placeholder="e.g., Less spicy, No onions, Extra sauce..."
-            className="bg-secondary border-0 rounded-xl resize-none"
-            rows={3}
-          />
+          <div className="p-4">
+            <Textarea
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+              placeholder="e.g., Less spicy, No onions, Extra sauce..."
+              className="bg-[#F8F8F8] border-[#EFEFEF] rounded-xl resize-none text-sm p-3 placeholder:text-[#9E9E9E]"
+              rows={3}
+            />
+          </div>
         </div>
       </div>
 
       {/* Bill Details */}
       <div className="px-4 py-4">
-        <div className="bg-card rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <Receipt className="w-5 h-5 text-primary" />
-            <h3 className="font-semibold text-foreground">Bill Details</h3>
+        <div className="bg-white rounded-[20px] overflow-hidden shadow-sm border border-[#EFEFEF]">
+          <div className="flex items-center gap-2 p-4 border-b border-gray-50"
+            style={{ background: 'linear-gradient(135deg, #1A1A1A, #2C1A0E)' }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: 'rgba(226,55,68,0.2)', border: '1px solid rgba(226,55,68,0.3)' }}>
+              <Receipt className="w-4 h-4 text-[#FF8B94]" />
+            </div>
+            <h3 className="font-bold text-white text-sm">Bill Details</h3>
           </div>
-          <div className="space-y-3 text-sm">
+          <div className="p-4 space-y-3 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Item Total</span>
-              <span className="font-medium text-foreground">KSh {totalPrice}</span>
+              <span className="font-bold text-gray-800">KSh {totalPrice.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">GST & Taxes (5%)</span>
-              <span className="font-medium text-foreground">KSh {taxes}</span>
+              <span className="font-bold text-gray-800">KSh {taxes.toLocaleString()}</span>
             </div>
             {selectedCoupon && (
               <div className="flex justify-between animate-fade-in text-green-600">
-                <span className="font-medium">Coupon ({selectedCoupon.code})</span>
-                <span className="font-bold">-KSh {discountValue}</span>
+                <span className="font-semibold">Coupon ({selectedCoupon.code})</span>
+                <span className="font-black">-KSh {discountValue.toLocaleString()}</span>
               </div>
             )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Delivery Fee</span>
-              <span className="font-medium text-green-600">FREE</span>
+              <span className="font-bold text-green-600">FREE</span>
             </div>
-            <div className="border-t border-border pt-3 flex justify-between items-center">
-              <span className="font-bold text-lg text-foreground">Grand Total</span>
+            <div className="mt-4 p-4 -mx-4 -mb-4 flex justify-between items-center"
+              style={{ background: 'linear-gradient(135deg, #1A1A1A, #2C1A0E)' }}>
+              <span className="font-extrabold text-white text-base">Grand Total</span>
               <div className="text-right">
-                {selectedCoupon && <span className="text-xs text-gray-400 line-through mr-2">KSh {grandTotal}</span>}
-                <span className="font-bold text-xl text-primary">KSh {finalTotal}</span>
+                {selectedCoupon && <p className="text-[10px] text-white/40 line-through">KSh {grandTotal.toLocaleString()}</p>}
+                <p className="font-black text-xl text-[#FF8B94]">KSh {finalTotal.toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -638,23 +695,25 @@ export default function CartPage() {
       </div>
 
       {/* Bottom Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 shadow-lg">
-        <div className="flex items-center justify-between mb-3">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#EFEFEF] p-4 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] z-50">
+        <div className="flex items-center justify-between mb-3.5">
           <div>
-            <p className="text-sm text-muted-foreground">Total Amount</p>
-            <p className="text-2xl font-bold text-foreground">KSh {grandTotal}</p>
+            <p className="text-[11px] text-[#9E9E9E] font-bold uppercase tracking-wider">Total Amount</p>
+            <p className="text-2xl font-black text-[#1C1C1C]">KSh {finalTotal.toLocaleString()}</p>
           </div>
-          <p className="text-xs text-muted-foreground text-right">
+          <p className="text-[11px] text-[#9E9E9E] font-bold">
             Delivery to Table #{tableNumber}
           </p>
         </div>
 
         <Button
           onClick={handleProceedToPayment}
-          className="w-full h-14 text-lg font-bold rounded-xl gradient-primary text-primary-foreground shadow-lg flex items-center justify-center gap-2"
+          className="w-full h-14 text-sm font-black text-white rounded-[16px] shadow-lg shadow-red-500/30 flex items-center justify-center gap-2"
+          style={{ background: 'linear-gradient(135deg, #E23744 0%, #C0303C 100%)' }}
         >
           <CreditCard className="w-5 h-5" />
           Proceed to Payment
+          <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
     </div >

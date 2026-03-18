@@ -168,7 +168,7 @@
   }
 
   .floating-button {
-    @apply fixed z-50 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-105 active:scale-95;
+    @apply fixed z-[100] rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-105 active:scale-95;
     box-shadow: var(--shadow-elevated);
   }
 
