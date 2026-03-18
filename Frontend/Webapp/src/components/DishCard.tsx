@@ -58,7 +58,7 @@ export default function DishCard({ item, compact = false, source = "Menu" }: Dis
             {item.name}
           </h3>
           {item.description && (
-            <p className="text-[10px] text-gray-400 font-medium line-clamp-2 leading-relaxed mb-1">
+            <p className="text-[10px] text-gray-400 font-medium whitespace-nowrap overflow-x-auto hide-scrollbar leading-relaxed mb-1">
               {item.description}
             </p>
           )}
@@ -116,17 +116,17 @@ export default function DishCard({ item, compact = false, source = "Menu" }: Dis
     );
   }
 
-  // 2. CHEF'S SPECIAL LAYOUT (Vertical Card - DineIQ AI Combo Style)
+  // 2. CHEF'S SPECIAL LAYOUT (Vertical Card - Sana V2 Style)
   return (
     <div className="group relative bg-white rounded-3xl overflow-hidden border border-gray-100 hover:shadow-xl hover:border-orange-100 transition-all duration-300 w-full flex flex-col h-full">
       {/* Image Header with Overlays */}
-      <div className="relative h-48 md:h-52 overflow-hidden bg-gray-100 flex-shrink-0">
+      <div className="relative h-[168px] overflow-hidden bg-gray-100 flex-shrink-0">
         <img
           src={item.image}
           alt={item.name}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80" />
 
         {/* Overlays */}
         <button
@@ -136,68 +136,67 @@ export default function DishCard({ item, compact = false, source = "Menu" }: Dis
           <Heart size={16} className="text-gray-400" />
         </button>
 
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-green-600 text-white text-[11px] font-black px-2 py-1 rounded-lg shadow-lg">
-          <Star className="w-3 h-3 fill-white" strokeWidth={0} />
-          {item.rating}
-        </div>
-
-        <div className="absolute bottom-3 left-3 z-10">
-          <span className="text-xl md:text-2xl font-black text-white drop-shadow-md">
-            KSh {item.price}
-          </span>
-          {item.originalPrice && (
-            <span className="block text-xs text-white/80 line-through font-medium -mt-1 pl-1">
-              KSh {item.originalPrice}
-            </span>
+        {/* Title, Description and Veg Indicator on Image */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
+          <div className="flex items-center gap-2 mb-1">
+            <VegBadge size="sm" />
+            <h3 className="font-black text-white text-[15px] leading-tight line-clamp-1 drop-shadow-sm">
+              {item.name}
+            </h3>
+          </div>
+          {item.description && (
+            <p className="text-[11px] text-white/70 font-medium leading-tight whitespace-nowrap overflow-x-auto hide-scrollbar drop-shadow-sm ml-5">
+              {item.description}
+            </p>
           )}
         </div>
       </div>
 
       {/* Content Section */}
-      <div className="p-5 flex-1 flex flex-col">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <VegBadge size="sm" />
-            {item.isBestseller && (
-              <span className="bg-yellow-50 text-yellow-700 text-[9px] font-extrabold px-2 py-0.5 rounded-md tracking-wider uppercase">
-                Bestseller
+      <div className="px-4 py-3 flex-1 flex flex-col justify-center">
+        <div className="flex items-center justify-between gap-2">
+          {/* Left: Price & Rating */}
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[15px] font-black text-gray-900">
+                KSh {item.price}
               </span>
-            )}
+              {item.originalPrice && (
+                <span className="text-[10px] text-gray-400 line-through font-medium">
+                  KSh {item.originalPrice}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <div className="flex items-center gap-1">
+                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" strokeWidth={0} />
+                <span className="text-[11px] font-bold text-gray-500">{item.rating}</span>
+              </div>
+              <span className="text-[10px] text-gray-400 font-medium">({item.ratingCount})</span>
+            </div>
           </div>
 
-          <h3 className="font-black text-gray-900 text-lg leading-tight mb-2 line-clamp-1">
-            {item.name}
-          </h3>
-
-          {item.description && (
-            <p className="text-xs text-gray-400 font-medium leading-relaxed line-clamp-2">
-              {item.description}
-            </p>
-          )}
-        </div>
-
-        {/* Action Button Row */}
-        <div className="mt-4 flex items-center justify-end">
-          <div className="w-[110px] shadow-sm rounded-xl bg-white overflow-hidden border border-gray-100">
+          {/* Right: Add Button */}
+          <div className="w-[100px] shadow-sm rounded-xl bg-white overflow-hidden border border-gray-100 flex-shrink-0">
             {quantity === 0 ? (
               <button
                 onClick={() => addItem(item, false, source)}
-                className="w-full bg-[#E23744] hover:bg-[#c92c37] text-white font-black text-[11px] h-10 rounded-xl uppercase tracking-wider transition-colors shadow-md"
+                className="w-full bg-[#E23744] hover:bg-[#c92c37] text-white font-black text-[11px] h-9 rounded-xl uppercase tracking-wider transition-colors shadow-md"
               >
                 ADD Item
               </button>
             ) : (
-              <div className="flex items-center justify-between bg-[#E23744] text-white h-10 rounded-xl px-2 w-full shadow-inner">
+              <div className="flex items-center justify-between bg-[#E23744] text-white h-9 rounded-xl px-2 w-full shadow-inner">
                 <button
                   onClick={() => removeItem(item.id, false, source)}
-                  className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                  className="p-1 hover:bg-white/20 rounded-lg transition-colors"
                 >
                   <Minus size={14} strokeWidth={3} />
                 </button>
                 <span className="font-black text-sm">{quantity}</span>
                 <button
                   onClick={() => addItem(item, false, source)}
-                  className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                  className="p-1 hover:bg-white/20 rounded-lg transition-colors"
                 >
                   <Plus size={14} strokeWidth={3} />
                 </button>

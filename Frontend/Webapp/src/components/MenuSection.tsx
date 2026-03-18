@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { MenuItem } from "@/lib/data";
 import DishCard from "./DishCard";
 import ComboCard from "./ComboCard";
-import { Sparkles, ChefHat, UtensilsCrossed, ChevronLeft, ChevronRight, Flame } from "lucide-react";
+import { Sparkles, ChefHat, UtensilsCrossed, ChevronLeft, ChevronRight, Flame, Package } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import BestsellerRow from "./BestsellerRow";
 
@@ -14,7 +14,7 @@ interface MenuSectionProps {
 }
 
 const sectionIcons = {
-  combos: Sparkles,
+  combos: Package,
   chef: ChefHat,
   bestseller: Flame,
   curated: Sparkles,
@@ -107,7 +107,9 @@ export default function MenuSection({ title, subtitle, items, type }: MenuSectio
             className="flex gap-4 px-4 overflow-x-auto hide-scrollbar snap-x snap-mandatory pb-2 scroll-smooth"
           >
             {filteredItems.map((item) => (
-              <ComboCard key={item.id} item={item} source={title} />
+              <div key={item.id} className="flex-shrink-0 w-[200px] snap-center">
+                <ComboCard item={item} source={title} />
+              </div>
             ))}
           </div>
         ) : type === "bestseller" ? (
@@ -122,7 +124,7 @@ export default function MenuSection({ title, subtitle, items, type }: MenuSectio
             className="flex gap-4 px-4 overflow-x-auto hide-scrollbar snap-x snap-mandatory pb-2 scroll-smooth"
           >
             {filteredItems.map((item) => (
-              <div key={item.id} className="flex-shrink-0 w-[340px] md:w-[380px] snap-center">
+              <div key={item.id} className="flex-shrink-0 w-[260px] snap-center">
                 <DishCard item={item} source={title} />
               </div>
             ))}

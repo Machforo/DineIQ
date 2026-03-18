@@ -54,7 +54,7 @@ export default function CartPage() {
         if (res) {
           const adds = res.smart_recommendations?.add_ons || res.add_ons || [];
           setRecommendations(adds);
-          
+
           // 2. Fetch AI Pitch in background (slow)
           const itemName = res.item_name || lastItem.name;
           const category = res.category || lastItem.category;
@@ -315,9 +315,9 @@ export default function CartPage() {
               </p>
               {nudge.show && nudge.progress_percentage !== undefined && (
                 <div className="mt-2 h-2 w-full bg-amber-100/50 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-500 rounded-full" 
-                    style={{ width: `${nudge.progress_percentage}%` }} 
+                  <div
+                    className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-500 rounded-full"
+                    style={{ width: `${nudge.progress_percentage}%` }}
                   />
                 </div>
               )}

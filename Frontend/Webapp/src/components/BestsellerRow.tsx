@@ -63,7 +63,7 @@ export default function BestsellerRow({ item, rank, source = "Bestsellers" }: Be
         </div>
 
         {item.description && (
-          <p className="text-[10px] text-gray-400 font-medium line-clamp-2 leading-relaxed mb-1">
+          <p className="text-[10px] text-gray-400 font-medium whitespace-nowrap overflow-x-auto hide-scrollbar leading-relaxed mb-1">
             {item.description}
           </p>
         )}

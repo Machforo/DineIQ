@@ -468,7 +468,7 @@ export default function HomeScreen() {
               !isLoading && (isVegMode ? combos.filter(c => c.isVeg === true) : combos).length > 0 && (
                 <div id="smart-combos" className="scroll-mt-24">
                   <MenuSection
-                    title="ðŸŽ Smart Combos"
+                    title="🎁 Smart Combos"
                     subtitle="AI-curated combo deals - Save more!"
                     items={isVegMode ? combos.filter(c => c.isVeg === true) : combos}
                     type="combos"
@@ -572,7 +572,7 @@ export default function HomeScreen() {
         {/* Empty State */}
         {!isLoading && searchQuery && displayedItems.length === 0 && (
           <div className="p-12 text-center">
-            <div className="text-6xl mb-4">ðŸ½ï¸</div>
+            <div className="text-6xl mb-4">🍽️</div>
             <p className="text-xl font-semibold text-gray-700">No items found</p>
             <button onClick={() => { setSearchQuery(""); }} className="text-orange-600 font-bold mt-2">Clear Search</button>
           </div>
