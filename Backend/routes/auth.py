@@ -36,40 +36,39 @@ def signup(payload: dict):
     try:
         print(">>> /auth/signup HIT", payload)
 
-        name = payload.get("name")
-        email = payload.get("email")
-        mobile = payload.get("mobile")
+        name = str(payload.get("name", "")).strip()
+        email = str(payload.get("email", "")).strip().lower()
+        mobile = str(payload.get("mobile", "")).strip()
+        table_number = str(payload.get("table_number", "")).strip()
 
-        if not email or not name:
+        if not name or not email or not mobile:
             raise HTTPException(status_code=400, detail="Invalid signup data")
 
         # --- Check for conflicts ---
         rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
-        email_normalized = str(email).strip().lower()
-        mobile_normalized = str(mobile).strip()
 
-        existing_email = next((r for r in rows if str(r.get("Customer_Email", "")).strip().lower() == email_normalized), None)
-        existing_phone = next((r for r in rows if str(r.get("Customer_Phone", "")).strip() == mobile_normalized), None)
+        existing_email = next((r for r in rows if str(r.get("Customer_Email", "")).strip().lower() == email), None)
+        existing_phone = next((r for r in rows if str(r.get("Customer_Phone", "")).strip() == mobile), None)
 
-        if existing_phone and str(existing_phone.get("Customer_Email", "")).strip().lower() != email_normalized:
+        if existing_phone and str(existing_phone.get("Customer_Email", "")).strip().lower() != email:
             # Same phone, different email
             assoc_email = existing_phone.get("Customer_Email")
-            return {"status": "error", "message": f"Another email {assoc_email} is already registered with phone {mobile_normalized}"}
+            return {"status": "error", "message": f"Another email {assoc_email} is already registered with phone {mobile}"}
 
-        if existing_email and str(existing_email.get("Customer_Phone", "")).strip() != mobile_normalized:
+        if existing_email and str(existing_email.get("Customer_Phone", "")).strip() != mobile:
             # Same email, different phone
             assoc_phone = existing_email.get("Customer_Phone")
-            return {"status": "error", "message": f"Another phone {assoc_phone} is already registered with email {email_normalized}"}
+            return {"status": "error", "message": f"Another phone {assoc_phone} is already registered with email {email}"}
 
         if existing_email and existing_phone and existing_email == existing_phone:
             # Both same, different name
             if str(existing_email.get("Customer_Name", "")).strip() != str(name).strip():
                 assoc_name = existing_email.get("Customer_Name")
-                return {"status": "error", "message": f"Another customer {assoc_name} is already registered with {email_normalized} & {mobile_normalized}"}
+                return {"status": "error", "message": f"Another customer {assoc_name} is already registered with {email} & {mobile}"}
 
         # --- No conflicts, proceed ---
         otp = generate_otp()
-        save_otp_for_email(email, otp, name=name, mobile=mobile)
+        save_otp_for_email(email, otp, name=name, mobile=mobile, table_number=table_number)
         
         gmail_client = GmailClient()
         gmail_client.send_otp_email(email, otp)
@@ -85,16 +84,35 @@ def signup(payload: dict):
 # -----------------------------
 @auth_router.post("/check-user")
 def check_user(payload: dict):
+
     method = payload.get("method")
     value = payload.get("value")
+    table_number = payload.get("table_number")
 
+    # ---------------- EMAIL LOGIN ----------------
     if method == "email":
+
         user = find_user_by_email(value)
+
         if not user:
             return {"status": "not_found"}
 
+        # Update table number if provided
+        if table_number:
+            rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
+            row = find_row_by_email(rows, value)
+
+            if row:
+                row_num = rows.index(row) + 2
+                sheets_client.update_cell(
+                    CUSTOMER_AUTH_SHEET,
+                    f"K{row_num}",
+                    table_number
+                )
+
         otp = generate_otp()
         save_otp_for_email(value, otp)
+
         gmail_client = GmailClient()
         gmail_client.send_otp_email(value, otp)
 
@@ -104,19 +122,36 @@ def check_user(payload: dict):
             "name": user["name"],
             "email": user["email"],
             "mobile": user.get("mobile"),
+            "table_number": table_number or user.get("table_number"),
         }
 
-    if method == "phone":
+    # ---------------- PHONE LOGIN ----------------
+    elif method == "phone":
+
         user = find_user_by_phone(value)
+
         if not user:
             return {"status": "not_found"}
 
-        # Block login if user has never verified via OTP (no last_login date present)
+        # Block login if user never verified
         if not user.get("last_login"):
             return {
                 "status": "not_verified",
                 "message": "Your account is not verified. Please sign up first."
             }
+
+        # Update table number if provided
+        if table_number:
+            rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
+            row = find_row_by_phone(rows, value)
+
+            if row:
+                row_num = rows.index(row) + 2
+                sheets_client.update_cell(
+                    CUSTOMER_AUTH_SHEET,
+                    f"K{row_num}",
+                    table_number
+                )
 
         # Update last login information
         update_last_login_by_phone(value)
@@ -125,11 +160,13 @@ def check_user(payload: dict):
             "status": "exists",
             "id": user.get("id"),
             "name": user["name"],
-            "mobile": user["mobile"],
-            "email": user["email"],
+            "email": user.get("email"),
+            "mobile": user.get("mobile"),
+            "table_number": table_number or user.get("table_number"),
         }
 
-    raise HTTPException(status_code=400, detail="Invalid login method")
+    else:
+        raise HTTPException(status_code=400, detail="Invalid login method")
 
 # -----------------------------
 # VERIFY OTP (email only)
@@ -149,6 +186,7 @@ def verify_otp(payload: dict):
         "name": result["name"],
         "mobile": result["mobile"],
         "email": email,
+        "table_number": result.get("table_number"),
     }
 
 # ------------------------------------------------------------------
@@ -168,8 +206,11 @@ def sha256(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
 def find_row_by_email(rows: list[dict], email: str):
+    email = str(email).strip().lower()
     return next(
-        (r for r in rows if r.get("Customer_Email") == email),
+        (
+            r for r in rows 
+            if str(r.get("Customer_Email", "")).strip().lower() == email),
         None
     )
 
@@ -194,6 +235,7 @@ def find_user_by_email(email: str):
         "name": row.get("Customer_Name"),
         "email": row.get("Customer_Email"),
         "mobile": row.get("Customer_Phone"),
+        "table_number": row.get("Table_Number"),
         "last_login": row.get("Last_Login_DateTime"),
     }
 
@@ -211,6 +253,7 @@ def find_user_by_phone(phone: str):
         "name": row.get("Customer_Name"),
         "email": row.get("Customer_Email"),
         "mobile": row.get("Customer_Phone"),
+        "table_number": row.get("Table_Number"),
         "last_login": row.get("Last_Login_DateTime"),
     }
 
@@ -242,7 +285,7 @@ def generate_next_customer_id(rows: list[dict]) -> str:
 
     return f"Cust_{max_num + 1:04d}"
 
-def save_otp_for_email(email, otp, name=None, mobile=None):
+def save_otp_for_email(email, otp, name=None, mobile=None, table_number=None):
     print(">>> Saving OTP for:", email)
 
     rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
@@ -260,6 +303,10 @@ def save_otp_for_email(email, otp, name=None, mobile=None):
 
         sheets_client.update_cell(CUSTOMER_AUTH_SHEET, f"F{row_num}", otp_hash)
         sheets_client.update_cell(CUSTOMER_AUTH_SHEET, f"G{row_num}", expiry)
+
+        # Update table number in google sheets
+        if table_number:
+            sheets_client.update_cell(CUSTOMER_AUTH_SHEET, f"K{row_num}", table_number)
         return
 
     # ---- New signup ----
@@ -281,6 +328,7 @@ def save_otp_for_email(email, otp, name=None, mobile=None):
             time.strftime("%d/%m/%Y %H:%M:%S"),  # Creation_DateTime (H)
             "",                         # Last_Login_DateTime (I)   <-- filled when logged in
             "",                         # Customer_Category (J)     <-- comes from categorization
+            table_number or "",         # Table_Number (K)
         ]
     )
 
@@ -313,9 +361,13 @@ def verify_otp_for_email(email, otp):
         time.strftime("%d/%m/%Y %H:%M:%S"),
     )
 
+    sheets_client.update_cell(CUSTOMER_AUTH_SHEET, f"F{row_num}", "")
+    sheets_client.update_cell(CUSTOMER_AUTH_SHEET, f"G{row_num}", "")
+
     return {
         "ok": True,
         "id": row.get("Customer_ID"),
         "name": row.get("Customer_Name"),
         "mobile": row.get("Customer_Phone"),
+        "table_number": row.get("Table_Number"),
     }
