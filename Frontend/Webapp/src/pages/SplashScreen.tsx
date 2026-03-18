@@ -32,8 +32,8 @@ export default function SplashPage() {
             transition={{ type: 'spring', stiffness: 200, damping: 15 }}
             className="relative z-10 flex flex-col items-center"
           >
-            <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-primary-foreground shadow-2xl">
-              <span className="text-4xl font-black text-primary">D</span>
+            <div className="flex h-24 items-center justify-center rounded-3xl bg-primary-foreground px-8 shadow-2xl">
+              <span className="text-4xl font-black text-primary">DineIQ</span>
             </div>
 
             <AnimatePresence>
@@ -44,8 +44,7 @@ export default function SplashPage() {
                   transition={{ duration: 0.4 }}
                   className="mt-5 text-center"
                 >
-                  <h1 className="text-4xl font-black text-primary-foreground tracking-tight">Harvest DineIQ</h1>
-                  <p className="mt-1.5 text-sm font-medium text-primary-foreground/70">AI-Powered Dining Experience</p>
+                  <p className="mt-1.5 text-lg font-semibold text-primary-foreground/90">AI-Powered Dining Experience from Harvest</p>
                 </motion.div>
               )}
             </AnimatePresence>
