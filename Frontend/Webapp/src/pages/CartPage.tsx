@@ -268,8 +268,8 @@ export default function CartPage() {
         {items.map((item) => (
           <div
             key={item.id}
-            className="bg-white p-3.5 flex gap-3 transition-shadow"
-            style={{ borderRadius: '20px', border: '1.5px solid #EFEFEF', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}
+            className="bg-white p-4 flex gap-4 transition-all duration-300"
+            style={{ borderRadius: '24px', border: '1px solid #F0F0F0', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}
           >
             {/* Image */}
             <div className="w-20 h-20 rounded-[14px] overflow-hidden flex-shrink-0">
@@ -295,9 +295,9 @@ export default function CartPage() {
                         background: item.isVeg ? '#1BA672' : '#C8102E',
                       }} />
                     </div>
-                    <h3 className="text-[13px] font-bold text-[#1C1C1C] truncate">{item.name}</h3>
+                    <h3 className="text-[14px] font-extrabold text-[#1C1C1C] truncate">{item.name}</h3>
                   </div>
-                  <p className="text-sm font-black text-[#1C1C1C]">
+                  <p className="text-[15px] font-black text-[#E23744]">
                     KSh {(item.price * item.quantity).toLocaleString()}
                   </p>
                 </div>
@@ -311,7 +311,7 @@ export default function CartPage() {
 
               {/* Quantity Controls - Red Theme */}
               <div className="flex items-center justify-end mt-2">
-                <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl shadow-lg shadow-red-500/20"
+                <div className="flex items-center gap-2 px-2.5 py-2 rounded-xl shadow-[0_4px_12px_rgba(226,55,68,0.25)]"
                   style={{ background: '#E23744' }}>
                   <button
                     onClick={() => updateQuantity(item.id, item.quantity - 1)}
@@ -383,8 +383,8 @@ export default function CartPage() {
               </div>
               <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 pr-4 snap-x snap-mandatory">
                 {uniqueRecs.map((rec) => (
-                  <div key={rec.Item_ID} className="flex-shrink-0 w-36 bg-white overflow-hidden snap-start"
-                    style={{ borderRadius: '16px', border: '1.5px solid #EFEFEF', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                  <div key={rec.Item_ID} className="flex-shrink-0 w-40 bg-white overflow-hidden snap-start transition-transform active:scale-95"
+                    style={{ borderRadius: '24px', border: '1px solid #F0F0F0', boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}>
                     <div className="relative h-24">
                       <img src={getMenuItemImage(rec) || "https://images.unsplash.com/photo-1546833999-b9f581a1996d"} className="w-full h-full object-cover" />
                       <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold"
@@ -437,8 +437,8 @@ export default function CartPage() {
               </div>
               <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 pr-4 snap-x snap-mandatory">
                 {allUpsells.map((rec) => (
-                  <div key={rec.Item_ID} className="flex-shrink-0 w-36 bg-white overflow-hidden snap-start"
-                    style={{ borderRadius: '16px', border: '1.5px solid #EFEFEF', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                  <div key={rec.Item_ID} className="flex-shrink-0 w-40 bg-white overflow-hidden snap-start transition-transform active:scale-95"
+                    style={{ borderRadius: '24px', border: '1px solid #F0F0F0', boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}>
                     <div className="relative h-24">
                       <img src={getMenuItemImage(rec)} className="w-full h-full object-cover" />
                       <button
@@ -698,8 +698,8 @@ export default function CartPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#EFEFEF] p-4 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] z-50">
         <div className="flex items-center justify-between mb-3.5">
           <div>
-            <p className="text-[11px] text-[#9E9E9E] font-bold uppercase tracking-wider">Total Amount</p>
-            <p className="text-2xl font-black text-[#1C1C1C]">KSh {finalTotal.toLocaleString()}</p>
+            <p className="text-[11px] text-[#9E9E9E] font-black uppercase tracking-widest">Total Amount</p>
+            <p className="text-[28px] font-black text-[#1C1C1C] leading-none">KSh {finalTotal.toLocaleString()}</p>
           </div>
           <p className="text-[11px] text-[#9E9E9E] font-bold">
             Delivery to Table #{tableNumber}
@@ -709,7 +709,7 @@ export default function CartPage() {
         <Button
           onClick={handleProceedToPayment}
           className="w-full h-14 text-sm font-black text-white rounded-[16px] shadow-lg shadow-red-500/30 flex items-center justify-center gap-2"
-          style={{ background: 'linear-gradient(135deg, #E23744 0%, #C0303C 100%)' }}
+          style={{ background: 'linear-gradient(135deg, #E23744 0%, #C0303C 100%)', boxShadow: '0 8px 24px rgba(226,55,68,0.35)' }}
         >
           <CreditCard className="w-5 h-5" />
           Proceed to Payment
