@@ -625,9 +625,15 @@ export default function HomeScreen() {
         }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
       `}</style>
+
+
+
+      <CartBar />
     </div>
   );
 }
+
+
 
 /* ─────────────────────────────────────────────────────────
    PORTED COMPONENTS FROM SANA V2
