@@ -24,7 +24,7 @@ export default function OrderItemsPage() {
     setLoading(true);
     try {
       const res = await fetch(
-        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Order_Items`
+        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Order_Items&headers=1`
       );
       const text = await res.text();
       const json = JSON.parse(text.substr(47).slice(0, -2));

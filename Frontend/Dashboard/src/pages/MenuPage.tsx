@@ -47,7 +47,7 @@ export default function MenuPage() {
     setLoading(true);
     try {
       const response = await fetch(
-        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Menu`
+        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Menu&headers=1`
       );
       const text = await response.text();
       const json = JSON.parse(text.substr(47).slice(0, -2));

@@ -31,7 +31,7 @@ export default function CustomerInsightsPage() {
     setLoading(true);
     try {
       const res = await fetch(
-        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Customer_Insights`
+        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Customer_Insights&headers=1`
       );
       const text = await res.text();
       const json = JSON.parse(text.substr(47).slice(0, -2));

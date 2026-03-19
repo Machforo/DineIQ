@@ -24,7 +24,7 @@ export default function Analytics() {
 
   const fetchSheet = async (sheetName: string) => {
     const res = await fetch(
-      `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${sheetName}`
+      `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${sheetName}&headers=1`
     );
     const text = await res.text();
     const json = JSON.parse(text.substr(47).slice(0, -2));

@@ -23,7 +23,7 @@ export default function CustomerActivitiesPage() {
         setLoading(true);
         try {
             const res = await fetch(
-                `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Customer_Activities`
+                `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Customer_Activities&headers=1`
             );
             const text = await res.text();
             // Safely parse JSON from GViz format
