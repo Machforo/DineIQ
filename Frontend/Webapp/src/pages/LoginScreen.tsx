@@ -602,6 +602,209 @@ function Divider({ text }: { text: string }) {
   );
 }
 
+// ------------------------------------------------------------------------------
+// -- TERMS & CONDITIONS MODAL ---------------------------------------------------
+// ------------------------------------------------------------------------------
+const TERMS_CONTENT = `Last updated: March 2026
+
+1. Acceptance of Terms
+By creating an account or using Harvest DineIQ, you agree to be bound by these Terms & Conditions. If you do not agree, please do not use our services.
+
+2. Account Registration
+You must provide accurate information (name, email, phone number) during sign-up. You are responsible for maintaining the confidentiality of your account credentials. One account per person \u2014 duplicate accounts may be merged or removed.
+
+3. Ordering & Payment
+Prices displayed are in KSh (Kenyan Shillings) and may vary due to dynamic pricing. Orders placed through DineIQ are confirmed once submitted and cannot be modified after preparation begins. Payment is handled in-restaurant; DineIQ facilitates ordering only.
+
+4. Dietary Preferences
+Dietary preference information you provide (e.g. vegetarian, allergies) is used solely to personalise your menu experience and AI recommendations. We do our best to accommodate preferences, but cross-contamination cannot be guaranteed. Always inform your server of severe allergies.
+
+5. AI-Powered Recommendations
+DineIQ uses artificial intelligence to suggest menu items and combos based on your preferences and order history. Recommendations are suggestions only \u2014 final ordering decisions are yours.
+
+6. User Conduct
+You agree not to misuse the platform, submit false information, or attempt to disrupt our services.
+
+7. Service Availability
+DineIQ services are available during restaurant operating hours. We reserve the right to modify or discontinue features without prior notice.
+
+8. Limitation of Liability
+Harvest DineIQ is provided \u201cas is.\u201d We are not liable for any indirect, incidental, or consequential damages arising from your use of the service.
+
+9. Changes to Terms
+We may update these terms from time to time. Continued use after changes constitutes acceptance of the revised terms.
+
+10. Contact
+For questions about these terms, contact us at: support@harvestkenya.com`;
+
+const PRIVACY_CONTENT = `Last updated: March 2026
+
+1. Information We Collect
+When you create an account, we collect:
+\u2022 Full name
+\u2022 Email address
+\u2022 Phone number
+\u2022 Date of birth (optional)
+\u2022 Dietary preferences and allergies
+\u2022 Order history and interactions
+
+2. How We Use Your Data
+Your information is used to:
+\u2022 Create and manage your account
+\u2022 Personalise menu recommendations and AI combos
+\u2022 Process and track your orders
+\u2022 Send OTP codes for authentication
+\u2022 Improve our service through analytics
+
+3. Data Storage & Security
+Your data is stored securely using Google Cloud infrastructure. We use industry-standard encryption for data in transit (HTTPS/TLS). Access to customer data is restricted to authorised personnel only. OTP codes are hashed and expire after a short period.
+
+4. Data Sharing
+We do NOT sell your personal data to third parties. Your data is shared only with:
+\u2022 Restaurant staff (name and order details for order fulfilment)
+\u2022 Email service providers (for OTP delivery only)
+
+5. Marketing Communications
+We may send promotional offers or campaigns based on your preferences. You can opt out of marketing communications at any time by contacting us. Transactional messages (OTPs, order confirmations) cannot be opted out of.
+
+6. Data Retention
+Your account data is retained as long as your account is active. You may request deletion of your account and associated data at any time.
+
+7. Cookies & Analytics
+DineIQ may use local storage to remember your session and preferences. No third-party tracking cookies are used.
+
+8. Your Rights
+You have the right to:
+\u2022 Access your personal data
+\u2022 Request correction of inaccurate data
+\u2022 Request deletion of your data
+\u2022 Withdraw consent for data processing
+
+9. Children's Privacy
+DineIQ is not intended for children under 13. We do not knowingly collect data from minors.
+
+10. Contact Us
+For privacy-related inquiries or data requests:
+Email: privacy@harvestkenya.com
+Address: Harvest Kenya, Nairobi, Kenya`;
+
+function TermsModal({
+  open, initialTab, onClose,
+}: {
+  open: boolean; initialTab: "terms" | "privacy"; onClose: () => void;
+}) {
+  const [activeTab, setActiveTab] = useState<"terms" | "privacy">(initialTab);
+  useEffect(() => { if (open) setActiveTab(initialTab); }, [open, initialTab]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
+          onClick={onClose}
+          style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
+            display: "flex", alignItems: "flex-end", justifyContent: "center",
+          }}
+        >
+          <motion.div
+            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 28, stiffness: 340 }}
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: "100%", maxWidth: 520, maxHeight: "88vh",
+              background: Z.bg, borderRadius: "24px 24px 0 0",
+              boxShadow: "0 -8px 40px rgba(0,0,0,0.18)",
+              display: "flex", flexDirection: "column",
+              fontFamily: "'Segoe UI','Helvetica Neue',Arial,sans-serif",
+            }}
+          >
+            {/* Drag handle */}
+            <div style={{ width: 40, height: 5, borderRadius: 3, background: "#DDD", margin: "12px auto 0", flexShrink: 0 }} />
+
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 0" }}>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: Z.text }}>
+                {activeTab === "terms" ? "Terms & Conditions" : "Privacy Policy"}
+              </h2>
+              <button
+                onClick={onClose}
+                style={{
+                  width: 34, height: 34, borderRadius: "50%", border: "none",
+                  background: Z.surface, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all 0.15s",
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke={Z.sub} strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div style={{ display: "flex", gap: 0, padding: "14px 20px 0", flexShrink: 0 }}>
+              {(["terms", "privacy"] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  style={{
+                    flex: 1, padding: "10px 0", border: "none", cursor: "pointer",
+                    fontSize: 13, fontWeight: 700, fontFamily: "inherit",
+                    borderRadius: "10px 10px 0 0",
+                    background: activeTab === tab ? Z.surface : "transparent",
+                    color: activeTab === tab ? Z.red : Z.muted,
+                    borderBottom: `2.5px solid ${activeTab === tab ? Z.red : Z.border}`,
+                    transition: "all 0.18s",
+                  }}
+                >
+                  {tab === "terms" ? "Terms & Conditions" : "Privacy Policy"}
+                </button>
+              ))}
+            </div>
+
+            {/* Scrollable content */}
+            <div style={{
+              flex: 1, overflow: "auto", padding: "20px 20px 32px",
+              WebkitOverflowScrolling: "touch",
+            }}>
+              <pre style={{
+                margin: 0, fontFamily: "'Segoe UI','Helvetica Neue',Arial,sans-serif",
+                fontSize: 13.5, lineHeight: 1.75, color: Z.sub,
+                whiteSpace: "pre-wrap", wordWrap: "break-word",
+              }}>
+                {activeTab === "terms" ? TERMS_CONTENT : PRIVACY_CONTENT}
+              </pre>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              flexShrink: 0, padding: "14px 20px",
+              borderTop: `1px solid ${Z.border}`, background: Z.bg,
+            }}>
+              <button
+                onClick={onClose}
+                style={{
+                  width: "100%", height: 48, borderRadius: 12, border: "none",
+                  background: Z.red, color: "#fff", fontSize: 14, fontWeight: 800,
+                  cursor: "pointer", fontFamily: "inherit",
+                  boxShadow: "0 4px 16px rgba(226,55,68,0.28)",
+                  transition: "all 0.2s",
+                }}
+              >
+                I Understand
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 function TableBadge({ tableNum, onRescan }: { tableNum: number; onRescan: () => void }) {
   return (
     <motion.div
@@ -686,6 +889,11 @@ export default function LoginScreen() {
   const [step,        setStep]        = useState<1 | 2>(1);
   const [isLoading,   setIsLoading]   = useState(false);
 
+  // T&C modal state
+  const [termsOpen,   setTermsOpen]   = useState(false);
+  const [termsTab,    setTermsTab]    = useState<"terms" | "privacy">("terms");
+  const [agreedTerms, setAgreedTerms] = useState(false);
+
   const [mobile, setMobile] = useState("");
   const [name,   setName]   = useState("");
   const [email,  setEmail]  = useState("");
@@ -694,11 +902,15 @@ export default function LoginScreen() {
     setTab(t); setStep(1);
     setMobile(""); setEmail(""); setName("");
     setLoginMethod("phone");
+    setAgreedTerms(false);
   };
+
+  const openTerms   = () => { setTermsTab("terms");   setTermsOpen(true); };
+  const openPrivacy = () => { setTermsTab("privacy"); setTermsOpen(true); };
 
   const phoneValid    = mobile.length === 10;
   const emailValid    = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const registerReady = name.trim().length >= 2 && emailValid && phoneValid;
+  const registerReady = name.trim().length >= 2 && emailValid && phoneValid && agreedTerms;
 
   // -- API handlers -----------------------------------------------------------
   const handleLogin = async () => {
@@ -940,10 +1152,10 @@ export default function LoginScreen() {
                         />
                       )}
                       <p style={{ margin: "14px 0 16px", fontSize: 12, color: Z.muted, lineHeight: 1.65 }}>
-                        By continuing, you agree to our{" "}
-                        <span style={{ color: Z.red, fontWeight: 600, cursor: "pointer" }}>Terms</span>
-                        {" & "}
-                        <span style={{ color: Z.red, fontWeight: 600, cursor: "pointer" }}>Privacy Policy</span>
+                        You agreed to our{" "}
+                        <span onClick={openTerms} style={{ color: Z.red, fontWeight: 600, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>Terms & Conditions</span>
+                        {" and "}
+                        <span onClick={openPrivacy} style={{ color: Z.red, fontWeight: 600, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>Privacy Policy</span>
                       </p>
                       <RedButton
                         onClick={handleLogin}
@@ -1018,12 +1230,37 @@ export default function LoginScreen() {
                           suffix={<AnimatePresence>{phoneValid && <GreenTick />}</AnimatePresence>}
                         />
                       </div>
-                      <p style={{ margin: "16px 0", fontSize: 12, color: Z.muted, lineHeight: 1.65 }}>
-                        By signing up, you agree to our{" "}
-                        <span style={{ color: Z.red, fontWeight: 600, cursor: "pointer" }}>Terms</span>
-                        {" & "}
-                        <span style={{ color: Z.red, fontWeight: 600, cursor: "pointer" }}>Privacy Policy</span>
-                      </p>
+                      <div
+                        onClick={() => setAgreedTerms(prev => !prev)}
+                        style={{
+                          display: "flex", alignItems: "flex-start", gap: 10,
+                          margin: "18px 0 16px", cursor: "pointer", userSelect: "none",
+                        }}
+                      >
+                        <div style={{
+                          width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                          border: `2px solid ${agreedTerms ? Z.red : Z.border}`,
+                          background: agreedTerms ? Z.red : Z.bg,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          transition: "all 0.18s", marginTop: 1,
+                        }}>
+                          {agreedTerms && (
+                            <motion.svg
+                              initial={{ scale: 0 }} animate={{ scale: 1 }}
+                              width="13" height="13" viewBox="0 0 24 24" fill="none"
+                              stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+                            >
+                              <path d="M20 6 9 17l-5-5" />
+                            </motion.svg>
+                          )}
+                        </div>
+                        <p style={{ margin: 0, fontSize: 12, color: Z.sub, lineHeight: 1.65 }}>
+                          I agree to the{" "}
+                          <span onClick={e => { e.stopPropagation(); openTerms(); }} style={{ color: Z.red, fontWeight: 600, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>Terms & Conditions</span>
+                          {" and "}
+                          <span onClick={e => { e.stopPropagation(); openPrivacy(); }} style={{ color: Z.red, fontWeight: 600, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>Privacy Policy</span>
+                        </p>
+                      </div>
                       <RedButton onClick={handleRegisterSendOtp} disabled={!registerReady} loading={isLoading}>
                         Send OTP →
                       </RedButton>
@@ -1048,6 +1285,8 @@ export default function LoginScreen() {
           </AnimatePresence>
         </div>
       </motion.div>
+
+      <TermsModal open={termsOpen} initialTab={termsTab} onClose={() => setTermsOpen(false)} />
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
