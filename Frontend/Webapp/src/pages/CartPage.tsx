@@ -4,7 +4,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useUser } from "@/contexts/UserContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { api } from "@/api"; // Import API
+import { offlineApi as api } from "@/utils/offlineApi"; // Import API
 import {
   ArrowLeft,
   Minus,

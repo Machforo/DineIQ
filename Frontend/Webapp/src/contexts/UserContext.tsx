@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { api } from "@/api";
+import { offlineApi as api } from "@/utils/offlineApi";
 import { MenuItem } from "@/lib/data";
 import { saveLog } from "@/utils/logger";
 

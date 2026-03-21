@@ -40,9 +40,9 @@ const mediaItems = [
         tagColor: "#4AEAAA",
         title: "Harvest", 
         titleAccent: "& Ember", 
-        sub: "Fine Dining � Grill � International Cuisine",
+        sub: "Fine Dining · Grill · International Cuisine",
         cta: "Explore Menu",
-        deco: "???",
+        deco: "🕯️",
         accent: "#E23744"
     },
     { 
@@ -54,7 +54,7 @@ const mediaItems = [
         titleAccent: "Finest", 
         sub: "Handpicked premium dishes by our Head Chef",
         cta: "See Chef's Picks",
-        deco: "?????",
+        deco: "👨‍🍳",
         accent: "#F59E0B"
     },
     { 
@@ -64,9 +64,9 @@ const mediaItems = [
         tagColor: "#93C5FD",
         title: "Flat 30%", 
         titleAccent: "Off Combos", 
-        sub: "Use code COMBO30 � Valid on all combo meals today",
+        sub: "Use code COMBO30 · Valid on all combo meals today",
         cta: "Grab the Deal",
-        deco: "??",
+        deco: "🎁",
         accent: "#3B82F6"
     },
     ...harvestImages.map((img) => ({ 
@@ -189,7 +189,7 @@ export default function HeroBanner({ onOrderNow }: HeroBannerProps) {
             {/* Premium Overlays */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
 
-            {/* Decoration Icon � exact Sana sizing */}
+            {/* Decoration Icon — exact Sana sizing */}
             {currentMedia.deco && (
                 <div 
                     className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none select-none"

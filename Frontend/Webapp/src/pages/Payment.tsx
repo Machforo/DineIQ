@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { useUser } from '@/contexts/UserContext';
 import { useCart } from '@/contexts/CartContext';
-import { api } from '@/api';
+import { offlineApi as api } from "@/utils/offlineApi";
 import { toast } from 'sonner';
 import StripeDummyModal from '@/components/StripeDummyModal';
 import CashDummyModal from '@/components/CashDummyModal';

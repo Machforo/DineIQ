@@ -11,7 +11,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useUser } from "@/contexts/UserContext";
-import { api } from "@/api";
+import { offlineApi as api } from "@/utils/offlineApi";
 import { useToast } from "@/components/ui/use-toast";
 
 const categories = [

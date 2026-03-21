@@ -11,7 +11,7 @@ const questions = [
   { id: 4, q: "Dessert Preference?", icon: <IceCream className="text-pink-500" />, options: ["Basque Cheesecake", "Chocolate Overload", "Cyclic Churros", "Lavender Parfait", "Vanilla Millefeuille", "Fresh Fruit Salad", "Sorbet of the Day", "Ice Cream of the Day"] },
 ];
 
-import { api } from "@/api";
+import { offlineApi as api } from "@/utils/offlineApi";
 
 // ...
 

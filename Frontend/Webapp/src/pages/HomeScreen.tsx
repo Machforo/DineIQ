@@ -9,7 +9,7 @@ import MenuSection from "@/components/MenuSection";
 import CartBar from "@/components/CartBar";
 import AIButton from "@/components/AIButton";
 import { saveLog } from "@/utils/logger";
-import { api } from "@/api";
+import { offlineApi as api } from "@/utils/offlineApi";
 import { MenuItem, Category } from "@/lib/data";
 import { extractDynamicCategories, getMenuItemImage } from "@/lib/categoryUtils";
 import { Ticket, Percent, Gift, Sparkles, RefreshCw, Bell, UtensilsCrossed, Clock, ShoppingBag, Receipt } from "lucide-react";
