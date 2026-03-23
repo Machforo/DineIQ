@@ -4,10 +4,8 @@
 # Library and Packages Import
 # ---------------------------------------------------------
 from fastapi import APIRouter, HTTPException
-# import random, hashlib
 import time
 import os
-# import re
 
 # -------------------------------------------------------------------
 # 🔧 SETUP KEYS and URLs
@@ -15,13 +13,10 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-from services.dependencies import sheets as sheets_client
-
+from services.dependencies import sqlite_db
 from services.email import GmailClient
 
 auth_router = APIRouter()
-
-CUSTOMER_AUTH_SHEET = "Customer_Auth"       # Read-Write from Customer Frontend Web/App
 
 # ---------------------------------------------------------
 # Auth Routes
@@ -45,25 +40,20 @@ def signup(payload: dict):
             raise HTTPException(status_code=400, detail="Invalid signup data")
 
         # --- Check for conflicts ---
-        rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
+        existing_email = sqlite_db.fetch_one("SELECT * FROM customers WHERE LOWER(email) = ?", (email,))
+        existing_phone = sqlite_db.fetch_one("SELECT * FROM customers WHERE phone = ?", (mobile,))
 
-        existing_email = next((r for r in rows if str(r.get("Customer_Email", "")).strip().lower() == email), None)
-        existing_phone = next((r for r in rows if str(r.get("Customer_Phone", "")).strip() == mobile), None)
-
-        if existing_phone and str(existing_phone.get("Customer_Email", "")).strip().lower() != email:
-            # Same phone, different email
-            assoc_email = existing_phone.get("Customer_Email")
+        if existing_phone and str(existing_phone.get("email", "")).strip().lower() != email:
+            assoc_email = existing_phone.get("email")
             return {"status": "error", "message": f"Another email {assoc_email} is already registered with phone {mobile}"}
 
-        if existing_email and str(existing_email.get("Customer_Phone", "")).strip() != mobile:
-            # Same email, different phone
-            assoc_phone = existing_email.get("Customer_Phone")
+        if existing_email and str(existing_email.get("phone", "")).strip() != mobile:
+            assoc_phone = existing_email.get("phone")
             return {"status": "error", "message": f"Another phone {assoc_phone} is already registered with email {email}"}
 
-        if existing_email and existing_phone and existing_email == existing_phone:
-            # Both same, different name
-            if str(existing_email.get("Customer_Name", "")).strip() != str(name).strip():
-                assoc_name = existing_email.get("Customer_Name")
+        if existing_email and existing_phone and existing_email["customer_id"] == existing_phone["customer_id"]:
+            if str(existing_email.get("name", "")).strip() != str(name).strip():
+                assoc_name = existing_email.get("name")
                 return {"status": "error", "message": f"Another customer {assoc_name} is already registered with {email} & {mobile}"}
 
         # --- No conflicts, proceed ---
@@ -99,16 +89,7 @@ def check_user(payload: dict):
 
         # Update table number if provided
         if table_number:
-            rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
-            row = find_row_by_email(rows, value)
-
-            if row:
-                row_num = rows.index(row) + 2
-                sheets_client.update_cell(
-                    CUSTOMER_AUTH_SHEET,
-                    f"K{row_num}",
-                    table_number
-                )
+            sqlite_db.update("customers", {"table_number": table_number}, {"email": value.strip().lower()})
 
         otp = generate_otp()
         save_otp_for_email(value, otp)
@@ -142,16 +123,7 @@ def check_user(payload: dict):
 
         # Update table number if provided
         if table_number:
-            rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
-            row = find_row_by_phone(rows, value)
-
-            if row:
-                row_num = rows.index(row) + 2
-                sheets_client.update_cell(
-                    CUSTOMER_AUTH_SHEET,
-                    f"K{row_num}",
-                    table_number
-                )
+            sqlite_db.update("customers", {"table_number": table_number}, {"phone": value.strip()})
 
         # Update last login information
         update_last_login_by_phone(value)
@@ -205,169 +177,121 @@ def sha256(value: str) -> str:
     import hashlib
     return hashlib.sha256(value.encode()).hexdigest()
 
-def find_row_by_email(rows: list[dict], email: str):
-    email = str(email).strip().lower()
-    return next(
-        (
-            r for r in rows 
-            if str(r.get("Customer_Email", "")).strip().lower() == email),
-        None
-    )
-
-def find_row_by_phone(rows: list[dict], phone: str):
-    phone = str(phone)
-    return next(
-        (r for r in rows if str(r.get("Customer_Phone", "")) == phone),
-        None
-    )
-
 def find_user_by_email(email: str):
     print(">>> Finding user by email:", email)
-
-    rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
-    row = find_row_by_email(rows, email)
-
-    if not row:
-        return None
-
+    row = sqlite_db.fetch_one("SELECT * FROM customers WHERE LOWER(email) = ?", (email.strip().lower(),))
+    if not row: return None
     return {
-        "id": row.get("Customer_ID"),
-        "name": row.get("Customer_Name"),
-        "email": row.get("Customer_Email"),
-        "mobile": row.get("Customer_Phone"),
-        "table_number": row.get("Table_Number"),
-        "last_login": row.get("Last_Login_DateTime"),
+        "id": row.get("customer_id"),
+        "name": row.get("name"),
+        "email": row.get("email"),
+        "mobile": row.get("phone"),
+        "table_number": row.get("table_number"),
+        "last_login": row.get("last_login"),
     }
 
 def find_user_by_phone(phone: str):
     print(">>> Finding user by phone:", phone)
-
-    rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
-    row = find_row_by_phone(rows, phone)
-
-    if not row:
-        return None
-
+    row = sqlite_db.fetch_one("SELECT * FROM customers WHERE phone = ?", (str(phone).strip(),))
+    if not row: return None
     return {
-        "id": row.get("Customer_ID"),
-        "name": row.get("Customer_Name"),
-        "email": row.get("Customer_Email"),
-        "mobile": row.get("Customer_Phone"),
-        "table_number": row.get("Table_Number"),
-        "last_login": row.get("Last_Login_DateTime"),
+        "id": row.get("customer_id"),
+        "name": row.get("name"),
+        "email": row.get("email"),
+        "mobile": row.get("phone"),
+        "table_number": row.get("table_number"),
+        "last_login": row.get("last_login"),
     }
 
 def update_last_login_by_phone(phone: str):
-    rows = sheets_client.read_sheet(CUSTOMER_AUTH_SHEET)
+    now_str = time.strftime("%d/%m/%Y %H:%M:%S")
+    sqlite_db.update("customers", {"last_login": now_str}, {"phone": str(phone).strip()})
 
-    row = rows[rows["Customer_Phone"].astype(str) == str(phone)]
-    if row.empty:
-        return
-
-    row_num = row.index[0] + 2
-    sheets_client.update_cell(
-        CUSTOMER_AUTH_SHEET,
-        f"I{row_num}",  # Last_Login_DateTime
-        time.strftime("%d/%m/%Y %H:%M:%S"),
-    )
-
-def generate_next_customer_id(rows: list[dict]) -> str:
-    import re
-    max_num = 0
-    pattern = re.compile(r"Cust_(\d+)")
-
-    for r in rows:
-        cid = r.get("Customer_ID", "")
-        match = pattern.fullmatch(str(cid))
+def generate_next_customer_id() -> str:
+    row = sqlite_db.fetch_one("SELECT customer_id FROM customers ORDER BY customer_id DESC LIMIT 1")
+    if row and row["customer_id"] and row["customer_id"].startswith("Cust_"):
+        import re
+        match = re.search(r"(\d+)", row["customer_id"])
         if match:
             num = int(match.group(1))
-            max_num = max(max_num, num)
+            return f"Cust_{num + 1:04d}"
+    return "Cust_0001"
 
-    return f"Cust_{max_num + 1:04d}"
-
-def save_otp_for_email(email, otp, name=None, mobile=None, table_number=None):
+def save_otp_for_email(email: str, otp: str, name=None, mobile=None, table_number=None):
     print(">>> Saving OTP for:", email)
-
-    rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET)
-
     otp_hash = sha256(otp)
     expiry = int(time.time()) + 300
+    email_clean = email.strip().lower()
 
-    row = find_row_by_email(rows, email)
-
+    row = sqlite_db.fetch_one("SELECT customer_id FROM customers WHERE LOWER(email) = ?", (email_clean,))
+    
     if row:
-        row_index = rows.index(row)
-        row_num = row_index + 2  # header offset
-
-        print(">>> Updating existing row:", row_num)
-
-        sheets_client.update_cell(CUSTOMER_AUTH_SHEET, f"F{row_num}", otp_hash)
-        sheets_client.update_cell(CUSTOMER_AUTH_SHEET, f"G{row_num}", expiry)
-
+        c_id = row["customer_id"]
         # Update table number in google sheets
         if table_number:
-            sheets_client.update_cell(CUSTOMER_AUTH_SHEET, f"K{row_num}", table_number)
-        return
+            sqlite_db.update("customers", {"table_number": table_number}, {"customer_id": c_id})
+        
+        # Upsert auth
+        auth_row = sqlite_db.fetch_one("SELECT * FROM customer_auth WHERE customer_id = ?", (c_id,))
+        if auth_row:
+            sqlite_db.update("customer_auth", {"otp_hash": otp_hash, "otp_expires_at": expiry}, {"customer_id": c_id})
+        else:
+            sqlite_db.insert("customer_auth", {"customer_id": c_id, "otp_hash": otp_hash, "otp_expires_at": expiry})
+    else:
+        # New signup
+        c_id = generate_next_customer_id()
+        now_str = time.strftime("%d/%m/%Y %H:%M:%S")
+        sqlite_db.insert("customers", {
+            "customer_id": c_id,
+            "name": name or "",
+            "email": email_clean,
+            "phone": mobile or "",
+            "date_of_birth": "",
+            "customer_category": "",
+            "table_number": table_number or "",
+            "created_at": now_str,
+            "last_login": ""
+        })
+        sqlite_db.insert("customer_auth", {
+            "customer_id": c_id,
+            "otp_hash": otp_hash,
+            "otp_expires_at": expiry
+        })
 
-    # ---- New signup ----
-    print(">>> New signup, appending row")
-
-    customer_id = generate_next_customer_id(rows)
-    print(">>> Generated Customer_ID:", customer_id)
-
-    sheets_client.append_row(
-        CUSTOMER_AUTH_SHEET,
-        [
-            customer_id,                # Customer_ID (A)           <-- Customer ID is created for a new signup
-            name or "",                 # Customer_Name (B)
-            email,                      # Customer_Email (C)
-            mobile or "",               # Customer_Phone (D)
-            "",                         # Date_of_Birth (E)         <-- comes from profile update
-            otp_hash,                   # OTP_Hash (F)
-            expiry,                     # OTP_Expires_At (G)
-            time.strftime("%d/%m/%Y %H:%M:%S"),  # Creation_DateTime (H)
-            "",                         # Last_Login_DateTime (I)   <-- filled when logged in
-            "",                         # Customer_Category (J)     <-- comes from categorization
-            table_number or "",         # Table_Number (K)
-        ]
-    )
-
-def verify_otp_for_email(email, otp):
+def verify_otp_for_email(email: str, otp: str):
     print(">>> Verifying OTP for:", email)
-
-    rows = sheets_client.read_sheet_rows(CUSTOMER_AUTH_SHEET, bypass_cache=True)
-
     entered_hash = sha256(otp)
     now = int(time.time())
+    email_clean = email.strip().lower()
 
-    row = find_row_by_email(rows, email)
+    row = sqlite_db.fetch_one("""
+        SELECT c.*, a.otp_hash, a.otp_expires_at 
+        FROM customers c 
+        LEFT JOIN customer_auth a ON c.customer_id = a.customer_id 
+        WHERE LOWER(c.email) = ?
+    """, (email_clean,))
+
     if not row:
         return {"ok": False, "message": "Email not found"}
 
-    if not row.get("OTP_Hash"):
+    if not row.get("otp_hash"):
         return {"ok": False, "message": "OTP not generated"}
 
-    if now > int(row.get("OTP_Expires_At", 0)):
+    if now > int(row.get("otp_expires_at", 0) or 0):
         return {"ok": False, "message": "OTP expired"}
 
-    if row.get("OTP_Hash") != entered_hash:
+    if row.get("otp_hash") != entered_hash:
         return {"ok": False, "message": "Invalid OTP"}
 
     # Update last login time
-    row_num = rows.index(row) + 2
-    sheets_client.update_cell(
-        CUSTOMER_AUTH_SHEET,
-        f"I{row_num}",  # Last_Login_DateTime
-        time.strftime("%d/%m/%Y %H:%M:%S"),
-    )
-
-    sheets_client.update_cell(CUSTOMER_AUTH_SHEET, f"F{row_num}", "")
-    sheets_client.update_cell(CUSTOMER_AUTH_SHEET, f"G{row_num}", "")
+    now_str = time.strftime("%d/%m/%Y %H:%M:%S")
+    sqlite_db.update("customers", {"last_login": now_str}, {"customer_id": row["customer_id"]})
+    sqlite_db.update("customer_auth", {"otp_hash": "", "otp_expires_at": ""}, {"customer_id": row["customer_id"]})
 
     return {
         "ok": True,
-        "id": row.get("Customer_ID"),
-        "name": row.get("Customer_Name"),
-        "mobile": row.get("Customer_Phone"),
-        "table_number": row.get("Table_Number"),
+        "id": row.get("customer_id"),
+        "name": row.get("name"),
+        "mobile": row.get("phone"),
+        "table_number": row.get("table_number"),
     }

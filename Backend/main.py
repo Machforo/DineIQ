@@ -70,6 +70,16 @@ app.include_router(reviews_router, prefix="/reviews", tags=["Reviews"])
 
 
 # ---------------------------------------------------------
+# Application Startup
+# ---------------------------------------------------------
+@app.on_event("startup")
+async def startup_event():
+    import asyncio
+    from services.DineIQ_Database_Sync import start_progressive_sync
+    # Start the progressive sync worker to sync SQLite changes to Google Sheets
+    asyncio.create_task(start_progressive_sync())
+
+# ---------------------------------------------------------
 # Health Check
 # ---------------------------------------------------------
 @app.get("/", tags=["Health"])

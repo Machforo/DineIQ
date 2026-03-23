@@ -15,14 +15,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from services.sheets import SheetsClient
+from services.db_compat import DbCompat
+from services.sqlite import SQLiteClient
 from services.llm import GeminiClient
 from services.llm import GroqClient
 
 # ----------------------------------------------------------
 # 1. Google Sheets — single connection for the whole app
 # ----------------------------------------------------------
-sheets = SheetsClient(spreadsheet_id=os.getenv("SPREADSHEET_ID"))
+sqlite_db = SQLiteClient()
+sheets = DbCompat(sqlite_db)
 
 # ----------------------------------------------------------
 # 2. Gemini Clients — one per API key, mapped by use-case
