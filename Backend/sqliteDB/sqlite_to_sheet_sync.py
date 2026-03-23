@@ -129,5 +129,6 @@ async def main():
         col_header = input("Sheet Column Header to sync: ")
         await sync_column(table, col_header)
 
+# main function
 if __name__ == "__main__":
     asyncio.run(main())

@@ -256,6 +256,7 @@ async def start_progressive_sync(interval_seconds: int = 15):
                                 print(f"⚠️ Failed progressive sync (UPDATE) for {table}: {e}")
         
         except Exception as e:
+            # print exception message
             print(f"❌ Error in progressive sync worker: {e}")
             
         await asyncio.sleep(interval_seconds)

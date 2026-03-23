@@ -172,8 +172,6 @@ CREATE TABLE campaigns (
     message_send_timing_10 TEXT
 );
 
--- Deleted campaign_messages table as it is now flattened into campaigns.
-
 -- INDEXES
 CREATE INDEX idx_orders_customer ON orders(customer_id);
 CREATE INDEX idx_order_items_order ON order_items(order_id);

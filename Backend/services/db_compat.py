@@ -253,6 +253,7 @@ class DbCompat:
                  "status": new_row[16] if len(new_row) > 16 else ""
              })
 
+    # invalidate cache
     def invalidate_cache(self, sheet_name: str = None):
         # Stub to replace API cache invalider when used by SQLite wrapper
         pass

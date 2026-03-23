@@ -11,8 +11,6 @@ env/
 # Secrets
 .env
 dineIQ_service_account.json
-dineIQ_gmail_OAuth_Credentials.json
-token.json
 
 # OS
 .DS_Store
@@ -21,3 +19,18 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# database
+sqliteDB/*.db
+sqliteDB/*.db-wal
+sqliteDB/*.db-shm
+sqliteDB/*.xlsx
+sqliteDB/*.log
+
+# test/utility files
+utilities/test*.py
+utilities/*menu*.py
+utilities/*.html
+
+# code reference files
+*.zip
