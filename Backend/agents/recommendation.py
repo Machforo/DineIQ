@@ -676,7 +676,7 @@ def get_ai_pitch(req: PitchRequest):
 
 @recommendation_router.get("/upsell-items")
 def get_upsell_items():
-    return recommendation_agent.get_upsell_items()
+    return clean_nan(recommendation_agent.get_upsell_items())
 
 @recommendation_router.post("/save-preferences")
 def save_preferences(req: PreferencesRequest):

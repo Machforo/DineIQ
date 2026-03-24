@@ -2,6 +2,9 @@ import React from 'react';
 import {
     Dialog,
     DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
 } from "@/components/ui/dialog";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
@@ -23,10 +26,10 @@ const CashDummyModal: React.FC<CashDummyModalProps> = ({ isOpen, status }) => {
                                     <Loader2 className="w-10 h-10 text-orange-500 animate-spin" />
                                 </div>
                             </div>
-                            <div className="text-center space-y-2">
-                                <h2 className="text-2xl font-bold text-gray-800">Placing Order</h2>
-                                <p className="text-gray-500">Please wait while we confirm your order...</p>
-                            </div>
+                            <DialogHeader className="text-center space-y-2">
+                                <DialogTitle className="text-2xl font-bold text-gray-800">Placing Order</DialogTitle>
+                                <DialogDescription className="text-gray-500">Please wait while we confirm your order...</DialogDescription>
+                            </DialogHeader>
                         </>
                     )}
 
@@ -35,10 +38,10 @@ const CashDummyModal: React.FC<CashDummyModalProps> = ({ isOpen, status }) => {
                             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center text-green-600 animate-in zoom-in duration-300">
                                 <CheckCircle2 className="w-12 h-12" />
                             </div>
-                            <div className="text-center space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <h2 className="text-2xl font-bold text-gray-800">Order Placed!</h2>
-                                <p className="text-gray-500">Your order has been successfully received.</p>
-                            </div>
+                            <DialogHeader className="text-center space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <DialogTitle className="text-2xl font-bold text-gray-800">Order Placed!</DialogTitle>
+                                <DialogDescription className="text-gray-500">Your order has been successfully received.</DialogDescription>
+                            </DialogHeader>
                         </>
                     )}
                 </div>

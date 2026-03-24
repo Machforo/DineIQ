@@ -105,6 +105,9 @@ export default function SidebarMenu({ children }: SidebarMenuProps) {
         )}
       </SheetTrigger>
       <SheetContent side="left" className="w-[310px] p-0 bg-white border-none flex flex-col h-full overflow-hidden [&>button]:hidden">
+        <SheetHeader className="sr-only">
+          <SheetTitle>Navigation Menu</SheetTitle>
+        </SheetHeader>
 
         {/* Sana Header Styling - Reduced top padding to move content up */}
         <div className="relative pt-8 pb-8 px-6 select-none" style={{

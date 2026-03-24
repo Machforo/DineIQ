@@ -21,7 +21,7 @@ import AIButton from "@/components/AIButton"; // <-- Added AIButton
 
 // --- PWA Components ---
 import OfflineBanner from "@/components/Offlinebanner";
-import InstallPrompt from "@/components/InstallPrompt";
+// --- PWA Components ---
 
 const queryClient = new QueryClient();
 
@@ -55,8 +55,6 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
 
-            {/* PWA: "Add to Home Screen" install prompt */}
-            <InstallPrompt />
           </BrowserRouter>
 
         </CartProvider>

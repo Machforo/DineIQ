@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -218,6 +219,9 @@ export default function OrderHistoryPage() {
         <DialogContent className="sm:max-w-[340px] rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-center">Rate Your Food</DialogTitle>
+            <DialogDescription className="text-center">
+              Please share your experience with this order.
+            </DialogDescription>
           </DialogHeader>
           <div className="py-6">
             <div className="flex justify-center gap-2">

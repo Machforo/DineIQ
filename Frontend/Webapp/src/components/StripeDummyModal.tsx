@@ -51,8 +51,10 @@ const StripeDummyModal: React.FC<StripeDummyModalProps> = ({ isOpen, onClose, on
                         <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center text-green-600">
                             <CheckCircle2 className="w-12 h-12" />
                         </div>
-                        <h2 className="text-2xl font-bold text-gray-800">Order Placed!</h2>
-                        <p className="text-gray-500 text-center">Your order has been successfully received.</p>
+                        <DialogHeader className="text-center">
+                            <DialogTitle className="text-2xl font-bold text-gray-800">Order Placed!</DialogTitle>
+                            <DialogDescription className="text-gray-500">Your order has been successfully received.</DialogDescription>
+                        </DialogHeader>
                     </div>
                 ) : (
                     <>
