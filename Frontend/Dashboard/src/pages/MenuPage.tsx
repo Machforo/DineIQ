@@ -7,10 +7,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, UtensilsCrossed, CheckCircle, XCircle, RefreshCcw } from "lucide-react";
 import { parsePrice } from "@/utils/dataUtils";
-import { fetchDashboardList } from "@/api";
+import { fetchDashboardList, addMenuItem, updateMenuItem, deleteMenuItem } from "@/api";
 
 // Spreadsheet ID from your .env file
 const SPREADSHEET_ID = import.meta.env.VITE_SPREADSHEET_ID;
@@ -23,6 +24,7 @@ interface MenuItem {
   Low_Cap_Price: number;
   High_Cap_Price: number;
   Current_Price: number;
+  Item_Description: string;
   Is_Active: string; // "ACTIVE" | "INACTIVE"
 }
 
@@ -34,6 +36,7 @@ const emptyItem: MenuItem = {
   Low_Cap_Price: 0,
   High_Cap_Price: 0,
   Current_Price: 0,
+  Item_Description: "",
   Is_Active: "ACTIVE",
 };
 
@@ -43,6 +46,7 @@ export default function MenuPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<MenuItem>(emptyItem);
   const [isNew, setIsNew] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const fetchMenu = async () => {
     setLoading(true);
@@ -56,6 +60,7 @@ export default function MenuPage() {
         Low_Cap_Price: parsePrice(i.Low_Cap_Price),
         High_Cap_Price: parsePrice(i.High_Cap_Price),
         Current_Price: parsePrice(i.Current_Price),
+        Item_Description: i.Item_Description || "",
         Is_Active:
           i.Is_Active !== undefined && i.Is_Active !== null
             ? String(i.Is_Active).toUpperCase()
@@ -121,26 +126,48 @@ export default function MenuPage() {
     setDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    setData((d) => d.filter((r) => r.Item_ID !== id));
-    toast({ title: "Deleted", description: `Item ${id} removed` });
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteMenuItem(id);
+      setData((d) => d.filter((r) => r.Item_ID !== id));
+      toast({ title: "Deleted", description: `Item ${id} removed` });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || `Failed to delete item ${id}`, variant: "destructive" });
+    }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editItem.Item_Name) {
       toast({ title: "Error", description: "Item name is required", variant: "destructive" });
       return;
     }
-    if (isNew) setData((d) => [...d, editItem]);
-    else setData((d) => d.map((r) => (r.Item_ID === editItem.Item_ID ? editItem : r)));
-    setDialogOpen(false);
-    toast({ title: isNew ? "Added" : "Updated", description: `${editItem.Item_Name} saved` });
+    
+    setSaving(true);
+    try {
+      if (isNew) {
+        await addMenuItem(editItem);
+        toast({ title: "Added", description: `${editItem.Item_Name} saved successfully` });
+      } else {
+        await updateMenuItem(editItem.Item_ID, editItem);
+        toast({ title: "Updated", description: `${editItem.Item_Name} updated successfully` });
+      }
+      setDialogOpen(false);
+      fetchMenu(); // Refresh the list from the database
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to save item", variant: "destructive" });
+    }
+    setSaving(false);
   };
 
   const columns = [
     { key: "Item_ID", label: "ID" },
     { key: "Item_Name", label: "Name" },
     { key: "Item_Category", label: "Category" },
+    { key: "Item_Description", label: "Description", render: (v: string) => (
+      <div className="max-w-[250px] overflow-x-auto whitespace-nowrap text-sm pb-1">
+        {v || "-"}
+      </div>
+    ) },
     { key: "Base_Price", label: "Base Price", render: (v: number) => `KSh ${v}` },
     { key: "Low_Cap_Price", label: "Low Cap", render: (v: number) => `KSh ${v}` },
     { key: "High_Cap_Price", label: "High Cap", render: (v: number) => `KSh ${v}` },
@@ -224,8 +251,24 @@ export default function MenuPage() {
             <div>
               <Label>Category</Label>
               <Input
+                list="category-options"
                 value={editItem.Item_Category}
                 onChange={(e) => setEditItem({ ...editItem, Item_Category: e.target.value })}
+                placeholder="Select or type new category..."
+              />
+              <datalist id="category-options">
+                {Array.from(new Set(data.map((d) => d.Item_Category).filter(Boolean))).map((cat) => (
+                  <option key={cat} value={cat} />
+                ))}
+              </datalist>
+            </div>
+            <div>
+              <Label>Description</Label>
+              <Textarea
+                value={editItem.Item_Description}
+                onChange={(e) => setEditItem({ ...editItem, Item_Description: e.target.value })}
+                rows={2}
+                placeholder="Enter item description..."
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -273,7 +316,9 @@ export default function MenuPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleSave}>Save</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Saving..." : "Save"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -51,3 +51,40 @@ export const fetchAnalyticsSummary = async () => {
     if (!response.ok) throw new Error("Failed to fetch analytics summary");
     return response.json();
 };
+
+export const addMenuItem = async (payload: any) => {
+    const response = await fetch(`${API_BASE_URL}/dashboard/menu/add`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to add menu item");
+    }
+    return response.json();
+};
+
+export const updateMenuItem = async (itemId: string, payload: any) => {
+    const response = await fetch(`${API_BASE_URL}/dashboard/menu/update/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to update menu item");
+    }
+    return response.json();
+};
+
+export const deleteMenuItem = async (itemId: string) => {
+    const response = await fetch(`${API_BASE_URL}/dashboard/menu/delete/${itemId}`, {
+        method: "DELETE",
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to delete menu item");
+    }
+    return response.json();
+};

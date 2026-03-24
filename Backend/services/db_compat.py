@@ -19,7 +19,7 @@ class DbCompat:
                 "Current_Price": r["current_price"],
                 "Item_Description": r["description"],
                 "Description": r["description"],
-                "Is_Active": "ACTIVE" if r["is_active"] else "INACTIVE",
+                "Is_Active": "ACTIVE" if str(r.get("is_active", "")).upper() in ["ACTIVE", "1", "TRUE", "YES"] else "INACTIVE",
                 # Note: schema.sql has no is_veg column, so it is strictly excluded.
             } for r in rows])
             
@@ -200,7 +200,7 @@ class DbCompat:
     def update_sheet(self, sheet_name: str, new_df: pd.DataFrame, columns_to_update=None):
         if sheet_name == "Menu":
             for _, row in new_df.iterrows():
-                is_active = 1 if str(row.get("Is_Active", "")).upper() in ["ACTIVE", "TRUE", "1", "YES"] else 0
+                is_active = "ACTIVE" if str(row.get("Is_Active", "")).upper() in ["ACTIVE", "TRUE", "1", "YES"] else "INACTIVE"
                 
                 self._update_or_insert("menu", 
                     {"item_id": row["Item_ID"]},
