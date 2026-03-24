@@ -13,6 +13,7 @@ import pandas as pd
 # Load environment variables from .env file
 # ---------------------------------------------------------
 from dotenv import load_dotenv
+from services.clean_nan import clean_nan
 load_dotenv()
 
 # ---------------------------------------------------------
@@ -148,10 +149,10 @@ class SheetsClient:
         """
         df = self.read_sheet(sheet_name, bypass_cache=bypass_cache)
         headers = df.columns.tolist()
-        return [
+        return clean_nan([
             dict(zip(headers, row))
             for row in df.values.tolist()
-        ]
+        ])
 
     # -------------------------------------------------------------------
     # 🗑️ Cache Invalidation

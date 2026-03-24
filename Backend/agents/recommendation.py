@@ -8,6 +8,7 @@ from pydantic import BaseModel
 # Centralized Singletons
 from services.dependencies import sheets as _sheets, gemini_common as _gemini_combos, groq_common as _groq_pitch
 from agents.menu import get_menu_agent
+from services.clean_nan import clean_nan
 
 # ---------------------------------------------------------
 # Router Setup
@@ -122,7 +123,7 @@ class RecommendationAgent:
 
         except Exception as e:
             traceback.print_exc()
-            return {"ai_pitch": "Pairs great with your meal!", "add_ons": []}
+            return clean_nan({"ai_pitch": "Pairs great with your meal!", "add_ons": []})
 
     def get_upsell_items(self):
         """Simple upsell getter - e.g. desserts or beverages"""
@@ -667,7 +668,7 @@ class PitchRequest(BaseModel):
 
 @recommendation_router.post("/item-addons")
 def get_item_addons(req: AddonRequest, skip_pitch: bool = False):
-    return recommendation_agent.get_recommendations(req.customer_email, req.item_id, skip_pitch=skip_pitch)
+    return clean_nan(recommendation_agent.get_recommendations(req.customer_email, req.item_id, skip_pitch=skip_pitch))
 
 @recommendation_router.post("/ai-pitch")
 def get_ai_pitch(req: PitchRequest):

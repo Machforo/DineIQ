@@ -25,3 +25,9 @@ dist-ssr
 
 # Environment variables
 .env
+
+# Build artifacts
+*.tsbuildinfo
+
+# code reference files
+*.zip

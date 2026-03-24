@@ -11,6 +11,7 @@ import re
 
 # import agents and services classes
 from services.dependencies import sheets as _sheets_singleton, gemini_menu as _gemini_singleton, groq_menu as _groq_singleton
+from services.clean_nan import clean_nan
 
 # ---------------------------------------------------------
 # Load environment variables
@@ -313,7 +314,7 @@ class MenuAgent:
                     "price": None,
                     "description": str(row.get("Item_Description", ""))
                 })
-        return results
+        return clean_nan(results)
 
     # -------------------------------------------------------------------
     # 🔹 Format menu for frontend (simplified)
@@ -524,7 +525,7 @@ class MenuAgent:
         # 7️⃣ FORMAT FOR FRONTEND
         # -------------------------------------------------
         print("\nReturning Customized Menu")
-        return self.format_menu(menu_df)
+        return clean_nan(self.format_menu(menu_df))
 
     
     # -------------------------------------------------------------------

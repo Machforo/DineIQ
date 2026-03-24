@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from services.dependencies import sheets
+from services.clean_nan import clean_nan
 
 # --- Pydantic Models ---
 
@@ -232,8 +233,7 @@ async def get_latest_review_api(email: str):
         review = review_service.get_latest_review_by_customer(email)
         if not review:
             return {"status": "not_found"}
-        # Clean potential NaN values from dict
-        cleaned_review = {k: ("" if (isinstance(v, float) and (v != v)) else v) for k, v in review.items()}
+        cleaned_review = clean_nan(review)
         return cleaned_review
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

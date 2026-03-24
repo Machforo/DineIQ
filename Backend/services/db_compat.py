@@ -1,5 +1,6 @@
 import pandas as pd
 import datetime
+from services.clean_nan import clean_nan
 
 class DbCompat:
     def __init__(self, sqlite_db):
@@ -142,7 +143,7 @@ class DbCompat:
             return pd.DataFrame()
             
     def read_sheet_rows(self, sheet_name: str) -> list:
-        return self.read_sheet(sheet_name).to_dict("records")
+        return clean_nan(self.read_sheet(sheet_name))
         
     def _update_or_insert(self, table: str, keys: dict, data: dict):
         where = " AND ".join([f"{k} = ?" for k in keys.keys()])
@@ -253,7 +254,6 @@ class DbCompat:
                  "status": new_row[16] if len(new_row) > 16 else ""
              })
 
-    # invalidate cache
     def invalidate_cache(self, sheet_name: str = None):
         # Stub to replace API cache invalider when used by SQLite wrapper
         pass

@@ -159,5 +159,4 @@ if messages:
 conn.commit()
 conn.close()
 
-# print migration message
 print("✅ Migration completed successfully.")

@@ -82,6 +82,10 @@ async def startup_event():
 # ---------------------------------------------------------
 # Health Check
 # ---------------------------------------------------------
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 @app.get("/", tags=["Health"])
 def health_check():
     return {"status": "ok", "service": "DineIQ Backend", "version": "2.0"}
