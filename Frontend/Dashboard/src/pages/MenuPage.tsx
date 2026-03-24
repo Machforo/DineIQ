@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, UtensilsCrossed, CheckCircle, XCircle, RefreshCcw } from "lucide-react";
-import { parseGVizJson, parsePrice } from "@/utils/parseGVizJson";
+import { parsePrice } from "@/utils/dataUtils";
+import { fetchDashboardList } from "@/api";
 
 // Spreadsheet ID from your .env file
 const SPREADSHEET_ID = import.meta.env.VITE_SPREADSHEET_ID;
@@ -46,13 +47,7 @@ export default function MenuPage() {
   const fetchMenu = async () => {
     setLoading(true);
     try {
-      const response = await fetch(
-        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Menu&headers=1`
-      );
-      const text = await response.text();
-      const json = JSON.parse(text.substr(47).slice(0, -2));
-
-      const rows: any[] = parseGVizJson(json, "Menu");
+      const rows = await fetchDashboardList("menu");
 
       // Normalize Is_Active to uppercase string "ACTIVE"/"INACTIVE"
       const normalizedData: MenuItem[] = rows.map((i: any) => ({
@@ -70,7 +65,7 @@ export default function MenuPage() {
       setData(normalizedData);
     } catch (err) {
       console.error("Error fetching Menu:", err);
-      toast({ title: "Error", description: "Failed to fetch menu from Google Sheets", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to fetch menu from Backend", variant: "destructive" });
     }
     setLoading(false);
   };

@@ -4,7 +4,8 @@ import { KPICard } from "@/components/KPICard";
 import { ShoppingCart, Clock, CheckCircle, RefreshCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { parseGVizJson, parsePrice } from "@/utils/parseGVizJson";
+import { parsePrice } from "@/utils/dataUtils";
+import { fetchDashboardList } from "@/api";
 
 type OrderItem = {
   Order_Item_ID: string;
@@ -23,17 +24,13 @@ export default function OrderItemsPage() {
   const fetchOrderItems = async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Order_Items&headers=1`
-      );
-      const text = await res.text();
-      const json = JSON.parse(text.substr(47).slice(0, -2));
-      const rows: OrderItem[] = parseGVizJson(json, "Order_Items").map((r: any) => ({
+      const rows = await fetchDashboardList("order_items");
+      const normalizedRows: OrderItem[] = rows.map((r: any) => ({
         ...r,
         Item_Quantity: parsePrice(r.Item_Quantity),
         Item_Price: parsePrice(r.Item_Price),
       }));
-      setData(rows);
+      setData(normalizedRows);
     } catch (err) {
       console.error("Error fetching Order Items:", err);
     }

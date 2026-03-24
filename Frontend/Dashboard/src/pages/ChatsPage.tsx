@@ -3,7 +3,8 @@ import { DataTable } from "@/components/DataTable";
 import { KPICard } from "@/components/KPICard";
 import { MessageCircle, Users, Calendar, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { parseGVizJson } from "@/utils/parseGVizJson";
+import { fetchDashboardList } from "@/api";
+import { parseFlexibleDate, parseToDate } from "@/utils/dataUtils";
 
 type Chat = {
   Chat_ID: string;
@@ -23,16 +24,13 @@ export default function ChatsPage() {
   const fetchChats = async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Chats&headers=1`
-      );
-      const text = await res.text();
-      const json = JSON.parse(text.substr(47).slice(0, -2));
-      const rows: Chat[] = parseGVizJson(json, "Chats").map((r: any) => ({
+      const rows = await fetchDashboardList("chats");
+      const normalizedRows: Chat[] = rows.map((r: any) => ({
         ...r,
-        Chat_Date_Time: r.Chat_Date_Time ? new Date(r.Chat_Date_Time).toLocaleString() : "",
+        _chatDateRaw: r.Chat_Date_Time,
+        Chat_Date_Time: parseFlexibleDate(r.Chat_Date_Time),
       }));
-      setData(rows);
+      setData(normalizedRows);
     } catch (err) {
       console.error("Error fetching Chats:", err);
     }
@@ -44,7 +42,9 @@ export default function ChatsPage() {
   const totalChats = data.length;
   const uniqueCustomers = new Set(data.map(c => c.Customer_ID)).size;
   const todayChats = data.filter(c => {
-    const chatDate = new Date(c.Chat_Date_Time);
+    const raw = (c as any)._chatDateRaw;
+    const chatDate = parseToDate(raw);
+    if (!chatDate) return false;
     const today = new Date();
     return (
       chatDate.getDate() === today.getDate() &&

@@ -4,7 +4,8 @@ import { KPICard } from "@/components/KPICard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Megaphone, CheckCircle, Clock, RefreshCcw, Plus } from "lucide-react";
-import { parseGVizJson } from "@/utils/parseGVizJson";
+import { fetchDashboardList } from "@/api";
+import { parseFlexibleDate } from "@/utils/dataUtils";
 import {
   Sheet,
   SheetContent,
@@ -42,30 +43,20 @@ export default function CampaignsPage() {
   const fetchCampaigns = async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Campaigns&headers=1`
-      );
-      const text = await res.text();
-      const match = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/s);
-      if (!match) throw new Error("Could not parse GViz response");
-
-      const json = JSON.parse(match[1]);
-      const rows: Campaign[] = parseGVizJson(json, "Campaigns").map((r: any) => {
+      const rows = await fetchDashboardList("campaigns");
+      const normalizedRows: Campaign[] = rows.map((r: any) => {
         const obj = { ...r };
 
         // Parse date-time columns to local format for display
         ["Campaign_Start_DateTime", "Campaign_End_DateTime"].forEach(key => {
           if (obj[key]) {
-            const d = new Date(obj[key]);
-            if (!isNaN(d.getTime())) {
-              obj[key] = d.toLocaleString();
-            }
+            obj[key] = parseFlexibleDate(obj[key]);
           }
         });
 
         return obj;
       });
-      setData(rows);
+      setData(normalizedRows);
     } catch (err) {
       console.error("❌ Error fetching Campaigns:", err);
     }

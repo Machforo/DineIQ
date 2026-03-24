@@ -4,7 +4,8 @@ import { KPICard } from "@/components/KPICard";
 import { Users, Crown, Clock, RefreshCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { parseGVizJson } from "@/utils/parseGVizJson";
+import { fetchDashboardList } from "@/api";
+import { parseFlexibleDate, parseToDate } from "@/utils/dataUtils";
 
 type CustomerAuth = {
   Customer_ID: string;
@@ -34,20 +35,16 @@ export default function CustomerAuthPage() {
   const fetchCustomerAuth = async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Customer_Auth&headers=1`
-      );
-      const text = await res.text();
-      const json = JSON.parse(text.substr(47).slice(0, -2));
+      const rows = await fetchDashboardList("customers");
 
-      const rows: CustomerAuth[] = parseGVizJson(json, "Customer_Auth").map((r: any) => {
+      const normalizedRows: CustomerAuth[] = rows.map((r: any) => {
         // Store raw ISO strings for date-based calculations before converting to display format
         r._lastLoginRaw = r.Last_Login_DateTime || "";
 
         // Normalize date-time fields for display
         ["Date_of_Birth", "Creation_DateTime", "Last_Login_DateTime"].forEach((key) => {
           if (r[key]) {
-            r[key] = new Date(r[key]).toLocaleString();
+            r[key] = parseFlexibleDate(r[key]);
           }
         });
 
@@ -56,7 +53,7 @@ export default function CustomerAuthPage() {
         return r;
       });
 
-      setData(rows);
+      setData(normalizedRows);
     } catch (err) {
       console.error("Error fetching Customer Auth:", err);
     }
@@ -74,7 +71,8 @@ export default function CustomerAuthPage() {
   const recentLoginsCount = data.filter(c => {
     const raw = (c as any)._lastLoginRaw;
     if (!raw) return false;
-    return new Date(raw) >= sevenDaysAgo;
+    const loginDate = parseToDate(raw);
+    return loginDate && loginDate >= sevenDaysAgo;
   }).length;
 
   const columns = [

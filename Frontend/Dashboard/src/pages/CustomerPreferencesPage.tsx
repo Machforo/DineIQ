@@ -3,7 +3,8 @@ import { DataTable } from "@/components/DataTable";
 import { KPICard } from "@/components/KPICard";
 import { Heart, Salad, Coffee, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { parseGVizJson } from "@/utils/parseGVizJson";
+import { fetchDashboardList } from "@/api";
+import { parseFlexibleDate } from "@/utils/dataUtils";
 
 type CustomerPreference = {
   Customer_ID: string;
@@ -24,17 +25,12 @@ export default function CustomerPreferencesPage() {
   const fetchPreferences = async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Customer_Preferences&headers=1`
-      );
-      const text = await res.text();
-      const json = JSON.parse(text.substr(47).slice(0, -2));
-
-      const rows: CustomerPreference[] = parseGVizJson(json, "Customer_Preferences").map((r: any) => ({
+      const rows = await fetchDashboardList("preferences");
+      const normalizedRows: CustomerPreference[] = rows.map((r: any) => ({
         ...r,
-        Timestamp: r.Timestamp ? new Date(r.Timestamp).toLocaleString() : "",
+        Timestamp: parseFlexibleDate(r.Timestamp),
       }));
-      setData(rows);
+      setData(normalizedRows);
     } catch (err) {
       console.error("Error fetching Customer Preferences:", err);
     }

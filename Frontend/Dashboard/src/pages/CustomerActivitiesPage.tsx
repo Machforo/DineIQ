@@ -3,7 +3,8 @@ import { DataTable } from "@/components/DataTable";
 import { KPICard } from "@/components/KPICard";
 import { Activity, Users, Clock, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { parseGVizJson } from "@/utils/parseGVizJson";
+import { fetchDashboardList } from "@/api";
+import { parseFlexibleDate } from "@/utils/dataUtils";
 
 type CustomerActivity = {
     Customer_ID: string;
@@ -22,19 +23,12 @@ export default function CustomerActivitiesPage() {
     const fetchActivities = async () => {
         setLoading(true);
         try {
-            const res = await fetch(
-                `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Customer_Activities&headers=1`
-            );
-            const text = await res.text();
-            // Safely parse JSON from GViz format
-            const jsonStr = text.substring(text.indexOf("(") + 1, text.lastIndexOf(")"));
-            const json = JSON.parse(jsonStr);
-
-            const rows: CustomerActivity[] = parseGVizJson(json, "Customer_Activities").map((r: any) => ({
+            const rows = await fetchDashboardList("activities");
+            const normalizedRows: CustomerActivity[] = rows.map((r: any) => ({
                 ...r,
-                Timestamp: r.Timestamp ? new Date(r.Timestamp).toLocaleString() : "",
+                Timestamp: parseFlexibleDate(r.Timestamp),
             }));
-            setData(rows);
+            setData(normalizedRows);
         } catch (err) {
             console.error("Error fetching Customer Activities:", err);
         }
@@ -48,12 +42,12 @@ export default function CustomerActivitiesPage() {
     const uniqueCustomers = new Set(data.map(d => d.Customer_Email)).size;
 
     const columns = [
-        { key: "Customer_ID", label: "ID" },
-        { key: "Customer_Name", label: "Name" },
-        { key: "Customer_Email", label: "Email" },
-        { key: "Activities", label: "Activity Log" },
-        { key: "Timestamp", label: "Logged At" },
-        { key: "Insights", label: "AI Insights" },
+    { key: "Customer_ID", label: "ID" },
+    { key: "Customer_Name", label: "Name" },
+    { key: "Customer_Email", label: "Email" },
+    { key: "Timestamp", label: "Logged At" },
+    { key: "Activities", label: "Activity Log" },
+    { key: "Insights", label: "AI Insights" },
     ];
 
     return (

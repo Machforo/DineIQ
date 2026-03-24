@@ -4,6 +4,7 @@ import { KPICard } from "@/components/KPICard";
 import { Brain, TrendingUp, Star, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { fetchDashboardList } from "@/api";
 
 type CustomerInsight = {
   Customer_ID: string;
@@ -30,24 +31,7 @@ export default function CustomerInsightsPage() {
   const fetchCustomerInsights = async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Customer_Insights&headers=1`
-      );
-      const text = await res.text();
-      const json = JSON.parse(text.substr(47).slice(0, -2));
-
-      const cols = json.table.cols.map((c: any) => c.label);
-
-      const rows: CustomerInsight[] = json.table.rows
-        .map((row: any) => {
-          const obj: any = {};
-          cols.forEach((col: string, i: number) => {
-            obj[col] = row.c[i]?.v ?? "";
-          });
-          return obj.Customer_ID ? obj : null;
-        })
-        .filter(Boolean);
-
+      const rows = await fetchDashboardList("insights");
       setData(rows as CustomerInsight[]);
     } catch (err) {
       console.error("Error fetching Customer Insights:", err);

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { MessageSquare, Star, Pencil, RefreshCcw, AlertCircle } from "lucide-react";
 import { fetchReviews, updateReview } from "@/api";
+import { parseFlexibleDate, parseToDate } from "@/utils/dataUtils";
 
 interface CustomerReview {
     Review_ID: string;
@@ -62,7 +63,11 @@ export default function CustomerReviewsPage() {
                 if (a.Status !== "New" && b.Status === "New") return 1;
 
                 // Second priority: Date/Time descending
-                return new Date(b.Review_Date_Time).getTime() - new Date(a.Review_Date_Time).getTime();
+                const da = parseToDate(a.Review_Date_Time);
+                const db = parseToDate(b.Review_Date_Time);
+                if (!da) return 1;
+                if (!db) return -1;
+                return db.getTime() - da.getTime();
             });
             setData(sortedReviews);
         } catch (err) {
@@ -108,15 +113,18 @@ export default function CustomerReviewsPage() {
     const columns = [
         { key: "Review_ID", label: "ID" },
         { key: "Customer_Name", label: "Customer" },
-        { key: "Review_Date_Time", label: "Date" },
-        {
-            key: "Overall_Experience", label: "Rating", render: (v: any) => (
-                <div className="flex items-center gap-1">
-                    <span className="font-bold">{v}</span>
-                    <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                </div>
-            )
-        },
+        { key: "Review_Date_Time", label: "Date", render: (v: string) => parseFlexibleDate(v) },
+        { key: "Overall_Experience", label: "Overall", render: (v: any) => (
+            <div className="flex items-center gap-1">
+                <span className="font-bold">{v}</span>
+                <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+            </div>
+        ) },
+        { key: "Food_Quality", label: "Food" },
+        { key: "Service", label: "Service" },
+        { key: "Cleanliness", label: "Clean" },
+        { key: "Value_For_Money", label: "Value" },
+        { key: "Additional_Comments", label: "Comments", render: (v: string) => <div className="max-w-[200px] overflow-auto max-h-[80px] text-sm">{v}</div> },
         { key: "Review_Type", label: "Type" },
         {
             key: "Urgency",

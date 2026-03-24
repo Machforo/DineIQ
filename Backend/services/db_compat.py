@@ -24,10 +24,15 @@ class DbCompat:
             } for r in rows])
             
         elif sheet_name == "Orders":
-            rows = self.sqlite_db.fetch_all("SELECT * FROM orders")
+            rows = self.sqlite_db.fetch_all("""
+                SELECT o.*, c.name as customer_name 
+                FROM orders o 
+                LEFT JOIN customers c ON o.customer_id = c.customer_id
+            """)
             return pd.DataFrame([{
                 "Order_ID": r["order_id"],
                 "Customer_ID": r["customer_id"],
+                "Customer_Name": dict(r).get("customer_name", "Unknown"),
                 "Order_Price": r["order_price"],
                 "Order_Created_DateTime": r["created_at"],
                 "Order_Status": r["status"],
@@ -36,7 +41,7 @@ class DbCompat:
             
         elif sheet_name == "Order_Items":
             rows = self.sqlite_db.fetch_all("""
-                SELECT oi.*, m.name 
+                SELECT oi.*, m.name as item_name 
                 FROM order_items oi 
                 LEFT JOIN menu m ON oi.item_id = m.item_id
             """)
@@ -44,9 +49,9 @@ class DbCompat:
                 "Order_Item_ID": r["order_item_id"],
                 "Order_ID": r["order_id"],
                 "Item_ID": r["item_id"],
-                "Item_Name": dict(r).get("name", "Unknown"),
-                "Quantity": r["quantity"],
-                "Price": r["price"]
+                "Item_Name": dict(r).get("item_name", "Unknown"),
+                "Item_Quantity": r["quantity"],
+                "Item_Price": r["price"]
             } for r in rows])
             
         elif sheet_name == "Customer_Insights":
@@ -94,7 +99,7 @@ class DbCompat:
                 "Preferred_Soup": r["preferred_soup"],
                 "Favorite_Bun": r["favorite_bun"],
                 "Dessert_Preference": r["dessert_preference"],
-                "Creation_DateTime": r["updated_at"]
+                "Timestamp": r["updated_at"]
             } for r in rows])
             
         elif sheet_name == "Chats":
@@ -109,8 +114,45 @@ class DbCompat:
                 "Customer_Name": dict(r).get("customer_name", ""),
                 "Customer_Phone": dict(r).get("customer_phone", ""),
                 "Customer_Email": dict(r).get("customer_email", ""),
-                "Chat_DateTime": r["chat_datetime"],
+                "Chat_Date_Time": r["chat_datetime"],
                 "Chat_Session_Text": r["session_text"]
+            } for r in rows])
+
+        elif sheet_name == "Campaigns":
+            rows = self.sqlite_db.fetch_all("SELECT * FROM campaigns")
+            res = []
+            for r in rows:
+                row_dict = {
+                    "Campaign_ID": r["campaign_id"],
+                    "Campaign_Text": r["text"],
+                    "Target_Customer_Category": r["target_customer_category"],
+                    "Campaign_Start_DateTime": r["start_datetime"],
+                    "Campaign_End_DateTime": r["end_datetime"],
+                    "Campaign_Message_Count": r["message_count"],
+                    "Campaign_Type": r["campaign_type"],
+                    "Campaign_Status": r["status"]
+                }
+                # Add template/timing fields
+                for i in range(1, 11):
+                    row_dict[f"Message_Template #{i}"] = r.get(f"message_template_{i}", "")
+                    row_dict[f"Message_Send_Timing #{i}"] = r.get(f"message_send_timing_{i}", "")
+                res.append(row_dict)
+            return pd.DataFrame(res)
+
+        elif sheet_name == "Customer_Activities":
+            rows = self.sqlite_db.fetch_all("""
+                SELECT ca.*, c.name, c.email 
+                FROM customer_activities ca 
+                LEFT JOIN customers c ON ca.customer_id = c.customer_id
+            """)
+            return pd.DataFrame([{
+                "ID": r["id"],
+                "Customer_ID": r["customer_id"],
+                "Customer_Name": dict(r).get("name", ""),
+                "Customer_Email": dict(r).get("email", ""),
+                "Activities": r["activities"],
+                "Insights": r["insights"],
+                "Timestamp": r["created_at"]
             } for r in rows])
 
         elif sheet_name == "Customer_Reviews":
@@ -211,6 +253,23 @@ class DbCompat:
                         "internal_comments": row.get("Internal_Comments", ""),
                         "status": row.get("Status", "")
                     })
+
+        elif sheet_name == "Campaigns":
+            for _, row in new_df.iterrows():
+                data = {
+                    "text": row.get("Campaign_Text", ""),
+                    "target_customer_category": row.get("Target_Customer_Category", ""),
+                    "start_datetime": row.get("Campaign_Start_DateTime", ""),
+                    "end_datetime": row.get("Campaign_End_DateTime", ""),
+                    "message_count": row.get("Campaign_Message_Count", 0),
+                    "campaign_type": row.get("Campaign_Type", ""),
+                    "status": row.get("Campaign_Status", "")
+                }
+                for i in range(1, 11):
+                    data[f"message_template_{i}"] = row.get(f"Message_Template #{i}", "")
+                    data[f"message_send_timing_{i}"] = row.get(f"Message_Send_Timing #{i}", "")
+                
+                self._update_or_insert("campaigns", {"campaign_id": row["Campaign_ID"]}, data)
 
     def append_row(self, sheet_name: str, new_row: list):
         if sheet_name == "Customer_Preferences":

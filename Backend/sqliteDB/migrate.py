@@ -137,24 +137,17 @@ campaigns = df.rename(columns={
     "campaign_end_datetime": "end_datetime",
     "campaign_status": "status"
 })
-insert_strict(campaigns, "campaigns", ["campaign_id", "text", "target_customer_category", "start_datetime", "end_datetime", "message_count", "campaign_type", "status"], conn, "campaign_id")
 
-# Extract messages
-messages = []
-for _, row in df.iterrows():
-    for i in range(1, 11):
-        msg = row.get(f"message_template_{i}")
-        timing = row.get(f"message_send_timing_{i}")
-        if pd.notna(msg):
-            messages.append({
-                "campaign_id": row.get("campaign_id", ""),
-                "message_text": msg,
-                "send_timing": timing
-            })
+campaign_cols = [
+    "campaign_id", "text", "target_customer_category", "start_datetime", 
+    "end_datetime", "message_count", "campaign_type", "status"
+]
+# Add message template and timing columns
+for i in range(1, 11):
+    campaign_cols.append(f"message_template_{i}")
+    campaign_cols.append(f"message_send_timing_{i}")
 
-if messages:
-    msg_df = pd.DataFrame(messages)
-    insert_strict(msg_df, "campaign_messages", ["campaign_id", "message_text", "send_timing"], conn)
+insert_strict(campaigns, "campaigns", campaign_cols, conn, "campaign_id")
 
 conn.commit()
 conn.close()

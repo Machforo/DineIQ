@@ -8,7 +8,8 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { RefreshCcw } from "lucide-react";
-import { parseGVizJson, parsePrice } from "@/utils/parseGVizJson";
+import { parsePrice, parseFlexibleDate, parseToDate, formatDateTime } from "@/utils/dataUtils";
+import { fetchDashboardList, fetchAnalyticsSummary } from "@/api";
 
 export default function Analytics() {
   const SPREADSHEET_ID = import.meta.env.VITE_SPREADSHEET_ID;
@@ -22,26 +23,20 @@ export default function Analytics() {
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchSheet = async (sheetName: string) => {
-    const res = await fetch(
-      `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${sheetName}&headers=1`
-    );
-    const text = await res.text();
-    const json = JSON.parse(text.substr(47).slice(0, -2));
-    return parseGVizJson(json, sheetName);
-  };
+  const [summary, setSummary] = useState<any>(null);
 
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [c, o, m, i, cam, ch, oi] = await Promise.all([
-        fetchSheet("Customer_Auth"),
-        fetchSheet("Orders"),
-        fetchSheet("Menu"),
-        fetchSheet("Customer_Insights"),
-        fetchSheet("Campaigns"),
-        fetchSheet("Chats"),
-        fetchSheet("Order_Items"),
+      const [c, o, m, i, cam, ch, oi, summ] = await Promise.all([
+        fetchDashboardList("customers"),
+        fetchDashboardList("orders"),
+        fetchDashboardList("menu"),
+        fetchDashboardList("insights"),
+        fetchDashboardList("campaigns"),
+        fetchDashboardList("chats"),
+        fetchDashboardList("order_items"),
+        fetchAnalyticsSummary()
       ]);
 
       setCustomers(c);
@@ -51,6 +46,7 @@ export default function Analytics() {
       setCampaigns(cam);
       setChats(ch);
       setOrderItems(oi);
+      setSummary(summ);
     } catch (err) {
       console.error("Error fetching analytics data:", err);
     }
@@ -60,23 +56,26 @@ export default function Analytics() {
   useEffect(() => { fetchAll(); }, []);
 
   // KPI calculations
-  const totalCustomers = customers.length;
-  const activeOrders = orders.filter(o => ["Preparing", "Pending"].includes(o.Order_Status)).length;
+  const totalCustomers = summary?.total_customers ?? customers.length;
+  const activeOrders = orders.filter(o => ["Preparing", "Pending"].includes(o.Order_Status || o.status)).length;
   const avgOrderValue = orders.length
-    ? Math.round(orders.reduce((sum, o) => sum + parsePrice(o.Order_Price), 0) / orders.length)
+    ? Math.round(orders.reduce((sum, o) => sum + parsePrice(o.Order_Price || o.order_price), 0) / orders.length)
     : 0;
   const avgScore = insights.length
-    ? Math.round(insights.reduce((sum, i) => sum + parsePrice(i.Customer_Score), 0) / insights.length)
+    ? Math.round(insights.reduce((sum, i) => sum + parsePrice(i.Customer_Score || i.customer_score), 0) / insights.length)
     : 0;
-  const activeCampaigns = campaigns.filter(c => c.Campaign_Status === "Active").length;
+  const activeCampaigns = campaigns.filter(c => (c.Campaign_Status || c.status) === "ACTIVE").length;
   const chatVolume = chats.length;
 
   // Charts sample data
-  const ordersByDate = orders.map(o => ({
-    date: o.Order_Created_DateTime ? new Date(o.Order_Created_DateTime).toLocaleDateString() : "",
-    orders: 1,
-    revenue: parsePrice(o.Order_Price),
-  })).reduce((acc: any[], cur) => {
+  const ordersByDate = orders.map(o => {
+    const d = parseToDate(o.Order_Created_DateTime);
+    return {
+      date: d ? formatDateTime(d).split(",")[0] : "Unknown",
+      orders: 1,
+      revenue: parsePrice(o.Order_Price),
+    };
+  }).reduce((acc: any[], cur) => {
     const existing = acc.find(a => a.date === cur.date);
     if (existing) {
       existing.orders += 1;
@@ -115,32 +114,17 @@ export default function Analytics() {
 
   // Calculate Top 5 Selling Items from orderItems data
   const topItems = useMemo(() => {
-    if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) return [];
-
+    if (!orderItems || !orderItems.length) return [];
+    
     const aggregated = orderItems.reduce((acc: Record<string, number>, cur) => {
-      const keys = Object.keys(cur);
-      // Higher priority for specific name columns, explicitly exclude ID columns
-      const nameKey = keys.find(k => /item_name|item name/i.test(k)) ||
-        keys.find(k => /name/i.test(k) && !/id/i.test(k)) ||
-        keys.find(k => /item/i.test(k) && !/id/i.test(k));
-
-      const qtyKey = keys.find(k => /quantity|item_quantity|item quantity/i.test(k)) ||
-        keys.find(k => /qty/i.test(k));
-
-      if (nameKey) {
-        const name = String(cur[nameKey] || "").trim();
-        // Skip header if it leaked in or if it's an ID-like string
-        if (name && !/item_name|item_id|id/i.test(name.toLowerCase())) {
-          const qty = qtyKey ? parsePrice(cur[qtyKey]) : 1;
-          acc[name] = (acc[name] || 0) + qty;
-        }
-      }
+      const name = cur.Item_Name || "Unknown Item";
+      const qty = parsePrice(cur.Item_Quantity) || 1;
+      acc[name] = (acc[name] || 0) + qty;
       return acc;
     }, {});
 
     return Object.entries(aggregated)
       .map(([name, orders]) => ({ name, orders: orders as number }))
-      .filter(item => item.orders > 0)
       .sort((a, b) => b.orders - a.orders)
       .slice(0, 5);
   }, [orderItems]);

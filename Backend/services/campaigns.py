@@ -106,7 +106,7 @@ def process_single_campaign(campaign: CampaignInternal):
     status = compute_campaign_status(start_dt, end_dt)
 
     # 3️⃣ Insert into campaigns table
-    sqlite_db.insert("campaigns", {
+    campaign_data = {
         "campaign_id": campaign_id,
         "text": campaign.campaign_text,
         "target_customer_category": campaign.target_customer_category,
@@ -115,18 +115,16 @@ def process_single_campaign(campaign: CampaignInternal):
         "message_count": campaign.campaign_message_count,
         "campaign_type": campaign.campaign_type or "",
         "status": status
-    })
+    }
+    
+    # Add templates and timings to the same row
+    for i in range(10):
+        template = campaign.message_templates[i] if i < len(campaign.message_templates) else ""
+        timing = campaign.message_send_timings[i] if i < len(campaign.message_send_timings) else ""
+        campaign_data[f"message_template_{i+1}"] = template
+        campaign_data[f"message_send_timing_{i+1}"] = timing
 
-    # 4️⃣ Insert into campaign_messages table
-    for i in range(campaign.campaign_message_count):
-        msg_template = campaign.message_templates[i] if i < len(campaign.message_templates) else ""
-        msg_timing = campaign.message_send_timings[i] if i < len(campaign.message_send_timings) else ""
-        
-        sqlite_db.insert("campaign_messages", {
-            "campaign_id": campaign_id,
-            "message_text": msg_template,
-            "send_timing": msg_timing
-        })
+    sqlite_db.insert("campaigns", campaign_data)
 
     return campaign_id, status
 
