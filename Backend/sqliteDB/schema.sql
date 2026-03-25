@@ -175,3 +175,27 @@ CREATE TABLE campaigns (
 -- INDEXES
 CREATE INDEX idx_orders_customer ON orders(customer_id);
 CREATE INDEX idx_order_items_order ON order_items(order_id);
+
+-- ======================
+-- STAFF / DASHBOARD USERS
+-- ======================
+CREATE TABLE IF NOT EXISTS staff (
+    staff_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    phone TEXT UNIQUE,
+    role TEXT NOT NULL DEFAULT 'staff',   -- 'admin', 'manager', 'chef', 'staff'
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    last_login TEXT
+);
+
+-- ======================
+-- STAFF AUTH
+-- ======================
+CREATE TABLE IF NOT EXISTS staff_auth (
+    staff_id TEXT PRIMARY KEY,
+    otp_hash TEXT,
+    otp_expires_at TEXT,
+    FOREIGN KEY (staff_id) REFERENCES staff(staff_id)
+);

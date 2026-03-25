@@ -88,3 +88,41 @@ export const deleteMenuItem = async (itemId: string) => {
     }
     return response.json();
 };
+
+// -- Staff Auth ----------------------------------------------------------------
+
+export const staffRegister = async (payload: {
+    name: string;
+    email: string;
+    phone?: string;
+    role: string;
+}) => {
+    const res = await fetch(`${API_BASE_URL}/auth/staff/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "Register failed"); }
+    return res.json();
+};
+
+export const staffLogin = async (payload: { method: "email" | "phone"; value: string }) => {
+    const res = await fetch(`${API_BASE_URL}/auth/staff/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "Login failed"); }
+    return res.json();
+};
+
+export const staffVerifyOtp = async (payload: { email: string; otp: string }) => {
+    const res = await fetch(`${API_BASE_URL}/auth/staff/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "OTP verification failed"); }
+    return res.json();
+};
+

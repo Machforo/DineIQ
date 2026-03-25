@@ -12,8 +12,10 @@ import {
   Megaphone,
   Activity,
   MessageSquare,
+  LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
+import { useAuth } from "@/context/AuthContext";
 import {
   Sidebar,
   SidebarContent,
@@ -42,6 +44,7 @@ const mainItems = [
 
 export function AppSidebar() {
   const [time, setTime] = useState(new Date());
+  const { staff, logout } = useAuth();
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -86,6 +89,27 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      {/* Staff info + logout */}
+      <SidebarFooter className="border-t border-sidebar-border p-4">
+        {staff && (
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-sidebar-foreground truncate">{staff.name}</p>
+              <p className="text-xs text-sidebar-foreground/60 capitalize">{staff.role}</p>
+            </div>
+            <button
+              id="sidebar-logout-btn"
+              onClick={logout}
+              title="Logout"
+              className="flex-shrink-0 p-1.5 rounded-md hover:bg-sidebar-accent text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </SidebarFooter>
     </Sidebar>
   );
 }
+

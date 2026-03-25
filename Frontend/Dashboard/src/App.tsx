@@ -3,7 +3,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import DashboardLayout from "@/components/DashboardLayout";
+import LoginPage from "@/pages/LoginPage";
 import Analytics from "@/pages/Analytics";
 import MenuPage from "@/pages/MenuPage";
 import CustomerAuthPage from "@/pages/CustomerAuthPage";
@@ -19,31 +21,44 @@ import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
+function AppRoutes() {
+  const { staff } = useAuth();
+
+  if (!staff) return <LoginPage />;
+
+  return (
+    <DashboardLayout>
+      <Routes>
+        <Route path="/" element={<Analytics />} />
+        <Route path="/menu" element={<MenuPage />} />
+        <Route path="/customer-auth" element={<CustomerAuthPage />} />
+        <Route path="/customer-preferences" element={<CustomerPreferencesPage />} />
+        <Route path="/customer-insights" element={<CustomerInsightsPage />} />
+        <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/order-items" element={<OrderItemsPage />} />
+        <Route path="/customer-activities" element={<CustomerActivitiesPage />} />
+        <Route path="/chats" element={<ChatsPage />} />
+        <Route path="/campaigns" element={<CampaignsPage />} />
+        <Route path="/customer-reviews" element={<CustomerReviewsPage />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </DashboardLayout>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <DashboardLayout>
-          <Routes>
-            <Route path="/" element={<Analytics />} />
-            <Route path="/menu" element={<MenuPage />} />
-            <Route path="/customer-auth" element={<CustomerAuthPage />} />
-            <Route path="/customer-preferences" element={<CustomerPreferencesPage />} />
-            <Route path="/customer-insights" element={<CustomerInsightsPage />} />
-            <Route path="/orders" element={<OrdersPage />} />
-            <Route path="/order-items" element={<OrderItemsPage />} />
-            <Route path="/customer-activities" element={<CustomerActivitiesPage />} />
-            <Route path="/chats" element={<ChatsPage />} />
-            <Route path="/campaigns" element={<CampaignsPage />} />
-            <Route path="/customer-reviews" element={<CustomerReviewsPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </DashboardLayout>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
 
 export default App;
+
