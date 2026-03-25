@@ -199,3 +199,43 @@ CREATE TABLE IF NOT EXISTS staff_auth (
     otp_expires_at TEXT,
     FOREIGN KEY (staff_id) REFERENCES staff(staff_id)
 );
+
+
+-- ✅ TICKETING SYSTEM (Admin Approval Workflow)
+-- ------------------------------------------------------------------
+
+-- Add version to menu table
+ALTER TABLE menu ADD COLUMN version INTEGER DEFAULT 1;
+
+CREATE TABLE IF NOT EXISTS menu_tickets (
+    ticket_id TEXT PRIMARY KEY,
+    ticket_type TEXT NOT NULL, -- 'ADD', 'EDIT', 'DELETE'
+    item_id TEXT, -- The ID of the menu item (if EDIT/DELETE)
+    
+    -- Creator info
+    creator_id TEXT,
+    creator_name TEXT,
+    creator_role TEXT,
+    
+    -- Staged changes
+    proposed_data TEXT, -- JSON string of the new item state
+    
+    -- Workflow status
+    ticket_status TEXT DEFAULT 'PENDING', -- 'PENDING', 'APPROVED', 'REJECTED', 'NEEDS_REWORK', 'CLOSED'
+    acknowledged_by_creator INTEGER DEFAULT 0, -- 0=No, 1=Yes
+    
+    -- Admin info
+    admin_id TEXT,
+    admin_name TEXT,
+    admin_role TEXT,
+    admin_action TEXT, -- 'APPROVE', 'REJECT', 'REWORK'
+    admin_notes TEXT,
+    
+    -- Scheduling
+    publish_schedule TEXT DEFAULT 'IMMEDIATE', -- 'IMMEDIATE', 'MIDNIGHT'
+    
+    -- Timestamps
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    actioned_at TEXT
+);

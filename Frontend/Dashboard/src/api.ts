@@ -89,7 +89,7 @@ export const deleteMenuItem = async (itemId: string) => {
     return response.json();
 };
 
-// -- Staff Auth ----------------------------------------------------------------
+// ── Staff Auth ────────────────────────────────────────────────────────────────
 
 export const staffRegister = async (payload: {
     name: string;
@@ -126,3 +126,64 @@ export const staffVerifyOtp = async (payload: { email: string; otp: string }) =>
     return res.json();
 };
 
+
+// ── Ticketing ──────────────────────────────────────────────────────────
+
+
+
+export const submitTicket = async (payload: {
+    ticket_type: "ADD" | "EDIT" | "DELETE";
+    item_id?: string;
+    creator_id: string;
+    creator_name: string;
+    creator_role: string;
+    proposed_data: any;
+}) => {
+    const res = await fetch(`${API_BASE_URL}/tickets/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "Failed to submit ticket"); }
+    return res.json();
+};
+
+export const fetchTickets = async (status?: string, creatorId?: string) => {
+    let url = `${API_BASE_URL}/tickets/list`;
+    const params = new URLSearchParams();
+    if (status) params.append("status", status);
+    if (creatorId) params.append("creator_id", creatorId);
+    if (params.toString()) url += `?${params.toString()}`;
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Failed to fetch tickets");
+    return res.json();
+};
+
+export const actionTicket = async (payload: {
+    ticket_id: string;
+    action: "APPROVE" | "REJECT" | "REWORK";
+    admin_id: string;
+    admin_name: string;
+    admin_role: string;
+    admin_notes?: string;
+    publish_schedule?: "IMMEDIATE" | "MIDNIGHT";
+}) => {
+    const res = await fetch(`${API_BASE_URL}/tickets/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "Failed to action ticket"); }
+    return res.json();
+};
+
+export const acknowledgeTicket = async (ticketId: string) => {
+    const res = await fetch(`${API_BASE_URL}/tickets/acknowledge`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticket_id: ticketId }),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "Failed to acknowledge ticket"); }
+    return res.json();
+};

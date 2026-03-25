@@ -13,7 +13,9 @@ import {
   Activity,
   MessageSquare,
   LogOut,
+  Ticket,
 } from "lucide-react";
+
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -30,8 +32,13 @@ import {
 
 const mainItems = [
   { title: "Analytics", url: "/", icon: BarChart3 },
+  { title: "Tickets", url: "/tickets", icon: Ticket },
+
+
   { title: "Menu", url: "/menu", icon: UtensilsCrossed },
   { title: "Customer Auth", url: "/customer-auth", icon: Users },
+
+
   { title: "Customer Preferences", url: "/customer-preferences", icon: Heart },
   { title: "Customer Activities", url: "/customer-activities", icon: Activity },
   { title: "Customer Insights", url: "/customer-insights", icon: Brain },

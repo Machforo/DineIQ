@@ -8,7 +8,11 @@ import DashboardLayout from "@/components/DashboardLayout";
 import LoginPage from "@/pages/LoginPage";
 import Analytics from "@/pages/Analytics";
 import MenuPage from "@/pages/MenuPage";
+import TicketsPage from "@/pages/TicketsPage";
+
+
 import CustomerAuthPage from "@/pages/CustomerAuthPage";
+
 import CustomerPreferencesPage from "@/pages/CustomerPreferencesPage";
 import CustomerInsightsPage from "@/pages/CustomerInsightsPage";
 import OrdersPage from "@/pages/OrdersPage";
@@ -31,7 +35,11 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<Analytics />} />
         <Route path="/menu" element={<MenuPage />} />
+        <Route path="/tickets" element={<TicketsPage />} />
+
+
         <Route path="/customer-auth" element={<CustomerAuthPage />} />
+
         <Route path="/customer-preferences" element={<CustomerPreferencesPage />} />
         <Route path="/customer-insights" element={<CustomerInsightsPage />} />
         <Route path="/orders" element={<OrdersPage />} />
