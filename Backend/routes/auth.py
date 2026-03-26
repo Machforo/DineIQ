@@ -428,8 +428,10 @@ def staff_verify_otp(payload: dict):
         }
     except HTTPException:
         raise
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+def generate_next_staff_id() -> str:
     row = sqlite_db.fetch_one("SELECT staff_id FROM staff WHERE staff_id LIKE 'Staff_%' ORDER BY staff_id DESC LIMIT 1")
     if row and row["staff_id"]:
         import re

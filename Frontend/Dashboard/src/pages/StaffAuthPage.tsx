@@ -46,7 +46,6 @@ export default function StaffAuthPage() {
   const [newPhone, setNewPhone] = useState("");
   const [newRole, setNewRole] = useState<string>("staff");
 
-  const currentStaff = JSON.parse(localStorage.getItem('staff_user') || '{}');
   const isMasterAdmin = currentStaff?.role === 'master';
 
   const fetchStaffAuth = async () => {
