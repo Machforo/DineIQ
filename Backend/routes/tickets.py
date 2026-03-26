@@ -47,9 +47,7 @@ async def list_tickets(status: Optional[str] = None, creator_id: Optional[str] =
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@tickets_router.post(
-
-"/submit")
+@tickets_router.post("/submit")
 async def submit_ticket(request: Request):
     """
     Submit a new menu change ticket (ADD, EDIT, DELETE).
@@ -62,10 +60,27 @@ async def submit_ticket(request: Request):
             raise HTTPException(status_code=400, detail="Invalid ticket type. Use ADD, EDIT, or DELETE.")
             
         item_id = payload.get("item_id")
+        rework_ticket_id = payload.get("rework_ticket_id")
+        
+        creator_id   = payload.get("creator_id")
+        creator_name = payload.get("creator_name")
+        creator_role = payload.get("creator_role")
+        proposed_data = payload.get("proposed_data", {})
+
         if ticket_type in ["EDIT", "DELETE"] and not item_id:
-            raise HTTPException(status_code=400, detail="item_id is required for EDIT or DELETE tickets.")
-            
-        # Check if there's already an active ticket for this item
+             raise HTTPException(status_code=400, detail="item_id is required for EDIT or DELETE tickets.")
+
+        # 1. Check for explicit rework resubmission
+        if rework_ticket_id:
+            sqlite_db.update("menu_tickets", {
+                "proposed_data": json.dumps(proposed_data),
+                "ticket_status": "PENDING",
+                "item_id": item_id,
+                "updated_at": time.strftime("%Y-%m-%d %H:%M:%S")
+            }, {"ticket_id": rework_ticket_id})
+            return {"status": "ok", "message": "Ticket resubmitted successfully", "ticket_id": rework_ticket_id}
+
+        # 2. Implicit check if there's already an active ticket for this item
         if item_id:
             existing = sqlite_db.fetch_one(
                 "SELECT ticket_id, ticket_status FROM menu_tickets WHERE item_id = ? AND ticket_status != 'CLOSED'",
@@ -83,14 +98,7 @@ async def submit_ticket(request: Request):
                 else:
                     raise HTTPException(status_code=400, detail=f"This item already has a {existing['ticket_status']} ticket.")
 
-
-        creator_id   = payload.get("creator_id")
-        creator_name = payload.get("creator_name")
-        creator_role = payload.get("creator_role")
-        proposed_data = payload.get("proposed_data", {})
-        
-        # Get next sequential integer ID with 'Tick_0001' format
-        # Extract the numeric part (from position 6 onwards) and cast to integer
+        # 3. Create NEW ticket
         max_id_res = sqlite_db.fetch_one("SELECT MAX(CAST(SUBSTR(ticket_id, 6) AS INTEGER)) as max_val FROM menu_tickets")
         next_id = 1
         if max_id_res and max_id_res["max_val"] is not None:
@@ -98,9 +106,6 @@ async def submit_ticket(request: Request):
         
         ticket_id = f"Tick_{next_id:04d}"
 
-
-
-        
         ticket_data = {
             "ticket_id":     ticket_id,
             "ticket_type":   ticket_type,
@@ -123,9 +128,7 @@ async def submit_ticket(request: Request):
         print("🔥 SUBMIT TICKET ERROR:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
-@tickets_router.post(
-
-"/action")
+@tickets_router.post("/action")
 async def action_ticket(request: Request):
     """
     Admin action on a ticket (APPROVE, REJECT, REWORK).
@@ -147,8 +150,10 @@ async def action_ticket(request: Request):
         ticket = sqlite_db.fetch_one("SELECT * FROM menu_tickets WHERE ticket_id = ?", (ticket_id,))
         if not ticket:
             raise HTTPException(status_code=404, detail="Ticket not found")
-        if ticket["ticket_status"] != "PENDING":
-            raise HTTPException(status_code=400, detail=f"Ticket is already {ticket['ticket_status']}")
+        
+        # Allow override as long as it's not CLOSED
+        if ticket["ticket_status"] == "CLOSED":
+            raise HTTPException(status_code=400, detail="Ticket is CLOSED and cannot be actioned.")
 
         status_map = {
             "APPROVE": "APPROVED",

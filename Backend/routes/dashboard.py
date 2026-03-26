@@ -22,7 +22,8 @@ async def list_dashboard_entity(entity: str):
         "activities": "Customer_Activities",
         "chats": "Chats",
         "campaigns": "Campaigns",
-        "reviews": "Customer_Reviews"
+        "reviews": "Customer_Reviews",
+        "staff": "Staff"
     }
     
     sheet_name = entity_map.get(entity.lower())

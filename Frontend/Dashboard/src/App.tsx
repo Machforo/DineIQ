@@ -12,6 +12,7 @@ import TicketsPage from "@/pages/TicketsPage";
 
 
 import CustomerAuthPage from "@/pages/CustomerAuthPage";
+import StaffAuthPage from "@/pages/StaffAuthPage";
 
 import CustomerPreferencesPage from "@/pages/CustomerPreferencesPage";
 import CustomerInsightsPage from "@/pages/CustomerInsightsPage";
@@ -39,6 +40,7 @@ function AppRoutes() {
 
 
         <Route path="/customer-auth" element={<CustomerAuthPage />} />
+        <Route path="/staff-auth" element={<StaffAuthPage />} />
 
         <Route path="/customer-preferences" element={<CustomerPreferencesPage />} />
         <Route path="/customer-insights" element={<CustomerInsightsPage />} />

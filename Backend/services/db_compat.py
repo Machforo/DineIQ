@@ -181,6 +181,19 @@ class DbCompat:
                 "Status": r["status"]
             } for r in rows])
             
+        elif sheet_name == "Staff":
+            rows = self.sqlite_db.fetch_all("SELECT * FROM staff")
+            return pd.DataFrame([{
+                "Staff_ID": r["staff_id"],
+                "Staff_Name": r["name"],
+                "Staff_Email": r["email"],
+                "Staff_Phone": r["phone"],
+                "Staff_Role": r["role"],
+                "Is_Active": "ACTIVE" if r.get("is_active") == 1 else "INACTIVE",
+                "Creation_DateTime": r["created_at"],
+                "Last_Login_DateTime": r["last_login"]
+            } for r in rows])
+            
         else:
             return pd.DataFrame()
             

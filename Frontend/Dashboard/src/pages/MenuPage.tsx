@@ -50,6 +50,7 @@ export default function MenuPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<MenuItem>(emptyItem);
   const [ackTicket, setAckTicket] = useState<any>(null);
+  const [reworkTicketId, setReworkTicketId] = useState<string | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -166,6 +167,7 @@ export default function MenuPage() {
     setIsNew(ticket.ticket_type === "ADD");
     setDialogOpen(true);
     setAckTicket(null);
+    setReworkTicketId(ticket.ticket_id);
   };
 
 
@@ -189,7 +191,8 @@ export default function MenuPage() {
 
       await submitTicket({
         ticket_type: type,
-        item_id: type === "ADD" ? undefined : item.Item_ID,
+        item_id: item.Item_ID, // Always pass ID
+        rework_ticket_id: reworkTicketId || undefined,
         proposed_data: proposedData,
         creator_id: staff.staffId,
         creator_name: staff.name,
@@ -198,6 +201,7 @@ export default function MenuPage() {
 
       toast({ title: "Ticket Submitted", description: `Request to ${type.toLowerCase()} ${item.Item_Name} is pending admin approval.` });
       setDialogOpen(false);
+      setReworkTicketId(null);
       fetchMenu();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });

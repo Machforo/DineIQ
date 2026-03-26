@@ -107,7 +107,7 @@ export default function TicketsPage() {
       sortable: false,
       render: (_: any, row: any) => (
         <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={() => setSelectedTicket(row)}>
-          <Eye className="h-4 w-4" /> {row.ticket_status === "PENDING" ? "Process" : "View"}
+          <Eye className="h-4 w-4" /> {row.ticket_status === "PENDING" ? "Process" : "Review"}
         </Button>
       ),
     },
@@ -231,8 +231,8 @@ export default function TicketsPage() {
                 </div>
               </div>
 
-              {/* Action Controls - Only shown if PENDING */}
-              {selectedTicket.ticket_status === "PENDING" && (
+              {/* Action Controls - Shown if not CLOSED */}
+              {selectedTicket.ticket_status !== "CLOSED" && (
                 <div className="space-y-4 pt-4 border-t">
                     <div>
                         <Label className="font-bold uppercase text-muted-foreground">Admin Feedback / Instructions</Label>
@@ -269,7 +269,7 @@ export default function TicketsPage() {
           <DialogFooter className="flex gap-2 sm:justify-between pt-4 border-t">
             <Button variant="ghost" onClick={() => setSelectedTicket(null)}>Close</Button>
             
-            {selectedTicket?.ticket_status === "PENDING" && (
+            {selectedTicket?.ticket_status !== "CLOSED" && (
                 <div className="flex gap-2">
                     <Button variant="outline" className="border-orange-500 text-orange-600 hover:bg-orange-50" onClick={() => handleAction("REWORK")} disabled={actioning}>
                         Needs Rework

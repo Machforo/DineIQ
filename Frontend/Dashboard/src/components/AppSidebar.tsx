@@ -14,6 +14,7 @@ import {
   MessageSquare,
   LogOut,
   Ticket,
+  ShieldCheck,
 } from "lucide-react";
 
 import { NavLink } from "@/components/NavLink";
@@ -37,6 +38,7 @@ const mainItems = [
 
   { title: "Menu", url: "/menu", icon: UtensilsCrossed },
   { title: "Customer Auth", url: "/customer-auth", icon: Users },
+  { title: "Staff Auth", url: "/staff-auth", icon: ShieldCheck },
 
 
   { title: "Customer Preferences", url: "/customer-preferences", icon: Heart },

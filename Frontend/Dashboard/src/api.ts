@@ -134,6 +134,7 @@ export const staffVerifyOtp = async (payload: { email: string; otp: string }) =>
 export const submitTicket = async (payload: {
     ticket_type: "ADD" | "EDIT" | "DELETE";
     item_id?: string;
+    rework_ticket_id?: string;
     creator_id: string;
     creator_name: string;
     creator_role: string;
