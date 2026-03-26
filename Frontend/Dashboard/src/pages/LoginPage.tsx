@@ -15,7 +15,7 @@ export default function LoginPage() {
   const { login } = useAuth();
 
   const [tab, setTab] = useState<Tab>("login");
-  const [loginMethod, setLoginMethod] = useState<LoginMethod>("email");
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>("phone");
   const [step, setStep] = useState<Step>("credentials");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -76,10 +76,6 @@ export default function LoginPage() {
           setError(res.message || "Account not found. Please register first.");
           return;
         }
-        if (res.status === "not_verified") {
-          setError(res.message || "Please login with email OTP first to verify your account.");
-          return;
-        }
         // Direct session — no OTP step
         login({
           staffId: res.staff_id,
@@ -138,19 +134,9 @@ export default function LoginPage() {
           {/* Login / Register tabs */}
           {step === "credentials" && (
             <div className="flex border-b border-border">
-              {(["login", "register"] as Tab[]).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => handleTabSwitch(t)}
-                  className={`flex-1 py-3 text-sm font-medium capitalize transition-colors ${
-                    tab === t
-                      ? "text-foreground border-b-2 border-sidebar-primary bg-card"
-                      : "text-muted-foreground hover:text-foreground bg-muted/40"
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
+              <div className="flex-1 py-3 text-sm font-medium capitalize text-foreground border-b-2 border-sidebar-primary bg-card text-center">
+                Log In
+              </div>
             </div>
           )}
 
@@ -242,7 +228,7 @@ export default function LoginPage() {
                               : "bg-background text-muted-foreground hover:text-foreground"
                           }`}
                         >
-                          {m === "email" ? "Email (OTP)" : "Phone"}
+                          {m === "email" ? "Email" : "Phone"}
                         </button>
                       ))}
                     </div>
@@ -269,12 +255,9 @@ export default function LoginPage() {
                           required
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
-                          placeholder="+254 700 000 000"
+                          placeholder="Enter 10-digit number"
                           className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-sidebar-primary"
                         />
-                        <p className="text-xs text-muted-foreground mt-1.5">
-                          Phone login is available after your first email OTP verification.
-                        </p>
                       </div>
                     )}
                   </>

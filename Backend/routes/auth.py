@@ -330,7 +330,7 @@ def staff_register(payload: dict):
 
         # Create new staff record and send OTP
         otp = generate_otp()
-        save_otp_for_staff(email, otp, name=name, phone=phone, role=role)
+        save_otp_for_dashboard_user(email, otp, name=name, phone=phone, role=role)
 
         gmail_client = GmailClient()
         gmail_client.send_otp_email(email, otp)
@@ -357,45 +357,41 @@ def staff_login(payload: dict):
         # ── EMAIL LOGIN (with OTP) ─────────────────────────────────────────────
         if method == "email":
             email = value.lower()
-            staff = find_staff_by_email(email)
-            if not staff:
-                return {"status": "not_found", "message": "No staff account found with this email. Please register first."}
-            if not staff.get("is_active"):
+            user = find_dashboard_user_by_email(email)
+            if not user:
+                return {"status": "not_found", "message": "No account found with this email."}
+            if not user.get("is_active"):
                 return {"status": "error", "message": "This account has been deactivated. Please contact an admin."}
 
             otp = generate_otp()
-            save_otp_for_staff(email, otp)
+            save_otp_for_dashboard_user(email, otp)
 
             gmail_client = GmailClient()
             gmail_client.send_otp_email(email, otp)
 
-            return {"status": "otp_sent", "name": staff["name"], "role": staff["role"]}
+            return {"status": "otp_sent", "name": user["name"], "role": user["role"]}
 
         # ── PHONE LOGIN (no OTP, direct session) ──────────────────────────────
         elif method == "phone":
-            staff = find_staff_by_phone(value)
-            if not staff:
-                return {"status": "not_found", "message": "No staff account found with this phone. Please register first."}
-            if not staff.get("is_active"):
+            user = find_dashboard_user_by_phone(value)
+            if not user:
+                return {"status": "not_found", "message": "No account found with this phone. Please contact administrator."}
+            if not user.get("is_active"):
                 return {"status": "error", "message": "This account has been deactivated. Please contact an admin."}
-
-            # Block if the account has never been verified via email OTP before
-            if not staff.get("last_login"):
-                return {
-                    "status": "not_verified",
-                    "message": "Account not yet verified. Please login with email OTP first."
-                }
 
             # Direct login — update last_login and return session
             now_str = time.strftime("%d/%m/%Y %H:%M:%S")
-            sqlite_db.update("staff", {"last_login": now_str}, {"staff_id": staff["staff_id"]})
+            table_name = "master" if user["type"] == "master" else "staff"
+            id_col = "master_id" if user["type"] == "master" else "staff_id"
+            
+            sqlite_db.update(table_name, {"last_login": now_str}, {id_col: user["id"]})
 
             return {
                 "status": "ok",
-                "staff_id": staff["staff_id"],
-                "name":     staff["name"],
-                "email":    staff.get("email", ""),
-                "role":     staff["role"],
+                "staff_id": user["id"],
+                "name":     user["name"],
+                "email":    user.get("email", ""),
+                "role":     user["role"],
             }
 
         else:
@@ -419,31 +415,23 @@ def staff_verify_otp(payload: dict):
         if not email or not otp:
             raise HTTPException(status_code=400, detail="Email and OTP are required")
 
-        result = verify_otp_for_staff(email, otp)
+        result = verify_otp_for_dashboard_user(email, otp)
         if not result["ok"]:
             return {"status": "error", "message": result["message"]}
 
         return {
             "status": "ok",
-            "staff_id": result["staff_id"],
+            "staff_id": result["user_id"],
             "name":     result["name"],
             "email":    email,
             "role":     result["role"],
         }
     except HTTPException:
         raise
-    except Exception as e:
-        print("🔥 STAFF VERIFY OTP ERROR:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# ------------------------------------------------------------------
-# Staff Auth Helper Functions
-# ------------------------------------------------------------------
-
-def generate_next_staff_id() -> str:
-    row = sqlite_db.fetch_one("SELECT staff_id FROM staff ORDER BY staff_id DESC LIMIT 1")
-    if row and row["staff_id"] and row["staff_id"].startswith("Staff_"):
+    row = sqlite_db.fetch_one("SELECT staff_id FROM staff WHERE staff_id LIKE 'Staff_%' ORDER BY staff_id DESC LIMIT 1")
+    if row and row["staff_id"]:
         import re
         match = re.search(r"(\d+)", row["staff_id"])
         if match:
@@ -451,55 +439,97 @@ def generate_next_staff_id() -> str:
             return f"Staff_{num + 1:04d}"
     return "Staff_0001"
 
-
-def find_staff_by_email(email: str):
-    row = sqlite_db.fetch_one("SELECT * FROM staff WHERE LOWER(email) = ?", (email.strip().lower(),))
-    if not row:
-        return None
-    return {
-        "staff_id":  row.get("staff_id"),
-        "name":      row.get("name"),
-        "email":     row.get("email"),
-        "phone":     row.get("phone"),
-        "role":      row.get("role"),
-        "is_active": row.get("is_active"),
-        "last_login": row.get("last_login"),
-    }
+def generate_next_master_id() -> str:
+    row = sqlite_db.fetch_one("SELECT master_id FROM master WHERE master_id LIKE 'master_%' ORDER BY master_id DESC LIMIT 1")
+    if row and row["master_id"]:
+        import re
+        match = re.search(r"(\d+)", row["master_id"])
+        if match:
+            num = int(match.group(1))
+            return f"master_{num + 1:04d}"
+    return "master_0001"
 
 
-def find_staff_by_phone(phone: str):
-    row = sqlite_db.fetch_one("SELECT * FROM staff WHERE phone = ?", (str(phone).strip(),))
-    if not row:
-        return None
-    return {
-        "staff_id":  row.get("staff_id"),
-        "name":      row.get("name"),
-        "email":     row.get("email"),
-        "phone":     row.get("phone"),
-        "role":      row.get("role"),
-        "is_active": row.get("is_active"),
-        "last_login": row.get("last_login"),
-    }
+def find_dashboard_user_by_email(email: str):
+    email_clean = email.strip().lower()
+    # 1. Check master
+    row = sqlite_db.fetch_one("SELECT * FROM master WHERE LOWER(email) = ?", (email_clean,))
+    if row:
+        return {
+            "id": row.get("master_id"),
+            "name": row.get("name"),
+            "email": row.get("email"),
+            "phone": row.get("phone"),
+            "role": "master", # Force role 'master' for users in master table
+            "is_active": row.get("is_active"),
+            "last_login": row.get("last_login"),
+            "type": "master"
+        }
+    # 2. Check staff
+    row = sqlite_db.fetch_one("SELECT * FROM staff WHERE LOWER(email) = ?", (email_clean,))
+    if row:
+        return {
+            "id": row.get("staff_id"),
+            "name": row.get("name"),
+            "email": row.get("email"),
+            "phone": row.get("phone"),
+            "role": row.get("role"),
+            "is_active": row.get("is_active"),
+            "last_login": row.get("last_login"),
+            "type": "staff"
+        }
+    return None
 
+def find_dashboard_user_by_phone(phone: str):
+    phone_clean = str(phone).strip()
+    # 1. Check master
+    row = sqlite_db.fetch_one("SELECT * FROM master WHERE phone = ?", (phone_clean,))
+    if row:
+        return {
+            "id": row.get("master_id"),
+            "name": row.get("name"),
+            "email": row.get("email"),
+            "phone": row.get("phone"),
+            "role": "master", # Force role 'master'
+            "is_active": row.get("is_active"),
+            "last_login": row.get("last_login"),
+            "type": "master"
+        }
+    # 2. Check staff
+    row = sqlite_db.fetch_one("SELECT * FROM staff WHERE phone = ?", (phone_clean,))
+    if row:
+        return {
+            "id": row.get("staff_id"),
+            "name": row.get("name"),
+            "email": row.get("email"),
+            "phone": row.get("phone"),
+            "role": row.get("role"),
+            "is_active": row.get("is_active"),
+            "last_login": row.get("last_login"),
+            "type": "staff"
+        }
+    return None
 
-
-def save_otp_for_staff(email: str, otp: str, name=None, phone=None, role="staff"):
-    print(">>> Saving Staff OTP for:", email)
+def save_otp_for_dashboard_user(email: str, otp: str, name=None, phone=None, role="staff"):
+    print(">>> Saving Dashboard OTP for:", email)
     otp_hash    = sha256(otp)
     expiry      = int(time.time()) + 300
     email_clean = email.strip().lower()
 
-    row = sqlite_db.fetch_one("SELECT staff_id FROM staff WHERE LOWER(email) = ?", (email_clean,))
+    user = find_dashboard_user_by_email(email_clean)
 
-    if row:
-        s_id = row["staff_id"]
-        auth_row = sqlite_db.fetch_one("SELECT * FROM staff_auth WHERE staff_id = ?", (s_id,))
+    if user:
+        u_id = user["id"]
+        auth_table = "master_auth" if user["type"] == "master" else "staff_auth"
+        id_col = "master_id" if user["type"] == "master" else "staff_id"
+        
+        auth_row = sqlite_db.fetch_one(f"SELECT * FROM {auth_table} WHERE {id_col} = ?", (u_id,))
         if auth_row:
-            sqlite_db.update("staff_auth", {"otp_hash": otp_hash, "otp_expires_at": expiry}, {"staff_id": s_id})
+            sqlite_db.update(auth_table, {"otp_hash": otp_hash, "otp_expires_at": expiry}, {id_col: u_id})
         else:
-            sqlite_db.insert("staff_auth", {"staff_id": s_id, "otp_hash": otp_hash, "otp_expires_at": expiry})
+            sqlite_db.insert(auth_table, {id_col: u_id, "otp_hash": otp_hash, "otp_expires_at": expiry})
     else:
-        # Brand-new staff member (registration path)
+        # Brand-new staff member (via register, though we hide it now)
         s_id     = generate_next_staff_id()
         now_str  = time.strftime("%d/%m/%Y %H:%M:%S")
         sqlite_db.insert("staff", {
@@ -518,23 +548,28 @@ def save_otp_for_staff(email: str, otp: str, name=None, phone=None, role="staff"
             "otp_expires_at": expiry,
         })
 
-
-def verify_otp_for_staff(email: str, otp: str):
-    print(">>> Verifying Staff OTP for:", email)
+def verify_otp_for_dashboard_user(email: str, otp: str):
+    print(">>> Verifying Dashboard OTP for:", email)
     entered_hash = sha256(otp)
     now          = int(time.time())
     email_clean  = email.strip().lower()
 
-    row = sqlite_db.fetch_one("""
-        SELECT s.*, a.otp_hash, a.otp_expires_at
-        FROM staff s
-        LEFT JOIN staff_auth a ON s.staff_id = a.staff_id
-        WHERE LOWER(s.email) = ?
+    user = find_dashboard_user_by_email(email_clean)
+    if not user:
+        return {"ok": False, "message": "Email not found"}
+
+    auth_table = "master_auth" if user["type"] == "master" else "staff_auth"
+    id_col = "master_id" if user["type"] == "master" else "staff_id"
+    user_table = "master" if user["type"] == "master" else "staff"
+
+    row = sqlite_db.fetch_one(f"""
+        SELECT u.*, a.otp_hash, a.otp_expires_at
+        FROM {user_table} u
+        LEFT JOIN {auth_table} a ON u.{id_col} = a.{id_col}
+        WHERE LOWER(u.email) = ?
     """, (email_clean,))
 
-    if not row:
-        return {"ok": False, "message": "Email not found"}
-    if not row.get("otp_hash"):
+    if not row or not row.get("otp_hash"):
         return {"ok": False, "message": "OTP not generated"}
     if now > int(row.get("otp_expires_at", 0) or 0):
         return {"ok": False, "message": "OTP expired"}
@@ -542,12 +577,12 @@ def verify_otp_for_staff(email: str, otp: str):
         return {"ok": False, "message": "Invalid OTP"}
 
     now_str = time.strftime("%d/%m/%Y %H:%M:%S")
-    sqlite_db.update("staff",      {"last_login": now_str},       {"staff_id": row["staff_id"]})
-    sqlite_db.update("staff_auth", {"otp_hash": "", "otp_expires_at": ""}, {"staff_id": row["staff_id"]})
+    sqlite_db.update(user_table, {"last_login": now_str}, {id_col: user["id"]})
+    sqlite_db.update(auth_table, {"otp_hash": "", "otp_expires_at": ""}, {id_col: user["id"]})
 
     return {
         "ok":      True,
-        "staff_id": row.get("staff_id"),
+        "user_id": user["id"],
         "name":    row.get("name"),
-        "role":    row.get("role"),
+        "role":    "master" if user["type"] == "master" else row.get("role"),
     }
