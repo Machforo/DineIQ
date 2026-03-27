@@ -31,6 +31,23 @@ async def list_dashboard_entity(entity: str):
         raise HTTPException(status_code=400, detail=f"Invalid entity: {entity}")
     
     try:
+        if entity.lower() == "orders":
+            query = """
+                SELECT o.*, c.name as customer_name
+                FROM orders o
+                LEFT JOIN customers c ON o.customer_id = c.customer_id
+                ORDER BY o.order_id ASC
+            """
+            return sqlite_db.fetch_all(query)
+        elif entity.lower() == "order_items":
+            query = """
+                SELECT oi.*, m.name as item_name
+                FROM order_items oi
+                LEFT JOIN menu m ON oi.item_id = m.item_id
+                ORDER BY oi.order_id ASC
+            """
+            return sqlite_db.fetch_all(query)
+        
         data = sheets.read_sheet_rows(sheet_name)
         return clean_nan(data)
     except Exception as e:

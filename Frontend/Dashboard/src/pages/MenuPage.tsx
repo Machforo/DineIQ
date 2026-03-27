@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DataTable } from "@/components/DataTable";
 import { KPICard } from "@/components/KPICard";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,9 @@ export default function MenuPage() {
   const [isNew, setIsNew] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const categories = useMemo(() => {
+    return Array.from(new Set(data.map(item => item.Item_Category).filter(Boolean))).sort();
+  }, [data]);
 
   const fetchMenu = async () => {
     setLoading(true);
@@ -387,7 +390,16 @@ export default function MenuPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Category</Label>
-                <Input value={editItem.Item_Category} onChange={(e) => setEditItem({ ...editItem, Item_Category: e.target.value })} />
+                <Input 
+                  list="category-options"
+                  value={editItem.Item_Category} 
+                  onChange={(e) => setEditItem({ ...editItem, Item_Category: e.target.value })} 
+                />
+                <datalist id="category-options">
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat} />
+                  ))}
+                </datalist>
               </div>
               <div className="flex items-center gap-2 pt-6">
                 <Switch

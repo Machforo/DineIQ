@@ -22,6 +22,7 @@ import CustomerActivitiesPage from "@/pages/CustomerActivitiesPage";
 import ChatsPage from "@/pages/ChatsPage";
 import CampaignsPage from "@/pages/CampaignsPage";
 import CustomerReviewsPage from "@/pages/CustomerReviewsPage";
+import KitchenPage from "@/pages/KitchenPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ function AppRoutes() {
         <Route path="/chats" element={<ChatsPage />} />
         <Route path="/campaigns" element={<CampaignsPage />} />
         <Route path="/customer-reviews" element={<CustomerReviewsPage />} />
+        <Route path="/kitchen" element={<KitchenPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </DashboardLayout>

@@ -25,6 +25,7 @@ from agents.monitoring import monitoring_router
 from services.reviews import reviews_router
 from routes.dashboard import dashboard_router
 from routes.tickets import tickets_router
+from routes.kitchen import kitchen_router
 
 
 
@@ -78,6 +79,9 @@ app.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard"])
 
 # Ticketing: Menu Approval Workflow
 app.include_router(tickets_router, prefix="/tickets", tags=["Tickets"])
+
+# Kitchen Display System
+app.include_router(kitchen_router, prefix="/kitchen", tags=["Kitchen"])
 
 
 

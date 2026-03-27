@@ -188,3 +188,31 @@ export const acknowledgeTicket = async (ticketId: string) => {
     if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "Failed to acknowledge ticket"); }
     return res.json();
 };
+
+// ── Kitchen Display System ────────────────────────────────────────────────────
+
+export const fetchKitchenOrders = async () => {
+    const res = await fetch(`${API_BASE_URL}/kitchen/orders`);
+    if (!res.ok) throw new Error("Failed to fetch Kitchen orders");
+    return res.json(); // { orders: [...] }
+};
+
+export const updateKitchenItemStatus = async (orderItemId: string, status: string) => {
+    const res = await fetch(`${API_BASE_URL}/kitchen/item-status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_item_id: orderItemId, status }),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "Failed to update item status"); }
+    return res.json();
+};
+
+export const updateKitchenOrderStatus = async (orderId: string, status: string) => {
+    const res = await fetch(`${API_BASE_URL}/kitchen/order-status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_id: orderId, status }),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "Failed to update order status"); }
+    return res.json();
+};

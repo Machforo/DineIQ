@@ -8,12 +8,25 @@ import { parsePrice } from "@/utils/dataUtils";
 import { fetchDashboardList } from "@/api";
 
 type OrderItem = {
-  Order_Item_ID: string;
-  Order_ID: string;
-  Item_ID: string;
-  Item_Name: string;
-  Item_Quantity: number;
-  Item_Price: number;
+  order_item_id: string;
+  order_id: string;
+  item_id: string;
+  item_name: string;
+  quantity: number;
+  price: number;
+  status: string;
+  special_instructions?: string;
+};
+
+// Status colors mapping (synced with OrdersPage)
+const statusColors: Record<string, string> = {
+  SERVED: "bg-green-600",
+  READY: "bg-green-500",
+  PREPARING: "bg-amber-500",
+  PENDING: "bg-blue-500",
+  CREATED: "bg-blue-400",
+  CANCELLED: "bg-red-500",
+  COMPLETED: "bg-gray-500",
 };
 
 export default function OrderItemsPage() {
@@ -27,8 +40,8 @@ export default function OrderItemsPage() {
       const rows = await fetchDashboardList("order_items");
       const normalizedRows: OrderItem[] = rows.map((r: any) => ({
         ...r,
-        Item_Quantity: parsePrice(r.Item_Quantity),
-        Item_Price: parsePrice(r.Item_Price),
+        quantity: parsePrice(r.quantity || r.Item_Quantity),
+        price: parsePrice(r.price || r.Item_Price),
       }));
       setData(normalizedRows);
     } catch (err) {
@@ -42,17 +55,18 @@ export default function OrderItemsPage() {
   }, []);
 
   const totalItems = data.length;
-  const totalQuantity = data.reduce((sum, i) => sum + i.Item_Quantity, 0);
-  const totalRevenue = data.reduce((sum, i) => sum + i.Item_Price * i.Item_Quantity, 0);
+  const totalQuantity = data.reduce((sum, i) => sum + i.quantity, 0);
+  const totalRevenue = data.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
   const columns = [
-    { key: "Order_Item_ID", label: "Item ID" },
-    { key: "Order_ID", label: "Order ID" },
-    { key: "Item_ID", label: "Menu Item ID" },
-    { key: "Item_Name", label: "Name" },
-    { key: "Item_Quantity", label: "Quantity" },
-    { key: "Item_Price", label: "Price", render: (v: number) => `KSh ${v}` },
-    { key: "Total", label: "Total", render: (_: any, row: OrderItem) => `KSh ${row.Item_Price * row.Item_Quantity}` },
+    { key: "order_item_id", label: "Item ID" },
+    { key: "order_id", label: "Order ID" },
+    { key: "item_id", label: "Menu Item ID" },
+    { key: "item_name", label: "Name" },
+    { key: "quantity", label: "Quantity" },
+    { key: "price", label: "Price", render: (v: number) => `KSh ${v}` },
+    { key: "Total", label: "Total", render: (_: any, row: OrderItem) => `KSh ${row.price * row.quantity}` },
+    { key: "status", label: "Status", render: (v: string) => <Badge className={statusColors[String(v || "PENDING").toUpperCase()] || "bg-gray-400"}>{v || "PENDING"}</Badge> },
   ];
 
   return (

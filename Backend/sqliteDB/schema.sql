@@ -50,6 +50,7 @@ CREATE TABLE orders (
     created_at TEXT,
     status TEXT,
     table_number INTEGER,
+    instructions TEXT,
     FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
 );
 
@@ -62,6 +63,8 @@ CREATE TABLE order_items (
     item_id TEXT,
     quantity INTEGER,
     price REAL,
+    status TEXT DEFAULT 'PENDING',
+    special_instructions TEXT,
     FOREIGN KEY (order_id) REFERENCES orders(order_id),
     FOREIGN KEY (item_id) REFERENCES menu(item_id)
 );

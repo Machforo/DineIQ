@@ -15,6 +15,7 @@ import {
   LogOut,
   Ticket,
   ShieldCheck,
+  ChefHat,
 } from "lucide-react";
 
 import { NavLink } from "@/components/NavLink";
@@ -33,6 +34,7 @@ import {
 
 const mainItems = [
   { title: "Analytics", url: "/", icon: BarChart3 },
+  { title: "Kitchen Display", url: "/kitchen", icon: ChefHat },
   { title: "Tickets", url: "/tickets", icon: Ticket },
 
 
