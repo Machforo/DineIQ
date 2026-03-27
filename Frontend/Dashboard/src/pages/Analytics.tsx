@@ -69,11 +69,11 @@ export default function Analytics() {
 
   // Charts sample data
   const ordersByDate = orders.map(o => {
-    const d = parseToDate(o.Order_Created_DateTime);
+    const d = parseToDate(o.Order_Created_DateTime || o.created_at);
     return {
       date: d ? formatDateTime(d).split(",")[0] : "Unknown",
       orders: 1,
-      revenue: parsePrice(o.Order_Price),
+      revenue: parsePrice(o.Order_Price || o.order_price),
     };
   }).reduce((acc: any[], cur) => {
     const existing = acc.find(a => a.date === cur.date);
@@ -85,8 +85,8 @@ export default function Analytics() {
   }, []);
 
   const revenueByCategory = menu.map(m => ({
-    category: m.Item_Category || "Other",
-    revenue: parsePrice(m.Current_Price),
+    category: m.Item_Category || m.category || "Other",
+    revenue: parsePrice(m.Current_Price || m.current_price),
   })).reduce((acc: any[], cur) => {
     const existing = acc.find(a => a.category === cur.category);
     if (existing) existing.revenue += cur.revenue;
@@ -95,7 +95,7 @@ export default function Analytics() {
   }, []);
 
   const categoryDistribution = customers.reduce((acc: any, c) => {
-    const cat = c.Customer_Category || "Unknown";
+    const cat = c.Customer_Category || c.customer_category || "Unknown";
     acc[cat] = (acc[cat] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -117,8 +117,8 @@ export default function Analytics() {
     if (!orderItems || !orderItems.length) return [];
     
     const aggregated = orderItems.reduce((acc: Record<string, number>, cur) => {
-      const name = cur.Item_Name || "Unknown Item";
-      const qty = parsePrice(cur.Item_Quantity) || 1;
+      const name = cur.Item_Name || cur.item_name || "Unknown Item";
+      const qty = parsePrice(cur.Item_Quantity || cur.quantity) || 1;
       acc[name] = (acc[name] || 0) + qty;
       return acc;
     }, {});

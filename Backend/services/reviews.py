@@ -169,11 +169,44 @@ class ReviewService:
 
     def get_all_reviews(self):
         """
-        Fetches all reviews for the Dashboard.
+        Fetches all reviews for the Dashboard using SQLite and joins.
         """
         try:
-            rows = sheets.read_sheet_rows(self.SHEET_NAME)
-            return rows
+            from services.dependencies import sqlite_db
+            query = """
+                SELECT r.*, c.name as Customer_Name, c.email as Customer_Email
+                FROM reviews r
+                LEFT JOIN customers c ON r.customer_id = c.customer_id
+                ORDER BY r.review_datetime DESC
+            """
+            rows = sqlite_db.fetch_all(query)
+            
+            # Map to legacy names for frontend compatibility
+            legacy_rows = []
+            for r in rows:
+                row_dict = dict(r)
+                mapping = {
+                    "review_id": "Review_ID",
+                    "customer_id": "Customer_ID",
+                    "review_datetime": "Review_Date_Time",
+                    "food_quality": "Food_Quality",
+                    "service": "Service",
+                    "cleanliness": "Cleanliness",
+                    "value_for_money": "Value_For_Money",
+                    "overall_experience": "Overall_Experience",
+                    "comments": "Additional_Comments",
+                    "review_type": "Review_Type",
+                    "urgency": "Urgency",
+                    "assigned_to": "Assigned_To",
+                    "actions_needed": "Actions_Needed",
+                    "internal_comments": "Internal_Comments",
+                    "status": "Status"
+                }
+                for k, v in mapping.items():
+                    if k in row_dict:
+                        row_dict[v] = row_dict[k]
+                legacy_rows.append(row_dict)
+            return legacy_rows
         except Exception as e:
             print(f"Error reading reviews: {e}")
             return []
