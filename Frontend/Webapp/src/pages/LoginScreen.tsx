@@ -20,7 +20,7 @@ const Z = {
 };
 
 // -- Extract table number from any QR payload -----------------------------------
-// Confirmed QR format: "http://localhost:8000/?table=1"
+// Confirmed QR format: "<backend https link>:8000/?table=1"
 // Also handles: plain "4", "table=4", path "/table/4", etc.
 function extractTable(raw: string): number | null {
   const s = raw.trim();
